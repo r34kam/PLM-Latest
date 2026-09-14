@@ -664,7 +664,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: a
                                 </td>
                                 <td className="sub">Level {r.level}</td>
                                 <td>{phaseChip(r.phase)}</td>
-                                <td><Chip k="blue">{r.div}</Chip></td>
+                                <td><Chip k={r.div === "AG" ? "teal" : "gray"}>{r.div}</Chip></td>
                                 <td className="sub" style={{ color: r.impact.includes("still references") ? T.warn : T.g600 }}>
                                   {r.impact}
                                 </td>

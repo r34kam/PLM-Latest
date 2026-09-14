@@ -302,7 +302,7 @@ function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, 
                     </td>
                     {!railOpen && <td className="sub">{e.type}</td>}
                     {!railOpen && <td>{e.routing}</td>}
-                    {!railOpen && <td><Chip k={e.div === "AG" ? "teal" : "blue"}>{e.div}</Chip></td>}
+                    {!railOpen && <td><Chip k={e.div === "AG" ? "teal" : "gray"}>{e.div}</Chip></td>}
                     <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>{e.itemCount}<span className="mut"> / {e.modCount}</span></td>
                     <td style={{ whiteSpace: "nowrap" }}>{stageChip(e.stage)}</td>
                     {!railOpen && <td className="sub">{e.creator}</td>}
@@ -335,7 +335,7 @@ function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, 
                 <div style={{ fontWeight: 600, margin: "9px 0 4px" }}>{e.title}</div>
                 <div className="sub" style={{ minHeight: 34, lineHeight: 1.5 }}>{e.desc.slice(0, 76)}…</div>
                 <div className="row" style={{ marginTop: 12, gap: 8, paddingTop: 10, borderTop: `1px solid ${T.g100}` }}>
-                  <Chip k={e.div === "AG" ? "teal" : "blue"}>{e.div}</Chip>
+                  <Chip k={e.div === "AG" ? "teal" : "gray"}>{e.div}</Chip>
                   <span className="mini">{e.itemCount} items</span>
                   <span className="mini" style={{ marginLeft: "auto" }}>{e.created}</span>
                 </div>

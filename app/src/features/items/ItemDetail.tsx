@@ -530,7 +530,7 @@ function ItemDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: 
                             <td><a className="pn" onClick={() => go({ page: "item", id: pa.pn })}>{pa.pn}</a></td>
                             <td>{pa.name}</td><td className="sub">{pa.cat}</td>
                             <td>{(bomFor(pa.pn).find((x: any) => x.pn === it.pn) || {}).qty || "1 EA"}</td>
-                            <td>{phaseChip(pa.phase)}</td><td><Chip k={pa.div === "AG" ? "teal" : "blue"}>{pa.div}</Chip></td>
+                            <td>{phaseChip(pa.phase)}</td><td><Chip k={pa.div === "AG" ? "teal" : "gray"}>{pa.div}</Chip></td>
                           </tr>
                         ))}
                       </tbody>
