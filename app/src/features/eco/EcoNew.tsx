@@ -9,14 +9,17 @@ import { Modal } from '@/components/primitives/Modal'
 import { Stepper } from '@/components/primitives/Stepper'
 import { useRoutings } from '@/data/admin'
 import { useAllItems } from '@/data/items'
+import { useCreateChangeOrder } from '@/data/changeOrders'
 import { ITEMS } from '@/domain/catalog'
 import { AI_SUGGEST } from '@/domain/ecos'
 import { ROUTINGS, ROUTING_NAMES } from '@/domain/routings'
 import { ME } from '@/domain/session'
 import { ECO_TEMPLATE } from '@/domain/templates'
 import { T } from '@/theme/tokens'
-import { AlertCircle, Boxes, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, FileSpreadsheet, FileText, Layers, Pencil, Plus, Search, Send, ShieldCheck, Sparkles, Trash2, Upload, Users, X } from 'lucide-react'
+import { AlertCircle, Boxes, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, FileSpreadsheet, FileText, Layers, Loader2, Pencil, Plus, Search, Send, ShieldCheck, Sparkles, Trash2, Upload, Users, X } from 'lucide-react'
 import React, { useState } from 'react'
+import { toast } from 'sonner'
+import { format } from 'date-fns'
 
 /* ======================== ECO CREATION FLOW ========================= */
 
@@ -70,6 +73,9 @@ function EcoNew({
     disposition: "",
   });
   const [associatedFiles, setAssociatedFiles] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const createChangeOrder = useCreateChangeOrder();
 
   const ecoItems = [...imported.map((r: any) => ({ pn: r.pn, name: r.name, sev: r.sev, rule: r.rule, src: "Import" })),
     ...manual.map((m: any) => ({ pn: m.pn, name: m.name, sev: "ok", rule: "Added manually", src: "Manual" }))];
@@ -86,6 +92,49 @@ function EcoNew({
   };
   const next = () => setI(Math.min(i + 1, 2));
   const back = () => (i === 0 ? go({ page: "ecos" }) : setI(i - 1));
+
+  // Derive the change order type prefix from the cat string (e.g. "ECO: ..." → "ECO")
+  const coTypePrefix = form.cat.split(":")[0].trim() as string;
+  // Generate a unique ID using the type prefix + timestamp suffix
+  const coId = `${coTypePrefix}-${String(Date.now()).slice(-6)}`;
+  const today = format(new Date(), "MM/dd/yyyy");
+
+  const handleCreate = async (submitToRouting: boolean) => {
+    setIsSubmitting(true);
+    try {
+      await createChangeOrder({
+        coId,
+        title: form.title,
+        type: coTypePrefix,
+        cat: form.cat,
+        stage: submitToRouting ? "Submit" : "Open",
+        div: form.div.split("–")[0].trim(),
+        site: form.site,
+        routing: routing || (ecoNewRoutings[0]?.name ?? ""),
+        creator: ME.name,
+        submitter: submitToRouting ? ME.name : "—",
+        dc: form.dc || ME.name,
+        created: today,
+        submitted: submitToRouting ? today : "—",
+        itemCount: ecoItems.length,
+        modCount: ecoItems.length,
+        pnsJson: JSON.stringify(ecoItems.map((it: any) => it.pn)),
+        desc: form.desc,
+        redline: "",
+        notes: form.notes,
+        priority: "Medium",
+        awaitingMe: false,
+        effectiveDate: "",
+        completedDate: "",
+      });
+      toast.success(`${coId} created${submitToRouting ? " and submitted to routing" : ""}`);
+      go({ page: "ecos" });
+    } catch {
+      toast.error("Failed to create change order — please try again");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="stack" data-test-id="eco-new-page">
@@ -958,42 +1007,76 @@ function EcoNew({
             </div>
           </div>
 
-          <div className="bet">
-            <span className="sub">The change is created in Open. It stays editable until you submit it to routing.</span>
-            <div className="row">
-              <button className="btn" onClick={() => go({ page: "eco", id: "ECO-011420" })}>Create and keep open</button>
-              <button className="btn pri" onClick={() => go({ page: "eco", id: "ECO-011420" })}>
-                <Send size={13} />Create and submit to routing</button>
-            </div>
-          </div>
         </div>
       )}
 
-      {i < 2 && (
-        <div className="bet">
-          <button className="btn" onClick={back}><ChevronLeft size={13} />{i === 0 ? "Cancel" : "Back"}</button>
-          <div className="row">
-            {i === 0 && (
-              <span className="mini" style={{ marginRight: 6 }}>
-                {!isGeneralFilled ? "Change Details incomplete — fill required fields" : !isDescFilled ? "Description & Effectivity incomplete" : ecoItems.length === 0 ? "Add at least 1 item to continue" : "Ready to proceed"}
-              </span>
-            )}
-            {i === 1 && !mode && (
-              <span className="mini" style={{ marginRight: 6, color: T.g600 }}>
-                Select an approval method to proceed
-              </span>
-            )}
-            <button className="btn gh">Save draft</button>
+      {/* ── Bottom action bar — visible on ALL steps ── */}
+      <div className="bet" data-test-id="eco-wizard-footer">
+        <button className="btn" onClick={back} disabled={isSubmitting} data-test-id="eco-wizard-back-btn">
+          <ChevronLeft size={13} />{i === 0 ? "Cancel" : "Back"}
+        </button>
+        <div className="row">
+          {/* Hint text */}
+          {i === 0 && (
+            <span className="mini" style={{ marginRight: 6 }}>
+              {!isGeneralFilled ? "Change Details incomplete — fill required fields"
+                : !isDescFilled ? "Description & Effectivity incomplete"
+                : ecoItems.length === 0 ? "Add at least 1 item to continue"
+                : "Ready to proceed"}
+            </span>
+          )}
+          {i === 1 && !mode && (
+            <span className="mini" style={{ marginRight: 6, color: T.g600 }}>
+              Select an approval method to proceed
+            </span>
+          )}
+          {i === 2 && (
+            <span className="sub" style={{ marginRight: 6 }}>
+              Created in Open — stays editable until submitted.
+            </span>
+          )}
+
+          <button className="btn gh" onClick={() => toast.info("Draft saved")} data-test-id="eco-wizard-save-draft-btn">
+            Save draft
+          </button>
+
+          {/* Steps 0 and 1: Continue advances the wizard */}
+          {i < 2 && (
             <button
               className="btn pri"
               onClick={next}
               disabled={(i === 0 && (!isGeneralFilled || !isDescFilled || ecoItems.length === 0)) || (i === 1 && !mode)}
+              data-test-id="eco-wizard-continue-btn"
             >
-              Continue<ChevronRight size={13} />
+              Continue <ChevronRight size={13} />
             </button>
-          </div>
+          )}
+
+          {/* Step 2: two create actions replace Continue */}
+          {i === 2 && (
+            <>
+              <button
+                className="btn"
+                onClick={() => handleCreate(false)}
+                disabled={isSubmitting}
+                data-test-id="eco-create-open-btn"
+              >
+                {isSubmitting ? <Loader2 size={13} className="animate-spin" /> : null}
+                Create — keep open
+              </button>
+              <button
+                className="btn pri"
+                onClick={() => handleCreate(true)}
+                disabled={isSubmitting}
+                data-test-id="eco-create-submit-btn"
+              >
+                {isSubmitting ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+                Create &amp; submit to routing
+              </button>
+            </>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
