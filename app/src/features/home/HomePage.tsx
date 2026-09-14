@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 /* ============================== HOME ================================ */
 
-function HomePage({ go, renderHeaderActions }: { go: any; renderHeaderActions?: () => React.ReactNode }) {
+function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = '' }: { go: any; renderHeaderActions?: () => React.ReactNode; userRole?: string; userName?: string }) {
   const [showNeedsNextOthers, setShowNeedsNextOthers] = useState(false);
   const [showFourChanges, setShowFourChanges] = useState(false);
   const [expandedInsights, setExpandedInsights] = useState<Record<string, boolean>>({});

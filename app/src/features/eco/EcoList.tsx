@@ -13,7 +13,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 /* =========================== ECO MASTER ============================= */
 
-function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, renderHeaderActions }: { go: any; initialFilter?: any; onInspect?: any; inspectedId?: any; railOpen?: boolean; renderHeaderActions?: () => React.ReactNode }) {
+function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, renderHeaderActions, role = 'unknown', currentUserName = '' }: { go: any; initialFilter?: any; onInspect?: any; inspectedId?: any; railOpen?: boolean; renderHeaderActions?: () => React.ReactNode; role?: string; currentUserName?: string }) {
+  const isApproverRole = role === 'approver'
+  // Approvers always see only "Needs me" — filter tab is locked
   const [f, setF] = useState(initialFilter || "Needs me");
   const [q, setQ] = useState("");
   const [view, setView] = useState("table");
@@ -23,7 +25,8 @@ function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, 
   );
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [ecoPage, setEcoPage] = useState(0);
-  const filters = ["Needs me", "Open", "All"];
+  // Approvers only see "Needs me"; DC sees all filters
+  const filters = isApproverRole ? ["Needs me"] : ["Needs me", "Open", "All"];
 
   // Backend data
   const { data: allOrders, loading: ordersLoading } = useAllChangeOrders();
@@ -31,30 +34,37 @@ function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, 
 
   const isNeedsMe = (e: ChangeOrder) => e.awaitingMe || e.stage === "Rejected";
 
+  // For Approvers: further filter to only ECOs where awaitingMe is true
+  // (they're in the approval flow and the ball is in their court)
+  const visibleOrders = useMemo(() => {
+    if (!isApproverRole) return allOrders
+    return allOrders.filter((e) => e.awaitingMe === true || e.stage === 'Rejected')
+  }, [allOrders, isApproverRole])
+
   const stageStats: Record<string, number> = useMemo(() => {
     const map: Record<string, number> = {};
     CO_STAGES.forEach((st) => { map[st] = 0; });
-    allOrders.forEach((e) => { if (e.stage) map[e.stage] = (map[e.stage] ?? 0) + 1; });
+    visibleOrders.forEach((e) => { if (e.stage) map[e.stage] = (map[e.stage] ?? 0) + 1; });
     return map;
-  }, [allOrders]);
+  }, [visibleOrders]);
 
-  const needsMeCount = useMemo(() => allOrders.filter(isNeedsMe).length, [allOrders]);
-  const openCount = useMemo(() => allOrders.filter((e) => e.stage !== "Complete").length, [allOrders]);
+  const needsMeCount = useMemo(() => visibleOrders.filter(isNeedsMe).length, [visibleOrders]);
+  const openCount = useMemo(() => visibleOrders.filter((e) => e.stage !== "Complete").length, [visibleOrders]);
 
   const count = (x: string) => {
     if (x === "Needs me") return needsMeCount;
     if (x === "Open") return openCount;
-    if (x === "All") return allOrders.length;
+    if (x === "All") return visibleOrders.length;
     return stageStats[x] ?? 0;
   };
 
-  const rows = useMemo(() => allOrders.filter((e) => {
+  const rows = useMemo(() => visibleOrders.filter((e) => {
     if (f === "Needs me" && !isNeedsMe(e)) return false;
     if (f === "Open" && e.stage === "Complete") return false;
     if (selectedStages.length > 0 && !selectedStages.includes(e.stage)) return false;
     if (q !== "" && !(e.coId + e.title + e.creator).toLowerCase().includes(q.toLowerCase())) return false;
     return true;
-  }), [allOrders, f, selectedStages, q]);
+  }), [visibleOrders, f, selectedStages, q]);
 
   React.useEffect(() => {
     const handleKeyDown = (ev: any) => {
@@ -107,38 +117,56 @@ function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, 
 
   return (
     <div className="stack" data-test-id="eco-list-page">
-      <div className="bet">
+      <div className="bet" data-test-id="eco-list-header">
         <div>
           <div className="crumb">Changes</div>
-          <h1>Change orders</h1>
+          <h1>{isApproverRole ? "My changes" : "Change orders"}</h1>
+          {isApproverRole && (
+            <div className="sub" style={{ marginTop: 4 }}>Changes in your approval queue — awaiting your review</div>
+          )}
         </div>
         <div className="row">
-          <button className="btn pri" onClick={() => go({ page: "eco-new" })}><Plus size={13} strokeWidth={2} />New change order</button>
+          {/* Only DCs (and unknown/dev) can create new change orders */}
+          {!isApproverRole && (
+            <button className="btn pri" onClick={() => go({ page: "eco-new" })} data-test-id="eco-new-btn">
+              <Plus size={13} strokeWidth={2} />New change order
+            </button>
+          )}
           {renderHeaderActions?.()}
         </div>
       </div>
 
-      <div className="grid4" data-test-id="eco-kpis">
-        {ordersLoading ? (
-          <>
-            <Skeleton className="h-20 rounded-lg" data-test-id="eco-kpi-skeleton-1" />
-            <Skeleton className="h-20 rounded-lg" data-test-id="eco-kpi-skeleton-2" />
-            <Skeleton className="h-20 rounded-lg" data-test-id="eco-kpi-skeleton-3" />
-            <Skeleton className="h-20 rounded-lg" data-test-id="eco-kpi-skeleton-4" />
-          </>
-        ) : (
-          <>
-            <Kpi label="Open / Submit" value={kpis.open + kpis.submit} note="Being worked" icon={Pencil} tint={T.slateBg} bd={T.slateBd} tone={T.slate}
-              onClick={() => { setF("All"); setSelectedStages(["Open", "Submit"]); }} data-test-id="eco-kpi-open" />
-            <Kpi label="In approval" value={kpis.approval} note={`${kpis.awaitingMe} awaiting me`} icon={Clock} tint={T.warnBg} bd={T.warnBd} tone={T.warn}
-              onClick={() => { setF("All"); setSelectedStages(["Approval"]); }} data-test-id="eco-kpi-approval" />
-            <Kpi label="Effective / Complete" value={kpis.effective + kpis.complete} note="Synced to SAP" icon={Database} tint={T.vioBg} bd={T.vioBd} tone={T.vio}
-              onClick={() => { setF("All"); setSelectedStages(["Effective", "Complete"]); }} data-test-id="eco-kpi-effective" />
-            <Kpi label="Rejected" value={kpis.rejected} note="Held by document control" icon={AlertTriangle} tint={T.badBg} bd={T.badBd} tone={T.bad}
-              onClick={() => { setF("All"); setSelectedStages(["Rejected"]); }} data-test-id="eco-kpi-rejected" />
-          </>
-        )}
-      </div>
+      {/* KPI cards — only for DC; Approver sees a focused pending-count banner instead */}
+      {isApproverRole ? (
+        <div className="card" style={{ padding: "14px 20px", display: "flex", gap: 24, alignItems: "center" }} data-test-id="eco-approver-banner">
+          <div>
+            <span style={{ fontSize: 28, fontWeight: 700, lineHeight: 1 }}>{needsMeCount}</span>
+            <span className="sub" style={{ marginLeft: 8, fontSize: 13 }}>change{needsMeCount !== 1 ? "s" : ""} awaiting your review</span>
+          </div>
+        </div>
+      ) : (
+        <div className="grid4" data-test-id="eco-kpis">
+          {ordersLoading ? (
+            <>
+              <Skeleton className="h-20 rounded-lg" data-test-id="eco-kpi-skeleton-1" />
+              <Skeleton className="h-20 rounded-lg" data-test-id="eco-kpi-skeleton-2" />
+              <Skeleton className="h-20 rounded-lg" data-test-id="eco-kpi-skeleton-3" />
+              <Skeleton className="h-20 rounded-lg" data-test-id="eco-kpi-skeleton-4" />
+            </>
+          ) : (
+            <>
+              <Kpi label="Open / Submit" value={kpis.open + kpis.submit} note="Being worked" icon={Pencil} tint={T.slateBg} bd={T.slateBd} tone={T.slate}
+                onClick={() => { setF("All"); setSelectedStages(["Open", "Submit"]); }} data-test-id="eco-kpi-open" />
+              <Kpi label="In approval" value={kpis.approval} note={`${kpis.awaitingMe} awaiting me`} icon={Clock} tint={T.warnBg} bd={T.warnBd} tone={T.warn}
+                onClick={() => { setF("All"); setSelectedStages(["Approval"]); }} data-test-id="eco-kpi-approval" />
+              <Kpi label="Effective / Complete" value={kpis.effective + kpis.complete} note="Synced to SAP" icon={Database} tint={T.vioBg} bd={T.vioBd} tone={T.vio}
+                onClick={() => { setF("All"); setSelectedStages(["Effective", "Complete"]); }} data-test-id="eco-kpi-effective" />
+              <Kpi label="Rejected" value={kpis.rejected} note="Held by document control" icon={AlertTriangle} tint={T.badBg} bd={T.badBd} tone={T.bad}
+                onClick={() => { setF("All"); setSelectedStages(["Rejected"]); }} data-test-id="eco-kpi-rejected" />
+            </>
+          )}
+        </div>
+      )}
 
       <Card pad={false}>
         <Toolbar q={q} setQ={setQ} placeholder="Search change or title"

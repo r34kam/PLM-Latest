@@ -21,7 +21,8 @@ import { T } from '@/theme/tokens'
 import { AlertTriangle, Ban, Bell, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, Clock, CornerUpLeft, Database, Download, FileText, Info, Layers, Link2, Plus, RefreshCw, Send, Sparkles, Trash2, Upload, Users, X } from 'lucide-react'
 import React, { useState } from 'react'
 
-function EcoDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: any; initialTab?: string; renderHeaderActions?: () => React.ReactNode }) {
+function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', currentUserName = '' }: { id: any; go: any; initialTab?: string; renderHeaderActions?: () => React.ReactNode; role?: string; currentUserName?: string }) {
+  const isApproverRole = role === 'approver'
   // Try static domain first; then overlay with backend data for backend-created COs
   const { data: allBackendOrders } = useAllChangeOrders();
   const backendCo = allBackendOrders.find((o) => o.coId === id);
@@ -74,6 +75,19 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: a
   const [modPage, setModPage] = useState(1);
   const [selectedPns, setSelectedPns] = useState<any[]>([]);
 
+  /* ---- Approve / Reject for Approver role ---- */
+  const [approvalDone, setApprovalDone] = useState<'approved' | 'rejected' | null>(null)
+  const [rejectModal, setRejectModal] = useState(false)
+  const [rejectReason, setRejectReason] = useState('')
+  const canApprove = isApproverRole && eco.stage === 'Approval' && (eco.awaitingMe === true || eco.mine === true)
+  const handleApprove = () => { setApprovalDone('approved') }
+  const handleReject = () => {
+    if (!rejectReason.trim()) return
+    setApprovalDone('rejected')
+    setRejectModal(false)
+    setRejectReason('')
+  }
+
   // Reset page when switching ECO or changing view
   React.useEffect(() => {
     setModPage(1);
@@ -101,30 +115,55 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: a
             <span className="sub">{eco.title}</span>
           </div>
           <div className="row">
-            {rejected && <button className="btn dan" onClick={() => setModal("withdraw")}><CornerUpLeft size={13} />Withdraw to Open</button>}
-            {eco.stage === "Approval" && <>
+            {/* Approver-role actions: approve / reject this ECO */}
+            {isApproverRole && canApprove && approvalDone === null && (
+              <>
+                <button className="btn dan" onClick={() => setRejectModal(true)} data-test-id="approver-reject-btn">
+                  <X size={13} />Reject
+                </button>
+                <button className="btn ok" onClick={handleApprove} data-test-id="approver-approve-btn">
+                  <Check size={13} />Approve
+                </button>
+              </>
+            )}
+            {isApproverRole && approvalDone === 'approved' && (
+              <span className="chip c-ok" style={{ fontSize: 13, padding: "6px 12px" }} data-test-id="approver-approved-badge">
+                <Check size={13} />Your approval recorded
+              </span>
+            )}
+            {isApproverRole && approvalDone === 'rejected' && (
+              <span className="chip c-bad" style={{ fontSize: 13, padding: "6px 12px" }} data-test-id="approver-rejected-badge">
+                <X size={13} />Rejection submitted
+              </span>
+            )}
+
+            {/* DC-only actions */}
+            {!isApproverRole && rejected && <button className="btn dan" onClick={() => setModal("withdraw")}><CornerUpLeft size={13} />Withdraw to Open</button>}
+            {!isApproverRole && eco.stage === "Approval" && <>
               <button className="btn" onClick={() => setModal("reject")}><X size={13} />Reject</button>
               <button className="btn ok" onClick={() => setModal("approve")}><Check size={13} />Approve</button>
             </>}
-            {eco.stage === "Open" && <button className="btn pri"><Send size={13} />Submit to routing</button>}
-            {eco.stage === "Effective" && <button className="btn pri" onClick={() => setModal("complete")}><CheckCircle2 size={13} />Verify SAP and complete</button>}
-            <div style={{ position: "relative" }}>
-              <button className="btn" onClick={() => setActions(!actions)}>Actions<ChevronDown size={13} /></button>
-              {actions && (<>
-                <div style={{ position: "fixed", inset: 0, zIndex: 40 }} onClick={() => setActions(false)} />
-                <div className="menu">
-                  {[["Print change order", Download], ["Export to Excel", Download], ["Duplicate this change", Layers],
-                    ["Add a comment", FileText], ["Subscribe to updates", Bell], ["Copy link", Link2]].map(([l, Ic]: any) => (
-                    <button key={l} onClick={() => { setActions(false); if (l === "Export to Excel") downloadFile(
-                      `${eco.id}.csv`, `Change,Title,Stage,Routing,Creator\n${eco.id},${eco.title},${eco.stage},${eco.routing},${eco.creator}`); }}>
-                      <Ic size={14} />{l}</button>
-                  ))}
-                  <div className="menusep" />
-                  <button className="dang" onClick={() => { setActions(false); setModal("cancelEco"); }}>
-                    <Ban size={14} />Cancel this change</button>
-                </div>
-              </>)}
-            </div>
+            {!isApproverRole && eco.stage === "Open" && <button className="btn pri"><Send size={13} />Submit to routing</button>}
+            {!isApproverRole && eco.stage === "Effective" && <button className="btn pri" onClick={() => setModal("complete")}><CheckCircle2 size={13} />Verify SAP and complete</button>}
+            {!isApproverRole && (
+              <div style={{ position: "relative" }}>
+                <button className="btn" onClick={() => setActions(!actions)}>Actions<ChevronDown size={13} /></button>
+                {actions && (<>
+                  <div style={{ position: "fixed", inset: 0, zIndex: 40 }} onClick={() => setActions(false)} />
+                  <div className="menu">
+                    {[["Print change order", Download], ["Export to Excel", Download], ["Duplicate this change", Layers],
+                      ["Add a comment", FileText], ["Subscribe to updates", Bell], ["Copy link", Link2]].map(([l, Ic]: any) => (
+                      <button key={l} onClick={() => { setActions(false); if (l === "Export to Excel") downloadFile(
+                        `${eco.id}.csv`, `Change,Title,Stage,Routing,Creator\n${eco.id},${eco.title},${eco.stage},${eco.routing},${eco.creator}`); }}>
+                        <Ic size={14} />{l}</button>
+                    ))}
+                    <div className="menusep" />
+                    <button className="dang" onClick={() => { setActions(false); setModal("cancelEco"); }}>
+                      <Ban size={14} />Cancel this change</button>
+                  </div>
+                </>)}
+              </div>
+            )}
             {renderHeaderActions?.()}
           </div>
         </div>
@@ -1165,6 +1204,58 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: a
           </Modal>
         );
       })()}
+      {/* Approver reject reason modal */}
+      {rejectModal && (
+        <Modal
+          title="Reject this change"
+          onClose={() => { setRejectModal(false); setRejectReason(''); }}
+          foot={
+            <>
+              <button className="btn" onClick={() => { setRejectModal(false); setRejectReason(''); }}>Cancel</button>
+              <button
+                className="btn dan"
+                style={{ marginLeft: "auto" }}
+                disabled={!rejectReason.trim()}
+                onClick={handleReject}
+                data-test-id="approver-reject-confirm-btn"
+              >
+                <X size={13} />Submit rejection
+              </button>
+            </>
+          }
+        >
+          <div className="warnbox" style={{ marginBottom: 14 }}>
+            Your rejection will be sent to Document Control. They will review your notes and determine next steps.
+          </div>
+          <Field label="Reason for rejection">
+            <Select
+              value={rejectReason}
+              onChange={(e: any) => setRejectReason(e.target.value)}
+              options={[
+                "",
+                "Redline does not match the description",
+                "Drawing or file incorrect",
+                "Missing tolerance or evidence",
+                "Wrong supplier selected",
+                "Item should not be on this change",
+                "Impact not fully assessed",
+                "Requires further review",
+                "Other",
+              ]}
+              data-test-id="approver-reject-reason-select"
+            />
+          </Field>
+          <div style={{ height: 12 }} />
+          <Field label="Additional notes (optional)" hint="These notes go to Document Control and appear under Decisions.">
+            <textarea
+              className="inp"
+              rows={4}
+              placeholder="Explain why you are rejecting — what needs to change before you can approve…"
+              data-test-id="approver-reject-notes-input"
+            />
+          </Field>
+        </Modal>
+      )}
     </div>
   );
 }

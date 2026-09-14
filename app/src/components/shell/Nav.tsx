@@ -1,5 +1,6 @@
 import { NAV } from '@/domain/navigation'
 import { ME } from '@/domain/session'
+import type { AppRole } from '@/lib/useAppRole'
 import { ChevronDown, ChevronRight, PanelLeft } from 'lucide-react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -17,6 +18,9 @@ function Nav({
   askOpen,
   notifOpen,
   unreadCount = 4,
+  role = 'unknown',
+  userName,
+  userRole,
 }: {
   page: string;
   adminTab?: string;
@@ -30,6 +34,9 @@ function Nav({
   askOpen?: boolean;
   notifOpen?: boolean;
   unreadCount?: number;
+  role?: AppRole;
+  userName?: string;
+  userRole?: string;
 }) {
   const navigate = useNavigate();
   const [brandHover, setBrandHover] = useState(false);
@@ -158,47 +165,61 @@ function Nav({
       )}
 
       <nav className="sidenav">
+        {/* Home — visible to all */}
         <Item {...NAV[0]} active={page === "home"} />
+
+        {/* Product record section — Approver sees Changes + Items; DC sees all */}
         <div className="sidelbl">Product record</div>
-        <Item {...NAV[1]} active={page === "ecos"} count={22} />
+        <Item
+          {...NAV[1]}
+          active={page === "ecos"}
+          count={role === 'approver' ? undefined : 22}
+          label={role === 'approver' ? 'My changes' : (NAV[1].label as string)}
+        />
         <Item {...NAV[2]} active={page === "items"} />
-        <div className="sidelbl">Insight &amp; setup</div>
-        <Item {...NAV[3]} active={page === "reports"} />
-        <Item {...NAV[4]} active={page === "admin"} hasChevron={true} chevronOpen={adminMenuOpen || page === "admin"} />
-        {(adminMenuOpen || page === "admin") && !mini && (
-          <div className="sidesubmenu" data-test-id="admin-subnav">
-            {[
-              { id: "Users", label: "Users" },
-              { id: "Roles", label: "Roles" },
-              { id: "Routings", label: "Routings" },
-              { id: "Form Builder", label: "Form Builder" },
-            ].map((sub: any) => {
-              const isSubActive = (adminTab || "Users") === sub.id;
-              return (
-                <button
-                  key={sub.id}
-                  type="button"
-                  className={`sidesubitem ${isSubActive ? "on" : ""}`}
-                  data-test-id={`admin-subitem-${sub.id.toLowerCase().replace(/\s+/g, "-")}`}
-                  onClick={() => {
-                    go({ page: "admin", tab: sub.id });
-                    try { navigate("/admin"); } catch (e) {}
-                  }}
-                >
-                  {sub.label}
-                </button>
-              );
-            })}
-          </div>
+
+        {/* Insight & setup — DC only */}
+        {role !== 'approver' && (
+          <>
+            <div className="sidelbl">Insight &amp; setup</div>
+            <Item {...NAV[3]} active={page === "reports"} />
+            <Item {...NAV[4]} active={page === "admin"} hasChevron={true} chevronOpen={adminMenuOpen || page === "admin"} />
+            {(adminMenuOpen || page === "admin") && !mini && (
+              <div className="sidesubmenu" data-test-id="admin-subnav">
+                {[
+                  { id: "Users", label: "Users" },
+                  { id: "Roles", label: "Roles" },
+                  { id: "Routings", label: "Routings" },
+                  { id: "Form Builder", label: "Form Builder" },
+                ].map((sub: any) => {
+                  const isSubActive = (adminTab || "Users") === sub.id;
+                  return (
+                    <button
+                      key={sub.id}
+                      type="button"
+                      className={`sidesubitem ${isSubActive ? "on" : ""}`}
+                      data-test-id={`admin-subitem-${sub.id.toLowerCase().replace(/\s+/g, "-")}`}
+                      onClick={() => {
+                        go({ page: "admin", tab: sub.id });
+                        try { navigate("/admin"); } catch (e) {}
+                      }}
+                    >
+                      {sub.label}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </>
         )}
       </nav>
 
       <div className="sidefoot">
-        <button className="sideuser" title={`${ME.name} — ${ME.role}`} data-test-id="sidebar-user-btn">
-          <div className="avatar">{ME.init}</div>
+        <button className="sideuser" title={`${userName || ME.name} — ${userRole || ME.role}`} data-test-id="sidebar-user-btn">
+          <div className="avatar">{(userName || ME.name).charAt(0).toUpperCase()}</div>
           <div className="lbl" style={{ lineHeight: 1.35, minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: "#FFFFFF" }}>{ME.name}</div>
-            <div style={{ fontSize: 11, color: "#B9DCFF" }}>{ME.role}</div>
+            <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: "#FFFFFF" }}>{userName || ME.name}</div>
+            <div style={{ fontSize: 11, color: "#B9DCFF" }}>{userRole || ME.role}</div>
           </div>
         </button>
       </div>

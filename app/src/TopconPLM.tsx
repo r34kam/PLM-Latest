@@ -5,6 +5,7 @@ import { NotificationsOverlay } from '@/components/shell/NotificationsOverlay'
 import { TopBar } from '@/components/shell/TopBar'
 import { NOTIFS } from '@/domain/notifications'
 import { HomePage } from '@/features/home/HomePage'
+import { useAppRole, ROLE_DC, ROLE_APPROVER } from '@/lib/useAppRole'
 import { CSS } from '@/theme/globalStyles'
 import React, { lazy, Suspense, useState } from 'react'
 
@@ -50,6 +51,11 @@ function TopconPLM({
   initialApprovalMode?: "ai" | "routing" | "manual" | null;
   initialManualItems?: any[] | null;
 } = {}) {
+  /* ---- Role-based access control ---- */
+  const { role, isLoading: roleLoading, userName, userEmail } = useAppRole()
+  const isApprover = role === 'approver'
+  const isDC = role === 'dc'
+
   const [v, setV] = useState<any>({ page: initialPage || "home", tab: initialTab, id: initialId, step: startStep, filter: initialFilter });
   const prevPageRef = React.useRef(initialPage);
   React.useEffect(() => {
@@ -76,7 +82,14 @@ function TopconPLM({
 
   const unreadNotifCount = NOTIFS.filter((n: any) => !readNotifIds.has(n.id)).length;
 
-  const go = (next: any) => { setV(next); window.scrollTo?.(0, 0); };
+  // Pages Approvers are allowed to navigate to
+  const APPROVER_ALLOWED_PAGES = new Set(['home', 'ecos', 'eco', 'items', 'item'])
+  const go = (next: any) => {
+    // Approvers can only navigate to their allowed pages
+    if (isApprover && next?.page && !APPROVER_ALLOWED_PAGES.has(next.page)) return
+    setV(next)
+    window.scrollTo?.(0, 0)
+  };
 
   const handleToggleAsk = () => {
     setAskOpen((prev: any) => !prev);
@@ -100,18 +113,23 @@ function TopconPLM({
   );
 
   let body = null;
-  switch (v.page) {
-    case "home": body = <HomePage go={go} renderHeaderActions={renderHeaderActions} />; break;
-    case "ecos": body = <EcoList go={go} initialFilter={v.filter} onInspect={handleInspectEco} inspectedId={inspectedEcoId} railOpen={false} renderHeaderActions={renderHeaderActions} />; break;
-    case "eco": body = <EcoDetail id={v.id} go={go} initialTab={v.tab} renderHeaderActions={renderHeaderActions} />; break;
-    case "eco-new": body = <EcoNew go={go} startStep={v.step !== undefined ? v.step : 0} initialApprovalMode={initialApprovalMode} initialManualItems={initialManualItems} renderHeaderActions={renderHeaderActions} />; break;
+  const currentPage = v.page || 'home'
+
+  // Redirect approvers away from restricted pages
+  const effectivePage = isApprover && !APPROVER_ALLOWED_PAGES.has(currentPage) ? 'home' : currentPage
+
+  switch (effectivePage) {
+    case "home": body = <HomePage go={go} renderHeaderActions={renderHeaderActions} userRole={role} userName={userName} />; break;
+    case "ecos": body = <EcoList go={go} initialFilter={isApprover ? "Needs me" : (v.filter ?? undefined)} onInspect={handleInspectEco} inspectedId={inspectedEcoId} railOpen={false} renderHeaderActions={renderHeaderActions} role={role} currentUserName={userName} />; break;
+    case "eco": body = <EcoDetail id={v.id} go={go} initialTab={v.tab} renderHeaderActions={renderHeaderActions} role={role} currentUserName={userName} />; break;
+    case "eco-new": body = !isApprover ? <EcoNew go={go} startStep={v.step !== undefined ? v.step : 0} initialApprovalMode={initialApprovalMode} initialManualItems={initialManualItems} renderHeaderActions={renderHeaderActions} /> : <HomePage go={go} renderHeaderActions={renderHeaderActions} />; break;
     case "items": body = <ItemList go={go} railOpen={false} renderHeaderActions={renderHeaderActions} />; break;
     case "item": body = <ItemDetail id={v.id} go={go} initialTab={v.tab} renderHeaderActions={renderHeaderActions} />; break;
-    case "item-new": body = <ItemNew go={go} renderHeaderActions={renderHeaderActions} />; break;
-    case "inactivate": body = <Inactivate go={go} id={v.id} renderHeaderActions={renderHeaderActions} />; break;
-    case "admin": body = <Admin initialTab={v.tab || "Users"} go={go} renderHeaderActions={renderHeaderActions} />; break;
-    case "reports": body = <Reports renderHeaderActions={renderHeaderActions} />; break;
-    case "suppliers": body = <Suppliers railOpen={false} renderHeaderActions={renderHeaderActions} />; break;
+    case "item-new": body = !isApprover ? <ItemNew go={go} renderHeaderActions={renderHeaderActions} /> : <ItemList go={go} railOpen={false} renderHeaderActions={renderHeaderActions} />; break;
+    case "inactivate": body = !isApprover ? <Inactivate go={go} id={v.id} renderHeaderActions={renderHeaderActions} /> : <HomePage go={go} renderHeaderActions={renderHeaderActions} />; break;
+    case "admin": body = !isApprover ? <Admin initialTab={v.tab || "Users"} go={go} renderHeaderActions={renderHeaderActions} /> : <HomePage go={go} renderHeaderActions={renderHeaderActions} />; break;
+    case "reports": body = !isApprover ? <Reports renderHeaderActions={renderHeaderActions} /> : <HomePage go={go} renderHeaderActions={renderHeaderActions} />; break;
+    case "suppliers": body = !isApprover ? <Suppliers railOpen={false} renderHeaderActions={renderHeaderActions} /> : <HomePage go={go} renderHeaderActions={renderHeaderActions} />; break;
     default: body = <HomePage go={go} renderHeaderActions={renderHeaderActions} />;
   }
 
@@ -132,6 +150,9 @@ function TopconPLM({
         unreadCount={unreadNotifCount}
         onAsk={handleToggleAsk}
         onNotif={handleToggleNotif}
+        role={role}
+        userName={userName || undefined}
+        userRole={role === 'dc' ? ROLE_DC : role === 'approver' ? ROLE_APPROVER : undefined}
       />
       <div className={`main ${mini ? "collapsed" : ""}`}>
         <div className="content-layout">
