@@ -51,7 +51,26 @@ function EcoNew({
   const [picks, setPicks] = useState<any[]>([]);
   const [pickQ, setPickQ] = useState("");
   const { routings: ecoNewRoutings } = useRoutings();
-  const [routing, setRouting] = useState(ROUTING_NAMES[0]);
+  // Use backend routing names when available, fall back to domain ROUTING_NAMES
+  const routingOptions = ecoNewRoutings.length ? ecoNewRoutings.map((r: any) => r.name) : ROUTING_NAMES;
+  const [routing, setRouting] = useState(() => ecoNewRoutings.length ? ecoNewRoutings[0].name : ROUTING_NAMES[0]);
+
+  // Sync to first backend routing once loaded (if we started with a domain default)
+  React.useEffect(() => {
+    if (ecoNewRoutings.length && ROUTING_NAMES.includes(routing)) {
+      setRouting(ecoNewRoutings[0].name);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ecoNewRoutings.length]);
+
+  // Parse stages for the selected routing from backend data, fall back to domain ROUTINGS
+  const selectedBackendRouting = ecoNewRoutings.find((r: any) => r.name === routing);
+  const selectedStages: any[] = (() => {
+    if (selectedBackendRouting) {
+      try { return JSON.parse(selectedBackendRouting.stagesJson || '[]'); } catch { return []; }
+    }
+    return ROUTINGS[routing] || [];
+  })();
   const [manStages, setManStages] = useState([
     { name: "Stage 1", req: "One or more", people: [] },
   ]);
@@ -752,13 +771,13 @@ function EcoNew({
               {mode === "routing" && (
                 <div className="stack">
                   <div className="grid2">
-                    <Field label="Routing" hint={`${ROUTING_NAMES.length} routings defined in Admin`}>
-                      <Select value={routing} onChange={(e: any) => setRouting(e.target.value)} options={ROUTING_NAMES} /></Field>
+                    <Field label="Routing" hint={`${routingOptions.length} routings defined in Admin`}>
+                      <Select value={routing} onChange={(e: any) => setRouting(e.target.value)} options={routingOptions} /></Field>
                     <Field label="Matched on" hint="Division and item category of the items on this change">
                       <Input value="Division CO · category KIT" readOnly style={{ background: T.g50, color: T.g600 }} /></Field>
                   </div>
                   {[1, 2].map((st: any) => {
-                    const rows = (ROUTINGS[routing] || []).filter((r: any) => r.stage === st);
+                    const rows = selectedStages.filter((r: any) => r.stage === st);
                     const isCollapsed = Boolean(collapsedStages[`routing-${st}`]);
                     return (
                       <div key={st} className="stagecard" data-test-id={`routing-stagecard-${st}`}>
@@ -916,7 +935,7 @@ function EcoNew({
                   ["Items", ecoItems.length],
                   ["Stages", mode === "manual" ? manStages.length : 2],
                   ["Approvers", mode === "ai" ? picked.length : mode === "manual"
-                    ? manStages.reduce((a2: any, x: any) => a2 + x.people.length, 0) : (ROUTINGS[routing] || []).length]
+                    ? manStages.reduce((a2: any, x: any) => a2 + x.people.length, 0) : selectedStages.length]
                 ].map(([l, v]: any) => (
                   <div key={l} className="eco-exec-metric-tile">
                     <div style={{ fontSize: 20, fontWeight: 700, color: T.brand, lineHeight: 1 }}>{v}</div>
@@ -1085,7 +1104,7 @@ function EcoNew({
                         <b>Functional approval</b>
                         <div className="sub" style={{ marginTop: 2 }}>
                           {mode === "ai" ? picked.join(" · ")
-                            : (ROUTINGS[routing] || []).filter((r: any) => r.stage === 1).map((r: any) => r.g).join(" · ")}
+                            : selectedStages.filter((r: any) => r.stage === 1).map((r: any) => r.g).join(" · ")}
                         </div>
                       </div>
                       <Chip k="blue">One or more each</Chip>
