@@ -1,4 +1,4 @@
-import { FileUploadModal, type StagedFile } from '@/components/data-io/FileUpload'
+import { type StagedFile } from '@/components/data-io/FileUpload'
 import { ImportPanel } from '@/components/data-io/ImportPanel'
 import { MemberPicker } from '@/components/pickers/MemberPicker'
 import { Card } from '@/components/primitives/Card'
@@ -17,7 +17,7 @@ import { ME } from '@/domain/session'
 import { ECO_TEMPLATE } from '@/domain/templates'
 import { T } from '@/theme/tokens'
 import { AlertCircle, Boxes, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, FileSpreadsheet, FileText, Layers, Loader2, Pencil, Plus, Search, Send, ShieldCheck, Sparkles, Trash2, Upload, Users, X } from 'lucide-react'
-import React, { useState } from 'react'
+import React, { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
 
@@ -63,8 +63,8 @@ function EcoNew({
   const { data: allBackendItems } = useAllItems();
   const [form, setForm] = useState({
     cat: "ECO: Engineering Change Order", title: "",
-    div: "", site: "", eccn: "", notes: "", dc: "",
-    eff: "Effective once approved", deadline: "",
+    div: "CO \u2013 Construction", site: "1210 \u2013 TPS Livermore", eccn: "", notes: "", dc: "",
+    eff: "Effective once approved", effDate: "", effSerial: "", deadline: "",
     desc: "",
   });
   const [confirmations, setConfirmations] = useState({
@@ -73,7 +73,7 @@ function EcoNew({
     disposition: "",
   });
   const [associatedFiles, setAssociatedFiles] = useState<StagedFile[]>([]);
-  const [fileUploadOpen, setFileUploadOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const createChangeOrder = useCreateChangeOrder();
@@ -305,14 +305,38 @@ function EcoNew({
                     </div>
                   </div>
 
-                  <div className="kv-row">
-                    <div className="kv-key">
-                      <span className="kv-label">Expiration date</span>
+                  {form.eff === "Effective on date" && (
+                    <div className="kv-row">
+                      <div className="kv-key">
+                        <span className="kv-label">Effective date</span>
+                      </div>
+                      <div className="kv-val">
+                        <Input type="date" value={form.effDate} onChange={(e: any) => setForm({ ...form, effDate: e.target.value })} data-test-id="eco-eff-date-input" />
+                      </div>
                     </div>
-                    <div className="kv-val">
-                      <Input value="N/A (this is a permanent change)" readOnly style={{ background: T.g50, color: T.g600 }} />
+                  )}
+
+                  {form.eff === "Effective on serial number" && (
+                    <div className="kv-row">
+                      <div className="kv-key">
+                        <span className="kv-label">Effective serial number</span>
+                      </div>
+                      <div className="kv-val">
+                        <Input value={form.effSerial} placeholder="e.g. SN-00450" onChange={(e: any) => setForm({ ...form, effSerial: e.target.value })} data-test-id="eco-eff-serial-input" />
+                      </div>
                     </div>
-                  </div>
+                  )}
+
+                  {form.eff === "Effective once approved" && (
+                    <div className="kv-row">
+                      <div className="kv-key">
+                        <span className="kv-label">Expiration date</span>
+                      </div>
+                      <div className="kv-val">
+                        <Input value="N/A (this is a permanent change)" readOnly style={{ background: T.g50, color: T.g600 }} />
+                      </div>
+                    </div>
+                  )}
 
                   <div className="kv-row">
                     <div className="kv-key">
@@ -329,29 +353,69 @@ function EcoNew({
             {subSection === "files" && (
               <Card title="Associated Files" sub="Upload CAD drawing redlines, test specifications, and manufacturing work instructions">
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  {/* Hidden file input — triggered directly by the drop zone button */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    accept=".pdf,.dwg,.step,.stp,.docx,.doc,.xlsx,.xls,.png,.jpg,.jpeg,.svg"
+                    style={{ display: "none" }}
+                    aria-hidden="true"
+                    data-test-id="eco-new-file-input"
+                    onChange={(e) => {
+                      const files = e.target.files;
+                      if (!files) return;
+                      const next: StagedFile[] = Array.from(files).map((f) => ({
+                        n: f.name,
+                        size: f.size < 1024 * 1024 ? `${(f.size / 1024).toFixed(0)} KB` : `${(f.size / (1024 * 1024)).toFixed(1)} MB`,
+                        fileType: "Drawing",
+                        visibility: "Internal only",
+                      }));
+                      setAssociatedFiles((prev) => [...prev, ...next]);
+                      e.target.value = "";
+                    }}
+                  />
                   <button
                     type="button"
                     className="drop"
-                    onClick={() => setFileUploadOpen(true)}
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const files = e.dataTransfer.files;
+                      if (!files) return;
+                      const next: StagedFile[] = Array.from(files).map((f) => ({
+                        n: f.name,
+                        size: f.size < 1024 * 1024 ? `${(f.size / 1024).toFixed(0)} KB` : `${(f.size / (1024 * 1024)).toFixed(1)} MB`,
+                        fileType: "Drawing",
+                        visibility: "Internal only",
+                      }));
+                      setAssociatedFiles((prev) => [...prev, ...next]);
+                    }}
                     data-test-id="eco-new-attach-files-btn"
                     aria-label="Attach files"
                   >
-                    <span style={{ width: 44, height: 44, borderRadius: 12, background: "var(--color-b50, #eff6ff)", display: "grid", placeItems: "center", margin: "0 auto" }}>
-                      <Upload size={20} />
+                    <span style={{ width: 44, height: 44, borderRadius: 12, background: T.b50, display: "grid", placeItems: "center", margin: "0 auto" }}>
+                      <Upload size={20} color={T.brand} />
                     </span>
-                    <div style={{ fontWeight: 600, marginTop: 11 }}>Click to attach files</div>
+                    <div style={{ fontWeight: 600, marginTop: 11 }}>Drop files here, or click to choose</div>
                     <div className="sub" style={{ marginTop: 4 }}>PDF, DWG, STEP, Office documents and images · up to 100 MB each</div>
                   </button>
                   {associatedFiles.length > 0 && (
                     <div className="card" style={{ overflow: "hidden" }}>
                       <table className="tbl">
-                        <thead><tr><th>File</th><th>Type</th><th>Visibility</th></tr></thead>
+                        <thead><tr><th>File</th><th>Type</th><th>Visibility</th><th></th></tr></thead>
                         <tbody>
                           {associatedFiles.map((f, k) => (
                             <tr key={k} data-test-id={`eco-new-file-row-${k}`}>
                               <td style={{ fontWeight: 600 }}>{f.n}<div className="mini">{f.size}</div></td>
                               <td>{f.fileType}</td>
                               <td>{f.visibility}</td>
+                              <td style={{ textAlign: "right" }}>
+                                <button className="btn gh sm" type="button" onClick={() => setAssociatedFiles((prev) => prev.filter((_, j) => j !== k))} aria-label={`Remove ${f.n}`}>
+                                  <Trash2 size={12} />
+                                </button>
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -367,12 +431,6 @@ function EcoNew({
                 </div>
               </Card>
             )}
-            <FileUploadModal
-              open={fileUploadOpen}
-              onClose={() => setFileUploadOpen(false)}
-              onAttach={(files) => setAssociatedFiles((prev) => [...prev, ...files])}
-              context="this change order"
-            />
 
             {subSection === "confirmations" && (
               <Card title="Confirmations & Processing" pad={false}>

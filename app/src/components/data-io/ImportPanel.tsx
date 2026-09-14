@@ -5,11 +5,12 @@ import { ME } from '@/domain/session'
 import { downloadFile } from '@/lib/download'
 import { T } from '@/theme/tokens'
 import { AlertTriangle, Ban, Check, CheckCircle2, Download, FileSpreadsheet, Trash2, Upload, X } from 'lucide-react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 /* upload → validate → resolve → add. Shared by the ECO import and item bulk upload */
 function ImportPanel({ template, templateName, entity = "items", onAdd, columns }: any) {
   const [file, setFile] = useState<any>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [skip, setSkip] = useState<any[]>([]);
   const [added, setAdded] = useState(0);
   const ok = EXCEL_ROWS.filter((r: any) => r.sev === "ok");
@@ -30,7 +31,28 @@ function ImportPanel({ template, templateName, entity = "items", onAdd, columns 
 
   if (!file) return (
     <div className="stack">
-      <button className="drop" onClick={() => setFile("AgKits_Status50.xlsx")}>
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".csv,.xlsx,.xls"
+        style={{ display: "none" }}
+        aria-hidden="true"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          if (f) setFile(f.name);
+          e.target.value = "";
+        }}
+      />
+      <button
+        className="drop"
+        onClick={() => inputRef.current?.click()}
+        onDragOver={(e: any) => e.preventDefault()}
+        onDrop={(e: any) => {
+          e.preventDefault();
+          const f = e.dataTransfer.files?.[0];
+          if (f) setFile(f.name);
+        }}
+      >
         <span style={{ width: 44, height: 44, borderRadius: 12, background: T.b50, display: "grid", placeItems: "center", margin: "0 auto" }}>
           <Upload size={20} color={T.brand} />
         </span>
