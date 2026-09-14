@@ -17,6 +17,9 @@ export type CopilotHtml = {
   source: 'code-block' | 'file'
   /** the file's URL, when there is one; lets the UI offer "open in a new tab" */
   url?: string
+  /** human-readable artifact name; extracted from the download URL's filename segment,
+   *  falling back to "HTML Preview" when absent */
+  title: string
 }
 
 export type CopilotHtmlFailure = {
@@ -30,7 +33,21 @@ type Result = {
   preview: CopilotHtml | null
   /** a file we found but could not read — surfaced rather than swallowed */
   failure: CopilotHtmlFailure | null
+  /** true while a file is being fetched from the platform */
+  isFetching: boolean
   dismiss: () => void
+}
+
+/** Extract a display name from a URL's last path segment, stripping query strings. */
+function titleFromUrl(url: string): string {
+  try {
+    const pathname = new URL(url).pathname
+    const segment = pathname.split('/').filter(Boolean).pop() ?? ''
+    const name = decodeURIComponent(segment).replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ').trim()
+    return name || 'HTML Preview'
+  } catch {
+    return 'HTML Preview'
+  }
 }
 
 /** Watches the copilot conversation for HTML the agent produced, and hands it back so the
@@ -51,6 +68,7 @@ type Result = {
 export function useHtmlFromCopilot(): Result {
   const [preview, setPreview] = useState<CopilotHtml | null>(null)
   const [failure, setFailure] = useState<CopilotHtmlFailure | null>(null)
+  const [isFetching, setIsFetching] = useState(false)
 
   const containerRef = useRef<HTMLElement | null>(null)
   const observerRef = useRef<MutationObserver | null>(null)
@@ -68,6 +86,7 @@ export function useHtmlFromCopilot(): Result {
     if (lastHtmlRef.current === next.html) return
     lastHtmlRef.current = next.html
     setFailure(null)
+    setIsFetching(false)
     setPreview(next)
   }, [])
 
@@ -77,39 +96,51 @@ export function useHtmlFromCopilot(): Result {
 
     // A fenced block is already in the page — no network, nothing to fail.
     const inline = findHtmlCodeBlock(container)
-    if (inline) commit({ html: inline, source: 'code-block' })
+    if (inline) commit({ html: inline, source: 'code-block', title: 'HTML Preview' })
 
     // Attached files are fetched newest first, so the freshest artifact wins the panel.
     const links = findHtmlLinks(container).reverse()
     for (const url of links) {
       if (fetchedRef.current.has(url)) continue
+      setIsFetching(true)
       try {
         // `credentials: 'include'` because platform file URLs are session-authenticated;
         // without it the request is answered with a login page or a 403, and the panel
         // would show that instead of the document.
         const res = await fetch(url, { credentials: 'include' })
         if (!res.ok) {
-          setFailure({ url, reason: `The server answered ${res.status} ${res.statusText}.` })
+          if (aliveRef.current) {
+            setIsFetching(false)
+            setFailure({ url, reason: `The server answered ${res.status} ${res.statusText}.` })
+          }
           continue
         }
         const text = await res.text()
         if (!text.trim()) {
-          setFailure({ url, reason: 'The file came back empty.' })
+          if (aliveRef.current) {
+            setIsFetching(false)
+            setFailure({ url, reason: 'The file came back empty.' })
+          }
           continue
         }
         fetchedRef.current.add(url)
-        commit({ html: text, source: 'file', url })
+        // titleFromUrl extracts the filename from the download URL — the same field
+        // fetchCaseDownloadUrl would return as fileName in the original flow.
+        commit({ html: text, source: 'file', url, title: titleFromUrl(url) })
         return
       } catch (err) {
         // Nearly always CORS: the artifact is served from the platform's file host, which
         // is a different origin to this app. Say so instead of returning a blank panel.
-        setFailure({
-          url,
-          reason:
-            err instanceof TypeError
-              ? 'The browser blocked the request, usually because the file is served from another origin.'
-              : String(err),
-        })
+        if (aliveRef.current) {
+          setIsFetching(false)
+          setFailure({
+            url,
+            reason:
+              err instanceof TypeError
+                ? 'The browser blocked the request, usually because the file is served from another origin.'
+                : String(err),
+          })
+        }
       }
     }
   }, [commit])
@@ -147,9 +178,10 @@ export function useHtmlFromCopilot(): Result {
   const dismiss = useCallback(() => {
     setPreview(null)
     setFailure(null)
+    setIsFetching(false)
     // `lastHtmlRef` is left alone on purpose: after dismissing, the same document should
     // stay dismissed. A genuinely new reply has different text and reopens the panel.
   }, [])
 
-  return { attachRef, preview, failure, dismiss }
+  return { attachRef, preview, failure, isFetching, dismiss }
 }

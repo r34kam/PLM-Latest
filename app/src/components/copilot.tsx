@@ -220,6 +220,7 @@ export function Copilot({ agentId, title = 'Copilot', dir, className }: CopilotP
       agentId={agentId}
       className={cn('flex h-full flex-col', className)}
       dir={dir}
+      size="sm"
     >
       {!isDesktop ? (
         <header className="relative flex items-center justify-center border-b px-2 py-3">
