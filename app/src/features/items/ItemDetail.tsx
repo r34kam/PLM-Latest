@@ -104,9 +104,8 @@ function ItemDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: 
     csvMode: boolean;
   } | null>(null);
   const [bomItemSaving, setBomItemSaving] = useState(false);
-  const [csvText, setCsvText] = useState("");
 
-  const openBomItemModal = () => { setCsvText(""); setBomItemModal({
+  const openBomItemModal = () => { setBomItemModal({
     selectedPn: "", selectedName: "", selectedCat: "HARDWARE",
     qty: "1", uom: "EA", refDes: "", notes: "",
     pickerQuery: "", showPicker: false, csvMode: false,
@@ -661,61 +660,61 @@ function ItemDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: 
             </>}
           >
             {bomItemModal.csvMode ? (
-              /* ---- CSV mode ---- */
+              /* ---- CSV upload mode ---- */
               <div className="stack" data-test-id="bom-csv-panel">
                 <div className="note" style={{ background: T.b25, border: `1px solid ${T.g200}`, borderRadius: 8, padding: "10px 14px" }}>
                   <b>CSV format:</b> one row per component, columns in order:<br />
                   <code style={{ fontSize: 12, background: "#f0f4f8", padding: "2px 6px", borderRadius: 4 }}>PartNumber, Name, Category, Qty, UOM, Notes</code><br />
                   <span className="mini">Example: 1006394-01, WASHER FLAT M5, HARDWARE, 4, EA, Zinc-plated</span>
                 </div>
-                <Field label="Paste CSV content">
-                  <textarea
-                    className="inp"
-                    rows={8}
-                    value={csvText}
-                    data-test-id="bom-csv-textarea"
-                    placeholder={"PartNumber,Name,Category,Qty,UOM,Notes\n1006394-01,WASHER FLAT M5,HARDWARE,4,EA,Zinc-plated\n2505-0103,SCR M5 HEX HD,HARDWARE,4,EA,"}
-                    style={{ fontFamily: "monospace", fontSize: 12 }}
-                    onChange={(e: any) => setCsvText(e.target.value)}
-                  />
-                </Field>
-                <div className="row" style={{ justifyContent: "flex-end", gap: 8 }}>
-                  <label
-                    htmlFor="bom-csv-file"
-                    className="btn"
-                    style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}
-                    data-test-id="bom-csv-file-label"
-                  >
-                    <Upload size={13} />Upload CSV file
-                  </label>
-                  <input
-                    id="bom-csv-file"
-                    type="file"
-                    accept=".csv,text/csv"
-                    style={{ display: "none" }}
-                    onChange={(e: any) => {
-                      const file = e.target.files?.[0];
-                      if (!file) return;
-                      const reader = new FileReader();
-                      reader.onload = (ev: any) => {
-                        const text = ev.target?.result as string;
-                        if (text) { setCsvText(text); handleCsvBomImport(text); }
-                      };
-                      reader.readAsText(file);
-                      e.target.value = "";
-                    }}
-                  />
-                  <button
-                    type="button"
-                    className="btn pri"
-                    data-test-id="bom-csv-import-btn"
-                    disabled={bomItemSaving || !csvText.trim()}
-                    onClick={() => handleCsvBomImport(csvText)}
-                  >
-                    {bomItemSaving ? <Loader2 size={13} className="spin" /> : <Upload size={13} />}
-                    CSV import
-                  </button>
-                </div>
+                <input
+                  id="bom-csv-file"
+                  type="file"
+                  accept=".csv,text/csv"
+                  style={{ display: "none" }}
+                  data-test-id="bom-csv-file-input"
+                  onChange={(e: any) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (ev: any) => {
+                      const text = ev.target?.result as string;
+                      if (text) handleCsvBomImport(text);
+                    };
+                    reader.readAsText(file);
+                    e.target.value = "";
+                  }}
+                />
+                <button
+                  type="button"
+                  className="drop"
+                  data-test-id="bom-csv-dropzone"
+                  disabled={bomItemSaving}
+                  onClick={() => document.getElementById("bom-csv-file")?.click()}
+                  onDragOver={(e: any) => e.preventDefault()}
+                  onDrop={(e: any) => {
+                    e.preventDefault();
+                    const file = e.dataTransfer.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = (ev: any) => {
+                      const text = ev.target?.result as string;
+                      if (text) handleCsvBomImport(text);
+                    };
+                    reader.readAsText(file);
+                  }}
+                  aria-label="Upload CSV file"
+                >
+                  {bomItemSaving ? (
+                    <Loader2 size={20} className="spin" style={{ margin: "0 auto" }} />
+                  ) : (
+                    <span style={{ width: 44, height: 44, borderRadius: 12, background: T.b50, display: "grid", placeItems: "center", margin: "0 auto" }}>
+                      <Upload size={20} color={T.brand} />
+                    </span>
+                  )}
+                  <div style={{ fontWeight: 600, marginTop: 11 }}>Drop CSV here, or click to choose</div>
+                  <div className="sub" style={{ marginTop: 4 }}>CSV file · columns: PartNumber, Name, Category, Qty, UOM, Notes</div>
+                </button>
               </div>
             ) : (
               /* ---- Item picker mode ---- */
