@@ -661,12 +661,7 @@ function ItemDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: 
           >
             {bomItemModal.csvMode ? (
               /* ---- CSV upload mode ---- */
-              <div className="stack" data-test-id="bom-csv-panel">
-                <div className="note" style={{ background: T.b25, border: `1px solid ${T.g200}`, borderRadius: 8, padding: "10px 14px" }}>
-                  <b>CSV format:</b> one row per component, columns in order:<br />
-                  <code style={{ fontSize: 12, background: "#f0f4f8", padding: "2px 6px", borderRadius: 4 }}>PartNumber, Name, Category, Qty, UOM, Notes</code><br />
-                  <span className="mini">Example: 1006394-01, WASHER FLAT M5, HARDWARE, 4, EA, Zinc-plated</span>
-                </div>
+              <div data-test-id="bom-csv-panel">
                 <input
                   id="bom-csv-file"
                   type="file"
@@ -690,6 +685,7 @@ function ItemDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: 
                   className="drop"
                   data-test-id="bom-csv-dropzone"
                   disabled={bomItemSaving}
+                  style={{ padding: "48px 32px" }}
                   onClick={() => document.getElementById("bom-csv-file")?.click()}
                   onDragOver={(e: any) => e.preventDefault()}
                   onDrop={(e: any) => {
@@ -706,14 +702,24 @@ function ItemDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: 
                   aria-label="Upload CSV file"
                 >
                   {bomItemSaving ? (
-                    <Loader2 size={20} className="spin" style={{ margin: "0 auto" }} />
+                    <Loader2 size={28} className="spin" style={{ margin: "0 auto", color: T.brand }} />
                   ) : (
-                    <span style={{ width: 44, height: 44, borderRadius: 12, background: T.b50, display: "grid", placeItems: "center", margin: "0 auto" }}>
-                      <Upload size={20} color={T.brand} />
+                    <span style={{ width: 52, height: 52, borderRadius: 14, background: T.b50, display: "grid", placeItems: "center", margin: "0 auto" }}>
+                      <Upload size={22} color={T.brand} />
                     </span>
                   )}
-                  <div style={{ fontWeight: 600, marginTop: 11 }}>Drop CSV here, or click to choose</div>
-                  <div className="sub" style={{ marginTop: 4 }}>CSV file · columns: PartNumber, Name, Category, Qty, UOM, Notes</div>
+                  <div style={{ fontWeight: 600, fontSize: 15, marginTop: 14 }}>
+                    {bomItemSaving ? "Importing…" : "Drop your CSV here, or click to browse"}
+                  </div>
+                  <div className="sub" style={{ marginTop: 6 }}>
+                    One row per component · columns in order:
+                  </div>
+                  <code style={{ display: "inline-block", marginTop: 8, fontSize: 12, background: T.b25, border: `1px solid ${T.b100}`, padding: "4px 10px", borderRadius: 6, color: T.b700, letterSpacing: 0 }}>
+                    PartNumber, Name, Category, Qty, UOM, Notes
+                  </code>
+                  <div className="mini" style={{ marginTop: 8, color: T.g400 }}>
+                    e.g. 1006394-01, WASHER FLAT M5, HARDWARE, 4, EA, Zinc-plated
+                  </div>
                 </button>
               </div>
             ) : (
