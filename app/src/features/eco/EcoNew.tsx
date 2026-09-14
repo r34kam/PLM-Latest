@@ -51,7 +51,7 @@ function EcoNew({
   const [picks, setPicks] = useState<any[]>([]);
   const [pickQ, setPickQ] = useState("");
   const { routings: ecoNewRoutings } = useRoutings();
-  const [routing, setRouting] = useState("");
+  const [routing, setRouting] = useState(ROUTING_NAMES[0]);
   const [manStages, setManStages] = useState([
     { name: "Stage 1", req: "One or more", people: [] },
   ]);
@@ -63,14 +63,14 @@ function EcoNew({
   const { data: allBackendItems } = useAllItems();
   const [form, setForm] = useState({
     cat: "ECO: Engineering Change Order", title: "",
-    div: "CO \u2013 Construction", site: "1210 \u2013 TPS Livermore", eccn: "", notes: "", dc: "",
+    div: "CO \u2013 Construction", site: "1210 \u2013 TPS Livermore", eccn: "N/A \u2014 not used", notes: "", dc: "",
     eff: "Effective once approved", effDate: "", effSerial: "", deadline: "",
     desc: "",
   });
   const [confirmations, setConfirmations] = useState({
-    validations: "",
-    seedStock: "",
-    disposition: "",
+    validations: "N/A",
+    seedStock: "N/A",
+    disposition: "Yes",
   });
   const [associatedFiles, setAssociatedFiles] = useState<StagedFile[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -85,7 +85,7 @@ function EcoNew({
   const isDescFilled = Boolean(form.desc && form.eff);
   const isFilesFilled = associatedFiles.length > 0;
   // Build pnsJson from the ecoItems for submission
-  const isConfirmationsFilled = Boolean(form.eccn && form.dc && confirmations.validations && confirmations.disposition);
+  const isConfirmationsFilled = Boolean(form.eccn && confirmations.validations && confirmations.disposition);
   const isItemsFilled = ecoItems.length > 0;
   const addManual = () => {
     const sourceItems = allBackendItems ?? ITEMS;
@@ -112,7 +112,7 @@ function EcoNew({
         stage: submitToRouting ? "Submit" : "Open",
         div: form.div.split("–")[0].trim(),
         site: form.site,
-        routing: routing || (ecoNewRoutings[0]?.name ?? ""),
+        routing,
         creator: ME.name,
         submitter: submitToRouting ? ME.name : "—",
         dc: form.dc || ME.name,
@@ -123,10 +123,17 @@ function EcoNew({
         pnsJson: JSON.stringify(ecoItems.map((it: any) => it.pn)),
         desc: form.desc,
         redline: "",
-        notes: form.notes,
+        notes: [
+          form.notes,
+          `ECCN: ${form.eccn}`,
+          `Effectivity: ${form.eff}${form.eff === "Effective on date" ? ` (${form.effDate})` : form.eff === "Effective on serial number" ? ` (${form.effSerial})` : ""}`,
+          `Validations: ${confirmations.validations}`,
+          `Seed stock: ${confirmations.seedStock}`,
+          `Disposition: ${confirmations.disposition}`,
+        ].filter(Boolean).join(" · "),
         priority: "Medium",
         awaitingMe: false,
-        effectiveDate: "",
+        effectiveDate: form.eff === "Effective on date" ? form.effDate : "",
         completedDate: "",
       });
       toast.success(`${coId} created${submitToRouting ? " and submitted to routing" : ""}`);
@@ -738,18 +745,15 @@ function EcoNew({
                       })}
                     </tbody>
                   </table>
-                  <div className="bet">
-                    <span className="sub">{picked.length} roles selected · stage 2 document control is always appended</span>
-                    <button className="btn sm" onClick={() => setMode("manual")}>Refine by hand</button>
-                  </div>
+
                 </div>
               )}
 
               {mode === "routing" && (
                 <div className="stack">
                   <div className="grid2">
-                    <Field label="Routing" hint={`${ecoNewRoutings.length || ROUTING_NAMES.length} routings defined in Admin`}>
-                      <Select value={routing} onChange={(e: any) => setRouting(e.target.value)} options={ecoNewRoutings.length ? ecoNewRoutings.map((r: any) => r.name) : ROUTING_NAMES} /></Field>
+                    <Field label="Routing" hint={`${ROUTING_NAMES.length} routings defined in Admin`}>
+                      <Select value={routing} onChange={(e: any) => setRouting(e.target.value)} options={ROUTING_NAMES} /></Field>
                     <Field label="Matched on" hint="Division and item category of the items on this change">
                       <Input value="Division CO · category KIT" readOnly style={{ background: T.g50, color: T.g600 }} /></Field>
                   </div>
@@ -798,8 +802,7 @@ function EcoNew({
                       </div>
                     );
                   })}
-                  <div className="note">This is the routing exactly as it is defined in Admin. To change it for every future change, edit it
-                    there. To change it for this change only, switch to selecting people manually.</div>
+
                 </div>
               )}
 
