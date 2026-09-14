@@ -198,7 +198,7 @@ function HomePage({ go, renderHeaderActions }: { go: any; renderHeaderActions?: 
                   </tr>
                 </thead>
                 <tbody>
-                  {currentFilteredList.slice(0, 6).map((e) => (
+                  {currentFilteredList.map((e) => (
                     <tr key={e.id} data-test-id={`home-order-row-${e.id}`}>
                       <td>
                         <a className="pn" onClick={() => go({ page: "eco", id: e.coId })}>{e.coId}</a>
