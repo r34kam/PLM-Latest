@@ -1,0 +1,205 @@
+/**
+ * Change Order data layer — all reads and writes for the ChangeOrder object.
+ * Components import from '@/data', never calling SDK hooks directly.
+ */
+import { useMemo } from 'react'
+import { useData } from '@/lib/data'
+import { useExecuteWorkflowNodeMutation } from '@unifyapps/app-builder-sdk/hooks/workflow'
+import { useQueryClient } from '@tanstack/react-query'
+import { ENTITY, CREATE, UPDATE, DELETE, andFilter } from './bindings'
+
+const CO = ENTITY.changeOrder
+const EXECUTE_NODE_QK = '/api/workflow/execute/node'
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+export type ChangeOrder = {
+  id: string          // backend record id
+  coId: string        // change order number, e.g. ECO-011420
+  title: string
+  type: string        // ECO | DCO | TPCO | RFD
+  cat: string         // full category label
+  stage: string       // Open | Submit | Approval | Effective | Complete | Rejected
+  div: string         // CO | AG
+  site: string
+  routing: string
+  creator: string
+  submitter: string
+  dc: string          // document control owner
+  created: string
+  submitted: string
+  itemCount: number
+  modCount: number
+  pnsJson: string     // JSON array of affected part numbers
+  desc: string
+  redline: string
+  notes: string
+  priority: string    // Low | Medium | High | Critical
+  awaitingMe: boolean
+  effectiveDate: string
+  completedDate: string
+}
+
+export type NewChangeOrder = Omit<ChangeOrder, 'id'>
+
+export const CO_STAGES = ['Open', 'Submit', 'Approval', 'Effective', 'Complete', 'Rejected'] as const
+export type CoStage = (typeof CO_STAGES)[number]
+
+export const CO_TYPES = ['ECO', 'DCO', 'TPCO', 'RFD'] as const
+export type CoType = (typeof CO_TYPES)[number]
+
+export const CO_PRIORITIES = ['Low', 'Medium', 'High', 'Critical'] as const
+
+// ─── Flatten ─────────────────────────────────────────────────────────────────
+
+function flatten(raw: any): ChangeOrder {
+  const p = raw?.properties ?? raw ?? {}
+  return {
+    id: raw?.id ?? '',
+    coId: p.coId ?? '',
+    title: p.title ?? '',
+    type: p.type ?? '',
+    cat: p.cat ?? '',
+    stage: p.stage ?? '',
+    div: p.div ?? '',
+    site: p.site ?? '',
+    routing: p.routing ?? '',
+    creator: p.creator ?? '',
+    submitter: p.submitter ?? '',
+    dc: p.dc ?? '',
+    created: p.created ?? '',
+    submitted: p.submitted ?? '',
+    itemCount: typeof p.itemCount === 'number' ? p.itemCount : Number(p.itemCount ?? 0),
+    modCount: typeof p.modCount === 'number' ? p.modCount : Number(p.modCount ?? 0),
+    pnsJson: p.pnsJson ?? '[]',
+    desc: p.desc ?? '',
+    redline: p.redline ?? '',
+    notes: p.notes ?? '',
+    priority: p.priority ?? 'Medium',
+    awaitingMe: p.awaitingMe === true,
+    effectiveDate: p.effectiveDate ?? '',
+    completedDate: p.completedDate ?? '',
+  }
+}
+
+// ─── Reads ───────────────────────────────────────────────────────────────────
+
+/** All change orders — used for KPI counts and home page table. */
+export function useAllChangeOrders() {
+  const result = useData<any[]>('change-orders-all', 'storage', {
+    object: CO,
+    where: [],
+    sort: [{ field: 'properties.created', order: 'DESC' }],
+    limit: 500,
+  })
+  const data = useMemo(() => (result.data ?? []).map(flatten), [result.data])
+  return { ...result, data }
+}
+
+/** Change orders filtered by stage. */
+export function useChangeOrdersByStage(stage: string) {
+  const bindingId = stage ? `change-orders-stage-${stage}` : 'change-orders-all'
+  const where = stage
+    ? [{ property: 'properties.stage', filter: { operator: 'EQUAL' as const, value: stage } }]
+    : []
+  const result = useData<any[]>(bindingId, 'storage', {
+    object: CO,
+    where,
+    sort: [{ field: 'properties.created', order: 'DESC' }],
+    limit: 200,
+  })
+  const data = useMemo(() => (result.data ?? []).map(flatten), [result.data])
+  return { ...result, data }
+}
+
+/** Change orders for a specific part number (searching pnsJson substring). */
+export function useChangeOrdersByPn(pn: string) {
+  const bindingId = pn ? `change-orders-pn-${pn}` : 'change-orders-pn-none'
+  const where = pn
+    ? [{ property: 'properties.pnsJson', filter: { operator: 'CONTAINS' as const, value: pn } }]
+    : []
+  const result = useData<any[]>(bindingId, 'storage', {
+    object: CO,
+    where,
+    sort: [{ field: 'properties.created', order: 'DESC' }],
+    limit: 100,
+  })
+  const data = useMemo(() => (result.data ?? []).map(flatten), [result.data])
+  return { ...result, data }
+}
+
+/** Change orders awaiting the current user's approval. */
+export function useChangeOrdersAwaitingMe() {
+  const result = useData<any[]>('change-orders-awaiting-me', 'storage', {
+    object: CO,
+    where: [{ property: 'properties.awaitingMe', filter: { operator: 'EQUAL' as const, value: true } }],
+    sort: [{ field: 'properties.submitted', order: 'ASC' }],
+    limit: 100,
+  })
+  const data = useMemo(() => (result.data ?? []).map(flatten), [result.data])
+  return { ...result, data }
+}
+
+// ─── Writes ──────────────────────────────────────────────────────────────────
+
+export function useCreateChangeOrder() {
+  const mutation = useExecuteWorkflowNodeMutation()
+  const qc = useQueryClient()
+  return async (co: NewChangeOrder) => {
+    const result = await mutation.mutateAsync({
+      data: {
+        id: CREATE.id,
+        context: CREATE.context,
+        inputs: { ...CREATE.storedInputs, object_type: CO, rawPayload: co },
+      },
+    })
+    qc.invalidateQueries({ queryKey: [EXECUTE_NODE_QK] })
+    return result
+  }
+}
+
+export function useUpdateChangeOrder() {
+  const mutation = useExecuteWorkflowNodeMutation()
+  const qc = useQueryClient()
+  return async (recordId: string, co: Partial<NewChangeOrder>) => {
+    await mutation.mutateAsync({
+      data: {
+        id: UPDATE.id,
+        context: UPDATE.context,
+        inputs: { ...UPDATE.storedInputs, object_type: CO, recordId, rawPayload: co },
+      },
+    })
+    qc.invalidateQueries({ queryKey: [EXECUTE_NODE_QK] })
+  }
+}
+
+export function useDeleteChangeOrder() {
+  const mutation = useExecuteWorkflowNodeMutation()
+  const qc = useQueryClient()
+  return async (entityId: string) => {
+    await mutation.mutateAsync({
+      data: {
+        id: DELETE.id,
+        context: DELETE.context,
+        inputs: { ...DELETE.storedInputs, object_type: CO, entityId },
+      },
+    })
+    qc.invalidateQueries({ queryKey: [EXECUTE_NODE_QK] })
+  }
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/** Derive KPI counts from a flat list of change orders. */
+export function deriveCoKpis(orders: ChangeOrder[]) {
+  const open = orders.filter((o) => o.stage === 'Open').length
+  const submit = orders.filter((o) => o.stage === 'Submit').length
+  const approval = orders.filter((o) => o.stage === 'Approval').length
+  const effective = orders.filter((o) => o.stage === 'Effective').length
+  const complete = orders.filter((o) => o.stage === 'Complete').length
+  const rejected = orders.filter((o) => o.stage === 'Rejected').length
+  const awaitingMe = orders.filter((o) => o.awaitingMe).length
+  const byType: Record<string, number> = {}
+  orders.forEach((o) => { byType[o.type] = (byType[o.type] ?? 0) + 1 })
+  return { open, submit, approval, effective, complete, rejected, awaitingMe, byType, total: orders.length }
+}

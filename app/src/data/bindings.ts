@@ -12,6 +12,7 @@ export const ENTITY: Record<string, string> = {
   plmForm: 'plm_form_e_6aa81a1f8136a3761d49b96a',
   plmRole: 'plm_role_e_6aa81a1f8136a3761d49b96a',
   bomItem: 'bom_item_e_6aa81a1f8136a3761d49b96a',
+  changeOrder: 'change_order_e_6aa81a1f8136a3761d49b96a',
 }
 
 export const FETCH = {

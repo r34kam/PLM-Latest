@@ -4,13 +4,12 @@ import { Empty } from '@/components/primitives/Empty'
 import { Kpi } from '@/components/primitives/Kpi'
 import { PAGE_SIZE, Pagination } from '@/components/primitives/Pagination'
 import { Toolbar } from '@/components/toolbar/Toolbar'
-import { ECOS, STAGES } from '@/domain/ecos'
-import { deriveApprovalState } from '@/domain/routings'
-import { ME } from '@/domain/session'
+import { useAllChangeOrders, deriveCoKpis, CO_STAGES, ChangeOrder } from '@/data/changeOrders'
 import { downloadFile } from '@/lib/download'
 import { T } from '@/theme/tokens'
 import { AlertTriangle, Clock, Database, Download, Eye, Filter, GitPullRequest, LayoutGrid, List, Pencil, Plus } from 'lucide-react'
 import React, { useMemo, useState } from 'react'
+import { Skeleton } from '@/components/ui/skeleton'
 
 /* =========================== ECO MASTER ============================= */
 
@@ -19,77 +18,69 @@ function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, 
   const [q, setQ] = useState("");
   const [view, setView] = useState("table");
   const [filterOpen, setFilterOpen] = useState(false);
-  const [selectedStages, setSelectedStages] = useState(
-    initialFilter && STAGES.includes(initialFilter) ? [initialFilter] : []
+  const [selectedStages, setSelectedStages] = useState<string[]>(
+    initialFilter && (CO_STAGES as readonly string[]).includes(initialFilter) ? [initialFilter] : []
   );
-  const [selectedIds, setSelectedIds] = useState<any[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [ecoPage, setEcoPage] = useState(0);
   const filters = ["Needs me", "Open", "All"];
 
-  const isNeedsMe = (e: any) => {
-    if (e.stage === "Rejected") return true;
-    if (e.awaitingMe) return true;
-    const { open } = deriveApprovalState(e);
-    return open.some((r: any) => r.n === ME.name || (r.others && r.others.includes(ME.name)));
-  };
+  // Backend data
+  const { data: allOrders, loading: ordersLoading } = useAllChangeOrders();
+  const kpis = useMemo(() => deriveCoKpis(allOrders), [allOrders]);
 
-  const stageStats: Record<string, any> = useMemo(() => {
-    const map: Record<string, any> = {};
-    STAGES.forEach((st: any) => { map[st] = 0; });
-    ECOS.forEach((e: any) => {
-      const appState = deriveApprovalState(e);
-      if (appState && e.stage) {
-        map[e.stage] = (map[e.stage] || 0) + 1;
-      }
-    });
+  const isNeedsMe = (e: ChangeOrder) => e.awaitingMe || e.stage === "Rejected";
+
+  const stageStats: Record<string, number> = useMemo(() => {
+    const map: Record<string, number> = {};
+    CO_STAGES.forEach((st) => { map[st] = 0; });
+    allOrders.forEach((e) => { if (e.stage) map[e.stage] = (map[e.stage] ?? 0) + 1; });
     return map;
-  }, []);
+  }, [allOrders]);
 
-  const needsMeCount = useMemo(() => ECOS.filter(isNeedsMe).length, []);
-  const openCount = useMemo(() => ECOS.filter((e: any) => e.stage !== "Complete").length, []);
+  const needsMeCount = useMemo(() => allOrders.filter(isNeedsMe).length, [allOrders]);
+  const openCount = useMemo(() => allOrders.filter((e) => e.stage !== "Complete").length, [allOrders]);
 
-  const count = (x: any) => {
+  const count = (x: string) => {
     if (x === "Needs me") return needsMeCount;
     if (x === "Open") return openCount;
-    if (x === "All") return ECOS.length;
-    return stageStats[x] ?? ECOS.filter((e: any) => e.stage === x).length;
+    if (x === "All") return allOrders.length;
+    return stageStats[x] ?? 0;
   };
 
-  const rows = ECOS.filter((e: any) => {
+  const rows = useMemo(() => allOrders.filter((e) => {
     if (f === "Needs me" && !isNeedsMe(e)) return false;
     if (f === "Open" && e.stage === "Complete") return false;
     if (selectedStages.length > 0 && !selectedStages.includes(e.stage)) return false;
-    if (q !== "" && !(e.id + e.title + e.creator).toLowerCase().includes(q.toLowerCase())) return false;
+    if (q !== "" && !(e.coId + e.title + e.creator).toLowerCase().includes(q.toLowerCase())) return false;
     return true;
-  });
+  }), [allOrders, f, selectedStages, q]);
 
   React.useEffect(() => {
     const handleKeyDown = (ev: any) => {
       const activeTag = document.activeElement?.tagName;
-      if (["INPUT", "TEXTAREA", "SELECT"].includes(activeTag || "")) {
-        return;
-      }
+      if (["INPUT", "TEXTAREA", "SELECT"].includes(activeTag || "")) return;
       if (ev.key === "ArrowDown" || ev.key === "ArrowUp") {
         const visibleRows = rows.slice(ecoPage * PAGE_SIZE, (ecoPage + 1) * PAGE_SIZE);
         if (!visibleRows.length) return;
-        const curIdx = visibleRows.findIndex((r: any) => r.id === inspectedId);
+        const curIdx = visibleRows.findIndex((r) => r.coId === inspectedId);
         if (ev.key === "ArrowDown") {
           ev.preventDefault();
           const nextIdx = curIdx === -1 ? 0 : Math.min(curIdx + 1, visibleRows.length - 1);
-          onInspect?.(visibleRows[nextIdx].id);
+          onInspect?.(visibleRows[nextIdx].coId);
         } else if (ev.key === "ArrowUp") {
           ev.preventDefault();
           const nextIdx = curIdx === -1 ? 0 : Math.max(curIdx - 1, 0);
-          onInspect?.(visibleRows[nextIdx].id);
+          onInspect?.(visibleRows[nextIdx].coId);
         }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [rows, inspectedId, onInspect]);
+  }, [rows, inspectedId, onInspect, ecoPage]);
 
-  const allPageIds = rows.slice(ecoPage * PAGE_SIZE, (ecoPage + 1) * PAGE_SIZE).map((e: any) => e.id);
-  const allSelected = allPageIds.length > 0 && allPageIds.every((id: any) => selectedIds.includes(id));
+  const allPageIds = rows.slice(ecoPage * PAGE_SIZE, (ecoPage + 1) * PAGE_SIZE).map((e) => e.id);
+  const allSelected = allPageIds.length > 0 && allPageIds.every((id) => selectedIds.includes(id));
 
   const toggleSelectAll = () => {
     if (allSelected) {
@@ -106,10 +97,10 @@ function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, 
   };
 
   const exportSelected = () => {
-    const toExport = ECOS.filter((e: any) => selectedIds.includes(e.id));
-    const header = "Change,Title,Category,Routing,Division,Items,Mods,Stage,Creator,Created";
-    const body = toExport.map((e: any) =>
-      `"${e.id}","${e.title.replace(/"/g, '""')}","${e.cat}","${e.routing}","${e.div}",${e.items},${e.mods},"${e.stage}","${e.creator}","${e.created}"`
+    const toExport = allOrders.filter((e) => selectedIds.includes(e.id));
+    const header = "Change,Title,Category,Routing,Division,Items,Mods,Stage,Creator,Created,Priority";
+    const body = toExport.map((e) =>
+      `"${e.coId}","${e.title.replace(/"/g, '""')}","${e.type}","${e.routing}","${e.div}",${e.itemCount},${e.modCount},"${e.stage}","${e.creator}","${e.created}","${e.priority}"`
     ).join("\n");
     downloadFile("change-orders-selected.csv", header + "\n" + body);
   };
@@ -127,15 +118,26 @@ function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, 
         </div>
       </div>
 
-      <div className="grid4">
-        <Kpi label="Open in workspace" value={stageStats["Open"] ?? ECOS.filter((e: any) => e.stage === "Open").length} note="Editable" icon={Pencil} tint={T.slateBg} bd={T.slateBd} tone={T.slate}
-          onClick={() => { setF("Open"); setSelectedStages(["Open"]); }} />
-        <Kpi label="In approval" value={stageStats["Approval"] ?? ECOS.filter((e: any) => e.stage === "Approval").length} note="Average 3.2 days in stage" icon={Clock} tint={T.warnBg} bd={T.warnBd} tone={T.warn}
-          onClick={() => { setF("All"); setSelectedStages(["Approval"]); }} />
-        <Kpi label="Effective this month" value={(stageStats["Effective"] || 0) + (stageStats["Complete"] || 0)} note="12 more than August" icon={Database} tint={T.vioBg} bd={T.vioBd} tone={T.vio}
-          onClick={() => { setF("All"); setSelectedStages(["Effective"]); }} />
-        <Kpi label="Rejected" value={stageStats["Rejected"] ?? ECOS.filter((e: any) => e.stage === "Rejected").length} note="Held by document control" icon={AlertTriangle} tint={T.badBg} bd={T.badBd} tone={T.bad}
-          onClick={() => { setF("All"); setSelectedStages(["Rejected"]); }} />
+      <div className="grid4" data-test-id="eco-kpis">
+        {ordersLoading ? (
+          <>
+            <Skeleton className="h-20 rounded-lg" data-test-id="eco-kpi-skeleton-1" />
+            <Skeleton className="h-20 rounded-lg" data-test-id="eco-kpi-skeleton-2" />
+            <Skeleton className="h-20 rounded-lg" data-test-id="eco-kpi-skeleton-3" />
+            <Skeleton className="h-20 rounded-lg" data-test-id="eco-kpi-skeleton-4" />
+          </>
+        ) : (
+          <>
+            <Kpi label="Open in workspace" value={kpis.open} note="Editable" icon={Pencil} tint={T.slateBg} bd={T.slateBd} tone={T.slate}
+              onClick={() => { setF("Open"); setSelectedStages(["Open"]); }} data-test-id="eco-kpi-open" />
+            <Kpi label="In approval" value={kpis.approval} note={`${kpis.awaitingMe} awaiting me`} icon={Clock} tint={T.warnBg} bd={T.warnBd} tone={T.warn}
+              onClick={() => { setF("All"); setSelectedStages(["Approval"]); }} data-test-id="eco-kpi-approval" />
+            <Kpi label="Effective / Complete" value={kpis.effective + kpis.complete} note="Synced to SAP" icon={Database} tint={T.vioBg} bd={T.vioBd} tone={T.vio}
+              onClick={() => { setF("All"); setSelectedStages(["Effective"]); }} data-test-id="eco-kpi-effective" />
+            <Kpi label="Rejected" value={kpis.rejected} note="Held by document control" icon={AlertTriangle} tint={T.badBg} bd={T.badBd} tone={T.bad}
+              onClick={() => { setF("All"); setSelectedStages(["Rejected"]); }} data-test-id="eco-kpi-rejected" />
+          </>
+        )}
       </div>
 
       <Card pad={false}>
@@ -199,9 +201,9 @@ function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, 
                     )}
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    {STAGES.map((st: any) => {
+                    {CO_STAGES.map((st) => {
                       const checked = selectedStages.includes(st);
-                      const stCount = stageStats[st] ?? ECOS.filter((e: any) => e.stage === st).length;
+                      const stCount = stageStats[st] ?? 0;
                       return (
                         <label
                           key={st}
@@ -244,7 +246,11 @@ function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, 
             </div>
           </>} />
 
-        {rows.length === 0 ? (
+        {ordersLoading ? (
+          <div style={{ padding: "20px" }} data-test-id="eco-list-loading">
+            {[1,2,3,4,5].map((i) => <Skeleton key={i} className="h-12 mb-2" />)}
+          </div>
+        ) : rows.length === 0 ? (
           <Empty icon={GitPullRequest} title={`No matching change orders`}
             body="Nothing sits in this view right now. Adjust your search or filters, or start a change."
             action={<button className="btn pri" onClick={() => go({ page: "eco-new" })}><Plus size={13} />New change order</button>} />
@@ -266,10 +272,10 @@ function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, 
                 <th></th>
               </tr></thead>
               <tbody>
-                {rows.slice(ecoPage * PAGE_SIZE, (ecoPage + 1) * PAGE_SIZE).map((e: any) => (
+                {rows.slice(ecoPage * PAGE_SIZE, (ecoPage + 1) * PAGE_SIZE).map((e) => (
                   <tr
                     key={e.id}
-                    className={`${selectedIds.includes(e.id) ? "sel" : ""} ${inspectedId === e.id ? "inspected-row" : ""}`}
+                    className={`${selectedIds.includes(e.id) ? "sel" : ""} ${inspectedId === e.coId ? "inspected-row" : ""}`}
                     data-test-id={`eco-row-${e.id}`}
                   >
                     <td>
@@ -280,7 +286,7 @@ function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, 
                       />
                     </td>
                     <td style={railOpen ? { maxWidth: 220 } : undefined}>
-                      <a className="pn" onClick={() => go({ page: "eco", id: e.id })}>{e.id}</a>
+                      <a className="pn" onClick={() => go({ page: "eco", id: e.coId })}>{e.coId}</a>
                       <div
                         className="sub"
                         style={{
@@ -294,10 +300,10 @@ function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, 
                         {e.title}
                       </div>
                     </td>
-                    {!railOpen && <td className="sub">{e.cat.split(":")[0]}</td>}
+                    {!railOpen && <td className="sub">{e.type}</td>}
                     {!railOpen && <td>{e.routing}</td>}
                     {!railOpen && <td><Chip k={e.div === "AG" ? "teal" : "blue"}>{e.div}</Chip></td>}
-                    <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>{e.items}<span className="mut"> / {e.mods}</span></td>
+                    <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>{e.itemCount}<span className="mut"> / {e.modCount}</span></td>
                     <td style={{ whiteSpace: "nowrap" }}>{stageChip(e.stage)}</td>
                     {!railOpen && <td className="sub">{e.creator}</td>}
                     <td className="sub" style={{ whiteSpace: "nowrap" }}>{e.created}</td>
@@ -309,7 +315,7 @@ function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, 
                         data-test-id={`inspect-btn-${e.id}`}
                         onClick={(ev: any) => {
                           ev.stopPropagation();
-                          onInspect?.(e.id);
+                          onInspect?.(e.coId);
                         }}
                       >
                         <Eye size={13} />
@@ -322,14 +328,15 @@ function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, 
           </div>
         ) : (
           <div className="cb grid3">
-            {rows.slice(0, 12).map((e: any) => (
-              <button key={e.id} className="card" style={{ padding: 15, textAlign: "left" }} onClick={() => go({ page: "eco", id: e.id })}>
-                <div className="bet"><span className="pn">{e.id}</span>{stageChip(e.stage)}</div>
+            {rows.slice(0, 12).map((e) => (
+              <button key={e.id} className="card" style={{ padding: 15, textAlign: "left" }} onClick={() => go({ page: "eco", id: e.coId })}
+                data-test-id={`eco-card-${e.id}`}>
+                <div className="bet"><span className="pn">{e.coId}</span>{stageChip(e.stage)}</div>
                 <div style={{ fontWeight: 600, margin: "9px 0 4px" }}>{e.title}</div>
                 <div className="sub" style={{ minHeight: 34, lineHeight: 1.5 }}>{e.desc.slice(0, 76)}…</div>
                 <div className="row" style={{ marginTop: 12, gap: 8, paddingTop: 10, borderTop: `1px solid ${T.g100}` }}>
                   <Chip k={e.div === "AG" ? "teal" : "blue"}>{e.div}</Chip>
-                  <span className="mini">{e.items} items</span>
+                  <span className="mini">{e.itemCount} items</span>
                   <span className="mini" style={{ marginLeft: "auto" }}>{e.created}</span>
                 </div>
               </button>

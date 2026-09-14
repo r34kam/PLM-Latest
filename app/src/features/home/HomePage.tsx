@@ -3,11 +3,11 @@ import { HBars } from '@/components/charts/HBars'
 import { Card } from '@/components/primitives/Card'
 import { Chip, stageChip } from '@/components/primitives/Chip'
 import { Kpi } from '@/components/primitives/Kpi'
-import { ECOS, STAGES } from '@/domain/ecos'
-import { deriveApprovalState } from '@/domain/routings'
+import { useAllChangeOrders, deriveCoKpis } from '@/data/changeOrders'
 import { T } from '@/theme/tokens'
 import { AlertTriangle, ArrowRight, Boxes, ChevronDown, ChevronUp, Clock, FileText, Pencil, Plus, Send, Sparkles } from 'lucide-react'
 import React, { useMemo, useState } from 'react'
+import { Skeleton } from '@/components/ui/skeleton'
 
 /* ============================== HOME ================================ */
 
@@ -16,30 +16,43 @@ function HomePage({ go, renderHeaderActions }: { go: any; renderHeaderActions?: 
   const [showFourChanges, setShowFourChanges] = useState(false);
   const [expandedInsights, setExpandedInsights] = useState<Record<string, boolean>>({});
   const toggleInsight = (key: string) => setExpandedInsights((prev: any) => ({ ...prev, [key]: !prev[key] }));
-  const awaiting = ECOS.filter((e: any) => e.awaitingMe);
   const [selectedHomeStage, setSelectedHomeStage] = useState("Awaiting me");
-  const cnt = (st: any) => ECOS.filter((e: any) => (e.stage === st)).length;
-  const stageStats: Record<string, any> = useMemo(() => {
-    const map: Record<string, any> = {};
-    STAGES.forEach((st: any) => { map[st] = 0; });
-    ECOS.forEach((e: any) => {
-      // Derive approval state for changes to ensure uniform derivation logic
-      const appState = deriveApprovalState(e);
-      if (appState && e.stage) {
-        map[e.stage] = (map[e.stage] || 0) + 1;
-      }
-    });
-    return map;
-  }, []);
-  const byPre = (p2: any) => ECOS.filter((e: any) => e.id.startsWith(p2)).length;
-  const byCat = [
-    { k: "ECO", v: byPre("ECO"), c: "#0A4F8F" }, { k: "DCO", v: byPre("DCO"), c: "#1E6FB8" },
-    { k: "TPCO", v: byPre("CO-") + byPre("TPCO"), c: "#5A9BD4" }, { k: "RFD", v: byPre("RFD"), c: "#A8C8E8" },
-  ];
+
+  // Backend change orders
+  const { data: allOrders, loading: ordersLoading } = useAllChangeOrders();
+  const kpis = useMemo(() => deriveCoKpis(allOrders), [allOrders]);
+  const awaiting = useMemo(() => allOrders.filter((o) => o.awaitingMe), [allOrders]);
+
+  const byCat = useMemo(() => [
+    { k: "ECO", v: kpis.byType['ECO'] ?? 0, c: "var(--chart-1)" },
+    { k: "DCO", v: kpis.byType['DCO'] ?? 0, c: "var(--chart-2)" },
+    { k: "TPCO", v: kpis.byType['TPCO'] ?? 0, c: "var(--chart-3)" },
+    { k: "RFD", v: kpis.byType['RFD'] ?? 0, c: "var(--chart-4)" },
+  ], [kpis.byType]);
+
   const aging = [
     { k: "0–7 days", v: 22, c: T.teal }, { k: "8–30 days", v: 19, c: T.b400 },
     { k: "31–90 days", v: 9, c: T.warn }, { k: "Over 90 days", v: 4, c: T.bad },
   ];
+
+  const homeStages = useMemo(() => [
+    { key: "Awaiting me", label: "Awaiting me", count: kpis.awaitingMe, targetFilter: "Approval" },
+    { key: "Open", label: "Open", count: kpis.open, targetFilter: "Open" },
+    { key: "Submit", label: "Submit", count: kpis.submit, targetFilter: "Submit" },
+    { key: "Approval", label: "Approval", count: kpis.approval, targetFilter: "Approval" },
+    { key: "Effective", label: "Effective", count: kpis.effective, targetFilter: "Effective" },
+    { key: "Rejected", label: "Rejected", count: kpis.rejected, targetFilter: "Rejected" },
+    { key: "All", label: "All", count: kpis.total, targetFilter: "All" },
+  ], [kpis]);
+
+  const currentFilteredList = useMemo(() => {
+    if (selectedHomeStage === "Awaiting me") return awaiting;
+    if (selectedHomeStage === "All") return allOrders;
+    return allOrders.filter((o) => o.stage === selectedHomeStage);
+  }, [selectedHomeStage, awaiting, allOrders]);
+
+  const activeStageObj = homeStages.find((s) => s.key === selectedHomeStage) ?? homeStages[0];
+
   return (
     <div className="stack" data-test-id="home-page">
       <div className="bet">
@@ -55,140 +68,145 @@ function HomePage({ go, renderHeaderActions }: { go: any; renderHeaderActions?: 
         </div>
       </div>
 
-      <div className="grid4">
-        <Kpi
-          label="Open"
-          value={stageStats["Open"] ?? cnt("Open")}
-          icon={Pencil}
-          onClick={() => go({ page: "ecos", filter: "Open" })}
-        />
-        <Kpi
-          label="Awaiting my approval"
-          value={ECOS.filter((e: any) => e.awaitingMe).length}
-          icon={Clock}
-          onClick={() => go({ page: "ecos", filter: "Approval" })}
-        />
-        <Kpi
-          label="Submitted by me"
-          value={stageStats["Submit"] ?? cnt("Submit")}
-          icon={Send}
-          onClick={() => go({ page: "ecos", filter: "Submit" })}
-        />
-        <Kpi
-          label="Rejected"
-          value={stageStats["Rejected"] ?? cnt("Rejected")}
-          icon={AlertTriangle}
-          onClick={() => go({ page: "ecos", filter: "Rejected" })}
-        />
+      <div className="grid4" data-test-id="home-kpis">
+        {ordersLoading ? (
+          <>
+            <Skeleton className="h-20 rounded-lg" data-test-id="home-kpi-skeleton-1" />
+            <Skeleton className="h-20 rounded-lg" data-test-id="home-kpi-skeleton-2" />
+            <Skeleton className="h-20 rounded-lg" data-test-id="home-kpi-skeleton-3" />
+            <Skeleton className="h-20 rounded-lg" data-test-id="home-kpi-skeleton-4" />
+          </>
+        ) : (
+          <>
+            <Kpi
+              label="Open"
+              value={kpis.open}
+              icon={Pencil}
+              onClick={() => go({ page: "ecos", filter: "Open" })}
+              data-test-id="home-kpi-open"
+            />
+            <Kpi
+              label="Awaiting my approval"
+              value={kpis.awaitingMe}
+              icon={Clock}
+              onClick={() => go({ page: "ecos", filter: "Approval" })}
+              data-test-id="home-kpi-awaiting"
+            />
+            <Kpi
+              label="Submitted"
+              value={kpis.submit}
+              icon={Send}
+              onClick={() => go({ page: "ecos", filter: "Submit" })}
+              data-test-id="home-kpi-submit"
+            />
+            <Kpi
+              label="Rejected"
+              value={kpis.rejected}
+              icon={AlertTriangle}
+              onClick={() => go({ page: "ecos", filter: "Rejected" })}
+              data-test-id="home-kpi-rejected"
+            />
+          </>
+        )}
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1.6fr minmax(0,340px)", gap: 16, alignItems: "start" }} className="homegrid">
         {/* Left column: charts / infographics / tables */}
         <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
-            <Card title="By category">
-              <Donut data={byCat} />
+            <Card title="By category" data-test-id="home-chart-by-category">
+              {ordersLoading ? <Skeleton className="h-40" data-test-id="home-chart-category-skeleton" /> : <Donut data={byCat} />}
             </Card>
 
-            <Card title="Aging of open changes" style={{ minWidth: 0 }}>
+            <Card title="Aging of open changes" style={{ minWidth: 0 }} data-test-id="home-chart-aging">
               <HBars data={aging} />
             </Card>
           </div>
 
-          {(() => {
-            const homeStages = [
-              { key: "Awaiting me", label: "Awaiting me", count: awaiting.length, targetFilter: "Approval" },
-              { key: "Open", label: "Open", count: stageStats["Open"] ?? cnt("Open"), targetFilter: "Open" },
-              { key: "Submit", label: "Submit", count: stageStats["Submit"] ?? cnt("Submit"), targetFilter: "Submit" },
-              { key: "Approval", label: "Approval", count: stageStats["Approval"] ?? cnt("Approval"), targetFilter: "Approval" },
-              { key: "Effective", label: "Effective", count: stageStats["Effective"] ?? cnt("Effective"), targetFilter: "Effective" },
-              { key: "Rejected", label: "Rejected", count: stageStats["Rejected"] ?? cnt("Rejected"), targetFilter: "Rejected" },
-              { key: "All", label: "All", count: ECOS.length, targetFilter: "All" },
-            ];
-
-            const currentFilteredList = selectedHomeStage === "Awaiting me"
-              ? awaiting
-              : selectedHomeStage === "All"
-                ? ECOS
-                : ECOS.filter((e: any) => e.stage === selectedHomeStage);
-
-            const activeStageObj = homeStages.find((s: any) => s.key === selectedHomeStage) || homeStages[0];
-
-            return (
-              <Card
-                title="Change orders"
-                pad={false}
-                right={
-                  <button
-                    className="btn sm gh"
-                    onClick={() => go({ page: "ecos", filter: activeStageObj.targetFilter })}
-                  >
-                    View in Changes ({activeStageObj.count}) <ArrowRight size={12} />
-                  </button>
-                }
+          <Card
+            title="Change orders"
+            pad={false}
+            data-test-id="home-change-orders-card"
+            right={
+              <button
+                className="btn sm gh"
+                onClick={() => go({ page: "ecos", filter: activeStageObj.targetFilter })}
+                data-test-id="home-view-in-changes-btn"
               >
-        {/* Smart filter pills */}
-        <div style={{ padding: "12px 20px 8px" }}>
-          <div className="seg">
-            {homeStages.map((st: any) => {
-              const active = selectedHomeStage === st.key;
-              return (
-                <button
-                  key={st.key}
-                  type="button"
-                  className={active ? "on" : ""}
-                  onClick={() => setSelectedHomeStage(st.key)}
-                >
-                  <span>{st.label}</span>
-                  <span className="n">{st.count}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+                View in Changes ({activeStageObj.count}) <ArrowRight size={12} />
+              </button>
+            }
+          >
+            {/* Smart filter pills */}
+            <div style={{ padding: "12px 20px 8px" }}>
+              <div className="seg" data-test-id="home-stage-filter-pills">
+                {homeStages.map((st) => {
+                  const active = selectedHomeStage === st.key;
+                  return (
+                    <button
+                      key={st.key}
+                      type="button"
+                      className={active ? "on" : ""}
+                      onClick={() => setSelectedHomeStage(st.key)}
+                      data-test-id={`home-stage-pill-${st.key.toLowerCase().replace(/\s/g, '-')}`}
+                    >
+                      <span>{st.label}</span>
+                      <span className="n">{st.count}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
-                <table className="tbl">
-                  <thead>
-                    <tr>
-                      <th>Change</th>
-                      <th>Routing</th>
-                      <th>Stage</th>
-                      <th>Submitted</th>
-                      <th></th>
+            {ordersLoading ? (
+              <div style={{ padding: "12px 20px" }} data-test-id="home-orders-table-skeleton">
+                {[1, 2, 3].map((i) => <Skeleton key={i} className="h-10 mb-2" />)}
+              </div>
+            ) : (
+              <table className="tbl" data-test-id="home-orders-table">
+                <thead>
+                  <tr>
+                    <th>Change</th>
+                    <th>Type</th>
+                    <th>Routing</th>
+                    <th>Stage</th>
+                    <th>Submitted</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {currentFilteredList.slice(0, 6).map((e) => (
+                    <tr key={e.id} data-test-id={`home-order-row-${e.id}`}>
+                      <td>
+                        <a className="pn" onClick={() => go({ page: "eco", id: e.coId })}>{e.coId}</a>
+                        <div className="sub">{e.title}</div>
+                      </td>
+                      <td><span className="sub">{e.type}</span></td>
+                      <td>{e.routing}</td>
+                      <td>{stageChip(e.stage)}</td>
+                      <td className="sub">{e.submitted}</td>
+                      <td style={{ textAlign: "right" }}>
+                        <button
+                          className="btn sm"
+                          onClick={() => go({ page: "eco", id: e.coId, tab: "Approvals" })}
+                          data-test-id={`home-order-review-btn-${e.id}`}
+                        >
+                          Review
+                        </button>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody>
-                    {currentFilteredList.slice(0, 6).map((e: any) => (
-                      <tr key={e.id}>
-                        <td>
-                          <a className="pn" onClick={() => go({ page: "eco", id: e.id })}>{e.id}</a>
-                          <div className="sub">{e.title}</div>
-                        </td>
-                        <td>{e.routing}</td>
-                        <td>{stageChip(e.stage)}</td>
-                        <td className="sub">{e.submitted}</td>
-                        <td style={{ textAlign: "right" }}>
-                          <button
-                            className="btn sm"
-                            onClick={() => go({ page: "eco", id: e.id, tab: "Approvals" })}
-                          >
-                            Review
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                    {currentFilteredList.length === 0 && (
-                      <tr>
-                        <td colSpan={5} style={{ textAlign: "center", color: "#7993a8", padding: "20px 12px" }}>
-                          No changes in this stage.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </Card>
-            );
-          })()}
+                  ))}
+                  {currentFilteredList.length === 0 && (
+                    <tr data-test-id="home-orders-empty">
+                      <td colSpan={6} style={{ textAlign: "center", color: "#7993a8", padding: "20px 12px" }}>
+                        No changes in this stage.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            )}
+          </Card>
         </div>
 
         {/* Right column: AI Insight panel */}
