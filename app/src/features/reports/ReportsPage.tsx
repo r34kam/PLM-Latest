@@ -25,7 +25,7 @@ import { useHtmlFromCopilot } from '@/features/copilot/useHtmlFromCopilot'
  * mount, but deliberately not rendered: this screen has no header of its own — the
  * copilot's own chrome occupies that row. */
 export function Reports(_props: { renderHeaderActions?: () => React.ReactNode } = {}) {
-  const { preview, failure, isFetching, handleStatusChange, dismiss } = useHtmlFromCopilot()
+  const { attachRef, preview, failure, isFetching, handleStatusChange, dismiss } = useHtmlFromCopilot()
   const showPanel = Boolean(preview || failure || isFetching)
 
   return (
@@ -40,6 +40,7 @@ export function Reports(_props: { renderHeaderActions?: () => React.ReactNode } 
       }}
     >
       <div
+        ref={attachRef}
         style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
         data-test-id="reports-chat-column"
       >
