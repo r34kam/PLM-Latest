@@ -1,0 +1,29 @@
+<!doctype html>
+<!-- `dir` is required, not cosmetic: the design system's `ltr:` / `rtl:` Tailwind variants
+     compile to `:where([dir="ltr"], …)`, so with no `dir` in the document every
+     direction-aware rule silently no-ops — including the one that positions copilot message
+     avatars, which then land on top of the message text. Change it to "rtl" for an
+     RTL app; the copilot follows whatever this says. -->
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="https://assets.unifyapps.com/interface/brand-logo/brand-logo-sm-3-comp.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>app</title>
+    <!-- The app's Content-Security-Policy. Filled in the BUILD output only (the engine's
+         csp.bake_meta, and tensor when it serves a published app) — it stays empty here
+         because the policy is configured by the app's owner on the platform, not written
+         in code, and a snapshot of it committed to this file would go stale silently.
+         Empty in report-only mode too: a meta tag has no report-only form. -->
+    <!-- ua:csp --><!-- /ua:csp -->
+    <!-- ua:theme-font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&display=swap" />
+    <!-- /ua:theme-font -->
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

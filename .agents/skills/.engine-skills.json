@@ -1,0 +1,24 @@
+{
+  "skills": {
+    "app-plan": "1",
+    "app-users": "1",
+    "artifact-plan": "2",
+    "authentication": "1",
+    "automation-integration": "1",
+    "backend-integration": "2",
+    "code-review-and-quality": "1",
+    "code-simplification": "1",
+    "content-security-policy": "1",
+    "copilot": "6",
+    "document-assets": "2",
+    "doubt-driven-development": "1",
+    "file-upload": "1",
+    "frontend-ui-engineering": "1",
+    "impeccable": "3.8.0",
+    "incremental-implementation": "1",
+    "object-data": "2",
+    "password-policy": "1",
+    "spec-driven-development": "1",
+    "theming": "3"
+  }
+}

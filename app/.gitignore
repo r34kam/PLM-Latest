@@ -1,0 +1,30 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# tsc -b incremental state. App-local ON PURPOSE: it used to live in
+# node_modules/.tmp, which an app that SHARES the template's node_modules (deps.py)
+# writes straight through the link — every such app racing on one file in a tree
+# that is not theirs.
+.tscache
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
