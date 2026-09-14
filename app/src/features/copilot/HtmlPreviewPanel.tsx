@@ -1,4 +1,5 @@
 import { ExternalLink, Loader2, TriangleAlert, X } from 'lucide-react'
+import type { CaseArtifact } from './caseArtifact'
 import type { CopilotHtml, CopilotHtmlFailure } from './useHtmlFromCopilot'
 
 /* What the framed document is allowed to do.
@@ -29,18 +30,26 @@ type Props = {
   preview: CopilotHtml | null
   failure: CopilotHtmlFailure | null
   loading: boolean
+  artifacts: CaseArtifact[]
+  activeIndex: number
+  onOpen: (index: number) => void
   onClose: () => void
 }
 
-function PanelShell({
-  children,
-  title,
-  onClose,
-}: {
+type ShellProps = {
   children: React.ReactNode
   title: string
+  artifacts: CaseArtifact[]
+  activeIndex: number
+  onOpen: (index: number) => void
   onClose: () => void
-}) {
+}
+
+function PanelShell({ children, title, artifacts, activeIndex, onOpen, onClose }: ShellProps) {
+  // A conversation usually has one file, and a switcher for one file is clutter. It earns
+  // its place from the second onwards — and it is the reason every file stays reachable
+  // even if the click-to-open mapping ever misses a card.
+  const showSwitcher = artifacts.length > 1
   return (
     <div
       data-test-id="html-preview-panel"
@@ -64,12 +73,39 @@ function PanelShell({
           flexShrink: 0,
         }}
       >
-        <span
-          style={{ fontWeight: 600, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-          title={title}
-        >
-          {title}
-        </span>
+        {showSwitcher ? (
+          <select
+            aria-label="Choose which file to preview"
+            data-test-id="html-preview-switcher"
+            onChange={(event) => onOpen(Number(event.target.value))}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              fontWeight: 600,
+              fontSize: 13,
+              border: '1px solid var(--border)',
+              borderRadius: 6,
+              padding: '3px 6px',
+              background: 'var(--background)',
+              color: 'inherit',
+            }}
+            value={activeIndex}
+          >
+            {activeIndex < 0 ? <option value={-1}>Choose a file…</option> : null}
+            {artifacts.map((artifact, index) => (
+              <option key={artifact.url} value={index}>
+                {artifact.fileName || `File ${index + 1}`}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <span
+            style={{ fontWeight: 600, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            title={title}
+          >
+            {title}
+          </span>
+        )}
         <button
           type="button"
           className="iconbtn"
@@ -91,10 +127,20 @@ function PanelShell({
  * The failure and loading branches matter as much as the success one. An earlier version
  * caught fetch errors into an empty block, so a failed artifact produced no preview, no
  * message and no console entry — indistinguishable from the agent never having sent one. */
-export function HtmlPreviewPanel({ preview, failure, loading, onClose }: Props) {
+export function HtmlPreviewPanel({
+  preview,
+  failure,
+  loading,
+  artifacts,
+  activeIndex,
+  onOpen,
+  onClose,
+}: Props) {
+  const shell = { artifacts, activeIndex, onOpen, onClose }
+
   if (!preview && loading) {
     return (
-      <PanelShell onClose={onClose} title="HTML preview">
+      <PanelShell {...shell} title="HTML preview">
         <div
           data-test-id="html-preview-loading"
           style={{
@@ -116,7 +162,7 @@ export function HtmlPreviewPanel({ preview, failure, loading, onClose }: Props) 
 
   if (!preview && failure) {
     return (
-      <PanelShell onClose={onClose} title="HTML preview">
+      <PanelShell {...shell} title="HTML preview">
         <div style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600, fontSize: 13 }}>
             <TriangleAlert size={15} />
@@ -145,7 +191,7 @@ export function HtmlPreviewPanel({ preview, failure, loading, onClose }: Props) 
   if (!preview) return null
 
   return (
-    <PanelShell onClose={onClose} title={preview.fileName || 'HTML preview'}>
+    <PanelShell {...shell} title={preview.fileName || 'HTML preview'}>
       <iframe
         // Keying on the document forces a fresh frame per revision. Mutating `srcDoc` in
         // place leaves the old document's timers and listeners running underneath.
