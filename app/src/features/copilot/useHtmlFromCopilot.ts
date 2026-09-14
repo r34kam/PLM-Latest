@@ -102,14 +102,40 @@ export function useHtmlFromCopilot(): Result {
       const controller = new AbortController()
       abortRef.current = controller
 
-      if (aliveRef.current) setLoading(true)
-      try {
-        const artifact = await fetchCaseArtifact(chatId, controller.signal)
-        // No artifact on this conversation yet. Not an error — leave whatever is on screen
-        // alone rather than replacing a good preview with a message.
-        if (!artifact) return
-        if (loadedRef.current.has(artifact.url)) return
+      /** Clear the spinner, but only if a newer load has not taken over since. */
+      const stopLoading = () => {
+        if (aliveRef.current && abortRef.current === controller) setLoading(false)
+      }
 
+      // The lookup runs for EVERY conversation, including the ones that never produced a
+      // file, so nothing it does may open the panel. Only once it comes back with an
+      // artifact do we know there is something to show — and only then does the panel get
+      // a loading state to show it in.
+      let artifact
+      try {
+        artifact = await fetchCaseArtifact(chatId, controller.signal)
+      } catch (err) {
+        // Reaching here means the lookup itself failed — not that the conversation has no
+        // file. Reported to the console rather than the panel: an error banner on a
+        // conversation that was never going to have a preview is noise, and this call is
+        // made on every chat.
+        if (!controller.signal.aborted) console.warn('[copilot] artifact lookup failed', err)
+        stopLoading()
+        return
+      }
+
+      // No file in this conversation. Leave the panel shut.
+      if (!artifact || controller.signal.aborted || !aliveRef.current) {
+        stopLoading()
+        return
+      }
+      if (loadedRef.current.has(artifact.url)) {
+        stopLoading()
+        return
+      }
+
+      setLoading(true)
+      try {
         const html = await fetchArtifactHtml(artifact.url, controller.signal)
         if (controller.signal.aborted || !aliveRef.current) return
 
@@ -117,7 +143,10 @@ export function useHtmlFromCopilot(): Result {
         commit({ html, source: 'file', url: artifact.url, fileName: artifact.fileName })
       } catch (err) {
         if (controller.signal.aborted || !aliveRef.current) return
+        // A file exists and could not be read. That IS worth the panel — it is actionable,
+        // and the URL gives the user a way to open it themselves.
         setFailure({
+          url: artifact.url,
           reason:
             err instanceof TypeError
               ? 'The browser blocked the request to the artifact.'
@@ -126,7 +155,7 @@ export function useHtmlFromCopilot(): Result {
                 : String(err),
         })
       } finally {
-        if (aliveRef.current && abortRef.current === controller) setLoading(false)
+        stopLoading()
       }
     },
     [commit],
@@ -147,6 +176,7 @@ export function useHtmlFromCopilot(): Result {
         lastHtmlRef.current = null
         setPreview(null)
         setFailure(null)
+        setLoading(false)
         void loadArtifact(chatId)
         return
       }
