@@ -833,12 +833,12 @@ function Admin({
             templateName="topcon-user-import-template.csv"
             template={"Email,Full name,Group,Site,Access level,User type\n" +
               "priya.raman@topcon.com,Priya Raman,Quality Assurance (QA),Livermore,Standard user,Employee\n" +
-              "lena.okafor@eiinfochips.com,Lena Okafor,Construction Engineering,Livermore,View only,Partner"}
+              "carol.nosworthy@eiinfochips.com,Carol Nosworthy,Construction Engineering,Livermore,View only,Partner"}
             columns={["Email", "Full name", "Group", "Site", "Access level", "User type"]}
             rows={[
               { a: "priya.raman@topcon.com", b: "Priya Raman", c: "Quality Assurance (QA)", d: "Livermore", e: "Standard user", f: "Employee", sev: "ok", rule: "Ready", msg: "New account, group and site recognised" },
               { a: "rahul.desai@topcon.com", b: "Rahul Desai", c: "Materials", d: "Livermore", e: "Standard user", f: "Employee", sev: "ok", rule: "Ready", msg: "New account, group and site recognised" },
-              { a: "lena.okafor@eiinfochips.com", b: "Lena Okafor", c: "Construction Engineering", d: "Livermore", e: "View only", f: "Partner", sev: "warn", rule: "External domain", msg: "eiinfochips.com is not a Topcon domain — will be created as a partner account" },
+              { a: "carol.nosworthy@eiinfochips.com", b: "Carol Nosworthy", c: "Construction Engineering", d: "Livermore", e: "View only", f: "Partner", sev: "warn", rule: "External domain", msg: "eiinfochips.com is not a Topcon domain — will be created as a partner account" },
               { a: "steve.howe@topcon.com", b: "Steve Howe", c: "PLM", d: "Livermore", e: "Standard user", f: "Employee", sev: "warn", rule: "Already exists", msg: "Account already active — this row will update the group and site, not create a duplicate" },
               { a: "j.tanaka@topcon", b: "Jun Tanaka", c: "Sales", d: "Tokyo", e: "Standard user", f: "Employee", sev: "err", rule: "Invalid email", msg: "j.tanaka@topcon is not a valid address" },
               { a: "m.silva@topcon.com", b: "Marco Silva", c: "Hydrographics", d: "Lisbon", e: "Standard user", f: "Employee", sev: "err", rule: "Unknown group", msg: "No group called “Hydrographics” exists — create it first or correct the row" },

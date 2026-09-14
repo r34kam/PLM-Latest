@@ -22,10 +22,10 @@ const COMPLIANCE_REQS: Record<string, CompReq[]> = {
   "01-080401-03": [
     { name: "ROHS COMPLIANT", status: "Exempt",
       rationale: "Assembly contains military-spec components exempt under Annex III. Exemption certificate on file.",
-      mark: "RoHS", evidence: "RoHS Exemption Cert #RE-2012-047", modifier: "Jeni Hirth", lastModified: "06/12/2012 09:15 AM" },
+      mark: "RoHS", evidence: "RoHS Exemption Cert #RE-2012-047", modifier: "Kathleen Whitten", lastModified: "06/12/2012 09:15 AM" },
     { name: "CONFLICT MINERALS (3TG)", status: "Compliant",
       rationale: "Supplier conflict minerals declarations received and validated for all sub-components.",
-      mark: "CMRT", evidence: "CMRT v6.1 – June 2022", modifier: "Jeni Hirth", lastModified: "06/05/2022 02:44 PM" },
+      mark: "CMRT", evidence: "CMRT v6.1 – June 2022", modifier: "Kathleen Whitten", lastModified: "06/05/2022 02:44 PM" },
   ],
   "1007886-02": [
     { name: "ROHS COMPLIANT", status: "Compliant",
@@ -63,10 +63,10 @@ const COMPLIANCE_REQS: Record<string, CompReq[]> = {
   "1029732-01": [
     { name: "ROHS COMPLIANT", status: "Exempt",
       rationale: "Battery cells exempt under RoHS Annex II — portable batteries for replacement are excluded.",
-      mark: "RoHS", evidence: "Annex II exemption self-declaration", modifier: "Jeni Hirth", lastModified: "06/12/2012 09:00 AM" },
+      mark: "RoHS", evidence: "Annex II exemption self-declaration", modifier: "Kathleen Whitten", lastModified: "06/12/2012 09:00 AM" },
     { name: "BATTERY TRANSPORT (UN 38.3)", status: "Compliant",
       rationale: "Battery pack passed all eight UN 38.3 tests. Summary on file.",
-      mark: "UN 38.3", evidence: "Test cert UN38-2012-FC5000", modifier: "Jeni Hirth", lastModified: "06/12/2012 09:30 AM" },
+      mark: "UN 38.3", evidence: "Test cert UN38-2012-FC5000", modifier: "Kathleen Whitten", lastModified: "06/12/2012 09:30 AM" },
   ],
   "1007887-01": [
     { name: "ROHS COMPLIANT", status: "Compliant",
@@ -74,10 +74,10 @@ const COMPLIANCE_REQS: Record<string, CompReq[]> = {
       mark: "RoHS", evidence: "None required", modifier: "Carol Nosworthy", lastModified: "07/20/2017 03:07 PM" },
     { name: "FCC PART 15 CLASS B", status: "Compliant",
       rationale: "Receiver assembly tested and certified to FCC Part 15 Class B unintentional radiator limits.",
-      mark: "FCC", evidence: "FCC ID: PVH-1007887AG04", modifier: "Mamatha Gopal", lastModified: "04/22/2016 11:00 AM" },
+      mark: "FCC", evidence: "FCC ID: PVH-1007887AG04", modifier: "Nadia Haddad", lastModified: "04/22/2016 11:00 AM" },
     { name: "CE MARKING (EMC)", status: "Compliant",
       rationale: "Meets essential health, safety and environmental requirements under EMC Directive 2014/30/EU.",
-      mark: "CE", evidence: "DoC ref: CE-AG04-AM-2016", modifier: "Mamatha Gopal", lastModified: "04/22/2016 11:30 AM" },
+      mark: "CE", evidence: "DoC ref: CE-AG04-AM-2016", modifier: "Nadia Haddad", lastModified: "04/22/2016 11:30 AM" },
     { name: "CONFLICT MINERALS (3TG)", status: "Compliant",
       rationale: "All AG04 module suppliers provided valid CMRT v6.1 declarations — no conflict minerals sourced from covered countries.",
       mark: "CMRT", evidence: "CMRT v6.1 – Dec 2023", modifier: "Carol Nosworthy", lastModified: "12/15/2023 09:45 AM" },

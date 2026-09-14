@@ -392,7 +392,7 @@ function ItemDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: 
                         <tr>
                           <td><a className="pn" onClick={() => go({ page: "eco", id: "ECO-011420" })}>ECO-011420</a></td>
                           <td>Add 1006394-01 Washer Flat M5 · Add 2505-0103 Screw M5 · Remove 9060-1319 VHB Tape</td>
-                          <td>09/09/2026</td><td>B → C</td><td>Wendy Veth</td>
+                          <td>09/09/2026</td><td>B → C</td><td>Matthew Harman</td>
                         </tr>
                         <tr>
                           <td><a className="pn" onClick={() => go({ page: "eco", id: "ECO-010420" })}>ECO-010420</a></td>
@@ -587,7 +587,7 @@ function ItemDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: 
               <table className="tbl">
                 <thead><tr><th style={{ width: 170 }}>When</th><th style={{ width: 180 }}>Who</th><th>Activity</th></tr></thead>
                 <tbody>
-                  {[["09/09/2026 09:12 AM", "Wendy Veth", "Working revision C created via ECO-011420"],
+                  {[["09/09/2026 09:12 AM", "Matthew Harman", "Working revision C created via ECO-011420"],
                     ["04/11/2024 02:40 PM", "Steve Howe", "Revision B released via ECO-009117"],
                     ["04/11/2024 02:31 PM", "Steve Howe", "BOM line added: 1005393-01, qty 4"],
                     ["11/02/2019 10:05 AM", "Kathleen Whitten", "Material status set to 20 – ACTIVE, pushed to SAP"],

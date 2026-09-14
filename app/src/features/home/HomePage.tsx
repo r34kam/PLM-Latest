@@ -336,7 +336,7 @@ function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = ''
                       },
                       {
                         id: "ECO-011420",
-                        reason: "Needs Stage 2 document control sign-off — Stage 1 of 2: 3 of 9 approvals still open (Steve Howe, Grace Mutiso, Carol Nosworthy).",
+                        reason: "Needs Stage 2 document control sign-off — Stage 1 of 2: 3 of 9 approvals still open (Steve Howe, Jon Olson, Carol Nosworthy).",
                         action: "Review",
                         go: { page: "eco", id: "ECO-011420" },
                       },
@@ -348,7 +348,7 @@ function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = ''
                       },
                       {
                         id: "AgKits_Status50.xlsx",
-                        reason: "Import file waiting — 112 rows staged by Mamatha Gopal, 2 errors and 3 warnings to clear before bulk add.",
+                        reason: "Import file waiting — 112 rows staged by Nadia Haddad, 2 errors and 3 warnings to clear before bulk add.",
                         action: "Open import",
                         go: { page: "eco-new", step: 1 },
                       },
@@ -638,7 +638,7 @@ function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = ''
 
                 {expandedInsights["approvalBottleneck"] && (
                   <div style={{ fontSize: 11, color: T.g700, lineHeight: 1.45, background: "rgba(0,95,168,0.04)", borderRadius: 6, padding: "5px 8px" }}>
-                    Steve Howe (Hardware), Grace Mutiso (Compliance), and Carol Nosworthy (Supply Chain) have not yet reviewed. All 14 BOM line redlines passed automated validation with 0 clashes.
+                    Steve Howe (Hardware), Jon Olson (Compliance), and Carol Nosworthy (Supply Chain) have not yet reviewed. All 14 BOM line redlines passed automated validation with 0 clashes.
                   </div>
                 )}
 

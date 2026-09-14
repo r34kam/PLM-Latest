@@ -611,7 +611,7 @@ function EcoNew({
                     </div>
                     <div className="kv-val">
                       <Select value={form.dc} onChange={(e: any) => setForm({ ...form, dc: e.target.value })}
-                        options={[ME.name, "Adam Royce", "Mamatha Gopal"]} />
+                        options={[ME.name, "Adam Royce", "Nadia Haddad"]} />
                     </div>
                   </div>
 

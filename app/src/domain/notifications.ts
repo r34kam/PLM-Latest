@@ -56,7 +56,7 @@ const NOTIFS = [
     icon: Clock,
     signals: ["Stage 1 of 2", "6 of 9 decisions", "Past average cycle"],
     alerts: "3 approvers idle 24h+",
-    insight: "Steve Howe, Grace Mutiso and Carol Nosworthy have not opened this change since it was submitted. Reminding PLM, Production and Quality Assurance would clear the three roles that are blocking.",
+    insight: "Steve Howe, Jon Olson and Carol Nosworthy have not opened this change since it was submitted. Reminding PLM, Materials and Quality Assurance would clear the three roles that are blocking.",
     go: { page: "eco", id: "ECO-011420", tab: "Approvals" },
   },
 ];
