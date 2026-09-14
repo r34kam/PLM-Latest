@@ -1,4 +1,4 @@
-import { FileUploadModal } from '@/components/data-io/FileUpload'
+import { FileUpload } from '@/components/data-io/FileUpload'
 import { Card } from '@/components/primitives/Card'
 import { Chip, phaseChip } from '@/components/primitives/Chip'
 import { Empty } from '@/components/primitives/Empty'
@@ -165,7 +165,7 @@ function ItemDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: 
 
   const [tab, setTab] = useState(initialTab || "Spec");
   const [bomSub, setBomSub] = useState("BOM");
-  const [fileModal, setFileModal] = useState(false);
+
   const [compSub, setCompSub] = useState("Requirements");
   const TABS = ["Spec", "BOM", "Files", "Sourcing", "Compliance", "Where used", "Notifications", "History"];
   return (
@@ -410,15 +410,12 @@ function ItemDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: 
           )}
 
           {tab === "Files" && (
-            <div className="stack">
-              <div className="bet">
-                <div><h3>Files on this item</h3>
-                  <div className="sub" style={{ marginTop: 3 }}>Drawings, specifications and certificates. The primary file is what
-                    suppliers see first.</div></div>
-                <button className="btn pri" onClick={() => setFileModal(true)}><Upload size={13} />Attach files</button>
+            <div className="stack" data-test-id="files-tab">
+              <div>
+                <h3>Files on this item</h3>
+                <div className="sub" style={{ marginTop: 3 }}>Drawings, specifications and certificates. The primary file is what suppliers see first.</div>
               </div>
-              <Empty icon={FileText} title="No files on this item"
-                body="Sales BOMs do not carry drawings. Files appear here for made-to-print and made-to-specification items." />
+              <FileUpload onClose={() => {}} context="this item" hideCancel />
             </div>
           )}
 
@@ -603,12 +600,6 @@ function ItemDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: 
           )}
         </div>
       </Card>
-
-      <FileUploadModal
-        open={fileModal}
-        onClose={() => setFileModal(false)}
-        context="this item"
-      />
 
       {/* ---- Add BOM Item modal — item picker + CSV upload ---- */}
       {bomItemModal && (() => {

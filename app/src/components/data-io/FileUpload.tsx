@@ -21,10 +21,12 @@ function FileUpload({
   onClose,
   onAttach,
   context,
+  hideCancel,
 }: {
   onClose: () => void
   onAttach?: (files: StagedFile[]) => void
   context?: string
+  hideCancel?: boolean
 }) {
   const [staged, setStaged] = useState<StagedFile[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
@@ -152,9 +154,11 @@ function FileUpload({
       </div>
 
       <div className="bet">
-        <button type="button" className="btn" onClick={onClose} data-test-id="file-upload-cancel-btn">
-          Cancel
-        </button>
+        {!hideCancel && (
+          <button type="button" className="btn" onClick={onClose} data-test-id="file-upload-cancel-btn">
+            Cancel
+          </button>
+        )}
         <button
           type="button"
           className="btn pri"
