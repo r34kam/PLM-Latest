@@ -10,7 +10,8 @@ import { Stepper } from '@/components/primitives/Stepper'
 import { useRoutings } from '@/data/admin'
 import { useAllItems } from '@/data/items'
 import { useCreateChangeOrder } from '@/data/changeOrders'
-import { ITEMS } from '@/domain/catalog'
+import { ITEMS, ASSEMBLIES } from '@/domain/catalog'
+import { bomFor } from '@/domain/boms'
 import { AI_SUGGEST } from '@/domain/ecos'
 import { ROUTINGS, ROUTING_NAMES } from '@/domain/routings'
 import { ME } from '@/domain/session'
@@ -20,6 +21,29 @@ import { AlertCircle, Boxes, Check, CheckCircle2, ChevronDown, ChevronLeft, Chev
 import React, { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
+
+/* ---- BOM edit types ---- */
+type BomEditType = 'ADD' | 'DELETE' | 'UPDATE_DESC' | 'UPDATE_QTY';
+type BomEdit = {
+  id: string;
+  type: BomEditType;
+  pn: string;
+  name: string;
+  qty: string;
+  newValue: string; // new description or new qty string
+};
+type KitItem = {
+  pn: string;
+  name: string;
+  rev: string;
+  cat: string;
+  phase: string;
+  currentRev: string;
+  newRev: string;
+  bomEdits: BomEdit[];
+  bomFile: StagedFile | null;
+  editMode: 'inline' | 'file';
+};
 
 /* ======================== ECO CREATION FLOW ========================= */
 
@@ -50,6 +74,18 @@ function EcoNew({
   const [pickOpen, setPickOpen] = useState(false);
   const [picks, setPicks] = useState<any[]>([]);
   const [pickQ, setPickQ] = useState("");
+
+  // Kit-first BOM redline state
+  const [kits, setKits] = useState<KitItem[]>([]);
+  const [kitPickOpen, setKitPickOpen] = useState(false);
+  const [kitPickQ, setKitPickQ] = useState("");
+  const [expandedKits, setExpandedKits] = useState<Record<string, boolean>>({});
+  const [editingBomEdit, setEditingBomEdit] = useState<{ kitPn: string; editId: string | null } | null>(null);
+  const [bomEditDraft, setBomEditDraft] = useState<Partial<BomEdit>>({});
+  const [kitChildPickOpen, setKitChildPickOpen] = useState<string | null>(null); // kitPn of open picker
+  const [kitChildQ, setKitChildQ] = useState("");
+  const kitFileInputRef = useRef<HTMLInputElement>(null);
+  const [activeKitFilePn, setActiveKitFilePn] = useState<string | null>(null);
   const { routings: ecoNewRoutings } = useRoutings();
   // Use backend routing names when available, fall back to domain ROUTING_NAMES
   const routingOptions = ecoNewRoutings.length ? ecoNewRoutings.map((r: any) => r.name) : ROUTING_NAMES;
@@ -97,8 +133,21 @@ function EcoNew({
 
   const createChangeOrder = useCreateChangeOrder();
 
-  const ecoItems = [...imported.map((r: any) => ({ pn: r.pn, name: r.name, sev: r.sev, rule: r.rule, src: "Import" })),
+  // Legacy items (import / manual individual adds) kept for backward-compat
+  const legacyItems = [...imported.map((r: any) => ({ pn: r.pn, name: r.name, sev: r.sev, rule: r.rule, src: "Import" })),
     ...manual.map((m: any) => ({ pn: m.pn, name: m.name, sev: "ok", rule: "Added manually", src: "Manual" }))];
+  // Kit-based items — one row per kit
+  const kitItems = kits.map((k) => ({
+    pn: k.pn, name: k.name, sev: "ok",
+    rule: k.editMode === "file" && k.bomFile ? `File: ${k.bomFile.n}` : `${k.bomEdits.length} BOM edit${k.bomEdits.length !== 1 ? "s" : ""}`,
+    src: "Kit",
+    bomEdits: k.bomEdits,
+    bomFile: k.bomFile,
+    editMode: k.editMode,
+    currentRev: k.currentRev,
+    newRev: k.newRev,
+  }));
+  const ecoItems = [...kitItems, ...legacyItems];
 
   const isGeneralFilled = Boolean(form.cat && form.div && form.site && form.title);
   const isDescFilled = Boolean(form.desc && form.eff);
@@ -110,6 +159,61 @@ function EcoNew({
     const sourceItems = allBackendItems ?? ITEMS;
     setManual([...manual, ...sourceItems.filter((it: any) => picks.includes(it.pn))]);
     setPicks([]); setPickQ(""); setPickOpen(false);
+  };
+
+  /* ---- Kit helpers ---- */
+  const addKit = (it: any) => {
+    if (kits.some((k) => k.pn === it.pn)) return;
+    const nextRevCode = it.rev.length === 1 && it.rev >= "A" && it.rev < "Z"
+      ? String.fromCharCode(it.rev.charCodeAt(0) + 1)
+      : `${it.rev}+1`;
+    setKits((prev) => [...prev, {
+      pn: it.pn, name: it.name, rev: it.rev, cat: it.cat || "KIT", phase: it.phase || "In Production",
+      currentRev: it.rev, newRev: nextRevCode,
+      bomEdits: [], bomFile: null, editMode: "inline",
+    }]);
+    setExpandedKits((prev) => ({ ...prev, [it.pn]: true }));
+    setKitPickOpen(false); setKitPickQ("");
+  };
+  const removeKit = (pn: string) => setKits((prev) => prev.filter((k) => k.pn !== pn));
+  const updateKit = (pn: string, patch: Partial<KitItem>) =>
+    setKits((prev) => prev.map((k) => k.pn === pn ? { ...k, ...patch } : k));
+  const addBomEdit = (kitPn: string, edit: BomEdit) =>
+    setKits((prev) => prev.map((k) => k.pn === kitPn ? { ...k, bomEdits: [...k.bomEdits, edit] } : k));
+  const removeBomEdit = (kitPn: string, editId: string) =>
+    setKits((prev) => prev.map((k) => k.pn === kitPn ? { ...k, bomEdits: k.bomEdits.filter((e) => e.id !== editId) } : k));
+  const openBomEditDraft = (kitPn: string, type: BomEditType = "ADD") => {
+    setBomEditDraft({ type, pn: "", name: "", qty: "", newValue: "" });
+    setEditingBomEdit({ kitPn, editId: null });
+  };
+  const commitBomEdit = () => {
+    if (!editingBomEdit) return;
+    const { kitPn } = editingBomEdit;
+    if (!bomEditDraft.pn) return;
+    const edit: BomEdit = {
+      id: `${kitPn}-${Date.now()}`,
+      type: bomEditDraft.type as BomEditType || "ADD",
+      pn: bomEditDraft.pn || "",
+      name: bomEditDraft.name || "",
+      qty: bomEditDraft.qty || "",
+      newValue: bomEditDraft.newValue || "",
+    };
+    addBomEdit(kitPn, edit);
+    setEditingBomEdit(null);
+    setBomEditDraft({});
+  };
+  const addBomEditFromChild = (kitPn: string, child: any, editType: BomEditType) => {
+    const edit: BomEdit = {
+      id: `${kitPn}-${Date.now()}`,
+      type: editType,
+      pn: child.pn, name: child.name,
+      qty: child.qty || "1 EA",
+      newValue: "",
+    };
+    addBomEdit(kitPn, edit);
+  };
+  const BOM_EDIT_LABELS: Record<BomEditType, string> = {
+    ADD: "Add", DELETE: "Delete", UPDATE_DESC: "Update description", UPDATE_QTY: "Update qty",
   };
   const next = () => setI(Math.min(i + 1, 2));
   const back = () => (i === 0 ? go({ page: "ecos" }) : setI(i - 1));
@@ -525,82 +629,407 @@ function EcoNew({
             )}
 
             {subSection === "items" && (
-              <div className="stack">
-                <Card title="Add items" sub="Upload a spreadsheet, or search and add individually"
-                  right={<button className="btn" onClick={() => setPickOpen(true)}><Plus size={13} />Add item manually</button>}>
-                  <ImportPanel template={ECO_TEMPLATE} templateName="topcon-eco-items-template.csv"
-                    entity="items" onAdd={(rows: any) => setImported(rows)} />
+              <div className="stack" data-test-id="eco-items-section">
+                {/* Step 1: Select kits/assemblies to add to this change */}
+                <Card
+                  title="Add kits & assemblies"
+                  sub="Select the kit or assembly whose BOM is changing. Then specify each edit inline or upload a redline file."
+                  right={
+                    <button className="btn" onClick={() => setKitPickOpen(true)} data-test-id="eco-add-kit-btn">
+                      <Plus size={13} />Add kit
+                    </button>
+                  }
+                >
+                  {kits.length === 0 ? (
+                    <Empty icon={Boxes} title="No kits added" body="Search for and add the kit or assembly whose BOM you are changing." />
+                  ) : (
+                    <div className="stack" style={{ gap: 12 }} data-test-id="eco-kit-list">
+                      {kits.map((kit) => {
+                        const isExpanded = expandedKits[kit.pn] !== false;
+                        const existingBomChildren = bomFor(kit.pn);
+                        const totalEdits = kit.bomEdits.length;
+                        const adds = kit.bomEdits.filter((e) => e.type === "ADD").length;
+                        const dels = kit.bomEdits.filter((e) => e.type === "DELETE").length;
+                        const upds = kit.bomEdits.filter((e) => e.type === "UPDATE_DESC" || e.type === "UPDATE_QTY").length;
+                        return (
+                          <div key={kit.pn} className="card" style={{ padding: 0, overflow: "hidden" }} data-test-id={`eco-kit-card-${kit.pn}`}>
+                            {/* Kit header */}
+                            <div
+                              className="bet"
+                              style={{ padding: "12px 16px", cursor: "pointer", borderBottom: isExpanded ? `1px solid ${T.g200}` : "none" }}
+                              onClick={() => setExpandedKits((p) => ({ ...p, [kit.pn]: !isExpanded }))}
+                              data-test-id={`eco-kit-header-${kit.pn}`}
+                            >
+                              <div className="row" style={{ gap: 12 }}>
+                                {isExpanded ? <ChevronDown size={14} color={T.g500} /> : <ChevronRight size={14} color={T.g500} />}
+                                <div>
+                                  <div className="row" style={{ gap: 8 }}>
+                                    <span className="pn" style={{ fontFamily: 'ui-monospace,"SF Mono",Menlo,Consolas,monospace', fontSize: 13 }}>{kit.pn}</span>
+                                    <Chip k="blue">{kit.cat}</Chip>
+                                    {phaseChip(kit.phase)}
+                                  </div>
+                                  <div style={{ fontWeight: 600, fontSize: 13, marginTop: 2 }}>{kit.name}</div>
+                                </div>
+                              </div>
+                              <div className="row" style={{ gap: 8 }}>
+                                {totalEdits > 0 && (
+                                  <div className="row" style={{ gap: 4, fontSize: 12, color: T.g600 }}>
+                                    {adds > 0 && <span style={{ color: "#0B7A4B", fontWeight: 600 }}>+{adds}</span>}
+                                    {dels > 0 && <span style={{ color: "#B91C1C", fontWeight: 600 }}>−{dels}</span>}
+                                    {upds > 0 && <span style={{ color: "#92400E", fontWeight: 600 }}>{upds} upd</span>}
+                                  </div>
+                                )}
+                                <span className="sub" style={{ fontSize: 12 }}>Rev {kit.currentRev} → Rev {kit.newRev}</span>
+                                <button
+                                  className="btn gh sm"
+                                  onClick={(e) => { e.stopPropagation(); removeKit(kit.pn); }}
+                                  data-test-id={`eco-kit-remove-${kit.pn}`}
+                                >
+                                  <X size={12} />
+                                </button>
+                              </div>
+                            </div>
+
+                            {isExpanded && (
+                              <div style={{ padding: "14px 16px" }}>
+                                {/* Rev range & edit mode */}
+                                <div className="row" style={{ gap: 16, marginBottom: 14, flexWrap: "wrap" }}>
+                                  <div className="row" style={{ gap: 8, alignItems: "center" }}>
+                                    <span className="sub" style={{ fontSize: 12 }}>Current rev</span>
+                                    <Input
+                                      style={{ height: 28, width: 60, textAlign: "center" }}
+                                      value={kit.currentRev}
+                                      onChange={(e: any) => updateKit(kit.pn, { currentRev: e.target.value })}
+                                      data-test-id={`eco-kit-current-rev-${kit.pn}`}
+                                    />
+                                    <span className="sub">→</span>
+                                    <span className="sub" style={{ fontSize: 12 }}>New rev</span>
+                                    <Input
+                                      style={{ height: 28, width: 60, textAlign: "center" }}
+                                      value={kit.newRev}
+                                      onChange={(e: any) => updateKit(kit.pn, { newRev: e.target.value })}
+                                      data-test-id={`eco-kit-new-rev-${kit.pn}`}
+                                    />
+                                  </div>
+                                  <div className="seg" style={{ height: 28 }}>
+                                    <button
+                                      className={kit.editMode === "inline" ? "on" : ""}
+                                      onClick={() => updateKit(kit.pn, { editMode: "inline" })}
+                                      data-test-id={`eco-kit-mode-inline-${kit.pn}`}
+                                    >
+                                      <FileText size={12} />Enter inline
+                                    </button>
+                                    <button
+                                      className={kit.editMode === "file" ? "on" : ""}
+                                      onClick={() => updateKit(kit.pn, { editMode: "file" })}
+                                      data-test-id={`eco-kit-mode-file-${kit.pn}`}
+                                    >
+                                      <Upload size={12} />Upload file
+                                    </button>
+                                  </div>
+                                </div>
+
+                                {kit.editMode === "file" ? (
+                                  /* File upload mode */
+                                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                                    <div
+                                      style={{
+                                        border: `2px dashed ${T.g200}`, borderRadius: 8, padding: "20px 16px",
+                                        textAlign: "center", cursor: "pointer", background: T.g50,
+                                      }}
+                                      onClick={() => { setActiveKitFilePn(kit.pn); kitFileInputRef.current?.click(); }}
+                                      data-test-id={`eco-kit-file-drop-${kit.pn}`}
+                                    >
+                                      <Upload size={18} color={T.g400} style={{ margin: "0 auto 6px" }} />
+                                      <div style={{ fontSize: 13, color: T.g700, fontWeight: 600 }}>Drop redline file here or click to browse</div>
+                                      <div className="sub" style={{ marginTop: 4 }}>PDF, Excel, CSV — your BOM redline for {kit.pn}</div>
+                                    </div>
+                                    {kit.bomFile && (
+                                      <div className="row" style={{ gap: 10, padding: "8px 12px", background: "#F0FDF4", borderRadius: 6, border: "1px solid #BBF7D0" }}>
+                                        <CheckCircle2 size={14} color="#0B7A4B" />
+                                        <span style={{ fontSize: 13, fontWeight: 600 }}>{kit.bomFile.n}</span>
+                                        <span className="sub">{kit.bomFile.size}</span>
+                                        <button className="btn gh sm" style={{ marginLeft: "auto" }} onClick={() => updateKit(kit.pn, { bomFile: null })}><X size={11} /></button>
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  /* Inline BOM edit mode */
+                                  <div className="stack" style={{ gap: 8 }}>
+                                    {/* Existing BOM children as quick-add reference */}
+                                    {existingBomChildren.length > 0 && kit.bomEdits.length === 0 && (
+                                      <div style={{ padding: "10px 12px", background: T.g50, borderRadius: 6, border: `1px solid ${T.g200}` }}>
+                                        <div className="sub" style={{ marginBottom: 8, fontWeight: 600 }}>Current BOM children — click to add an edit</div>
+                                        <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
+                                          {existingBomChildren.slice(0, 8).map((child: any) => (
+                                            <button
+                                              key={child.pn}
+                                              className="btn sm gh"
+                                              onClick={() => addBomEditFromChild(kit.pn, child, "DELETE")}
+                                              data-test-id={`eco-kit-child-quick-${kit.pn}-${child.pn}`}
+                                            >
+                                              <Trash2 size={11} />−{child.pn}
+                                            </button>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* Existing edits */}
+                                    {kit.bomEdits.length > 0 && (
+                                      <table className="tbl" data-test-id={`eco-kit-edits-table-${kit.pn}`}>
+                                        <thead>
+                                          <tr>
+                                            <th style={{ width: 120 }}>Change type</th>
+                                            <th>Item number</th>
+                                            <th>Item name</th>
+                                            <th>Qty / Value</th>
+                                            <th></th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {kit.bomEdits.map((edit) => (
+                                            <tr key={edit.id} data-test-id={`eco-kit-edit-row-${edit.id}`}>
+                                              <td>
+                                                {edit.type === "ADD" && <Chip k="ok">Add</Chip>}
+                                                {edit.type === "DELETE" && <Chip k="bad">Delete</Chip>}
+                                                {(edit.type === "UPDATE_DESC" || edit.type === "UPDATE_QTY") && <Chip k="warn">Update</Chip>}
+                                              </td>
+                                              <td className="pn" style={{ fontFamily: 'ui-monospace,"SF Mono",Menlo,Consolas,monospace', fontSize: 12 }}>{edit.pn}</td>
+                                              <td style={{ maxWidth: 240, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{edit.name}</td>
+                                              <td className="sub">
+                                                {edit.type === "ADD" || edit.type === "DELETE" ? edit.qty
+                                                  : edit.type === "UPDATE_QTY" ? `→ ${edit.newValue}`
+                                                  : edit.newValue ? `→ "${edit.newValue.slice(0, 30)}${edit.newValue.length > 30 ? "…" : ""}"` : "—"}
+                                              </td>
+                                              <td style={{ textAlign: "right" }}>
+                                                <button className="btn gh sm" onClick={() => removeBomEdit(kit.pn, edit.id)} data-test-id={`eco-kit-edit-remove-${edit.id}`}>
+                                                  <Trash2 size={12} />
+                                                </button>
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    )}
+
+                                    {/* Add edit inline form */}
+                                    {editingBomEdit?.kitPn === kit.pn ? (
+                                      <div style={{ padding: "12px 14px", background: T.g50, borderRadius: 8, border: `1px solid ${T.g200}` }} data-test-id={`eco-kit-edit-form-${kit.pn}`}>
+                                        <div className="row" style={{ gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
+                                          <div style={{ width: 150 }}>
+                                            <Field label="Change type">
+                                              <Select
+                                                value={bomEditDraft.type || "ADD"}
+                                                onChange={(e: any) => setBomEditDraft((p) => ({ ...p, type: e.target.value as BomEditType }))}
+                                                options={["ADD", "DELETE", "UPDATE_DESC", "UPDATE_QTY"]}
+                                                data-test-id="eco-edit-type-select"
+                                              />
+                                            </Field>
+                                          </div>
+                                          <div style={{ width: 160 }}>
+                                            <Field label="Part number">
+                                              <Input
+                                                value={bomEditDraft.pn || ""}
+                                                onChange={(e: any) => setBomEditDraft((p) => ({ ...p, pn: e.target.value }))}
+                                                placeholder="e.g. 1006394-01"
+                                                data-test-id="eco-edit-pn-input"
+                                              />
+                                            </Field>
+                                          </div>
+                                          <div style={{ flex: 1, minWidth: 180 }}>
+                                            <Field label="Item name">
+                                              <Input
+                                                value={bomEditDraft.name || ""}
+                                                onChange={(e: any) => setBomEditDraft((p) => ({ ...p, name: e.target.value }))}
+                                                placeholder="e.g. WASHER FLAT M5"
+                                                data-test-id="eco-edit-name-input"
+                                              />
+                                            </Field>
+                                          </div>
+                                          {(bomEditDraft.type === "ADD" || bomEditDraft.type === "DELETE") && (
+                                            <div style={{ width: 90 }}>
+                                              <Field label="Qty">
+                                                <Input
+                                                  value={bomEditDraft.qty || ""}
+                                                  onChange={(e: any) => setBomEditDraft((p) => ({ ...p, qty: e.target.value }))}
+                                                  placeholder="e.g. 4 EA"
+                                                  data-test-id="eco-edit-qty-input"
+                                                />
+                                              </Field>
+                                            </div>
+                                          )}
+                                          {(bomEditDraft.type === "UPDATE_DESC" || bomEditDraft.type === "UPDATE_QTY") && (
+                                            <div style={{ width: 200 }}>
+                                              <Field label={bomEditDraft.type === "UPDATE_DESC" ? "New description" : "New qty"}>
+                                                <Input
+                                                  value={bomEditDraft.newValue || ""}
+                                                  onChange={(e: any) => setBomEditDraft((p) => ({ ...p, newValue: e.target.value }))}
+                                                  placeholder={bomEditDraft.type === "UPDATE_DESC" ? "New description text…" : "e.g. 6 EA"}
+                                                  data-test-id="eco-edit-newvalue-input"
+                                                />
+                                              </Field>
+                                            </div>
+                                          )}
+                                        </div>
+                                        <div className="row" style={{ gap: 8, marginTop: 10 }}>
+                                          <button
+                                            className="btn pri sm"
+                                            disabled={!bomEditDraft.pn}
+                                            onClick={commitBomEdit}
+                                            data-test-id="eco-edit-commit-btn"
+                                          >
+                                            <Check size={12} />Add edit
+                                          </button>
+                                          <button className="btn sm" onClick={() => { setEditingBomEdit(null); setBomEditDraft({}); }} data-test-id="eco-edit-cancel-btn">
+                                            Cancel
+                                          </button>
+                                          <span className="sub" style={{ fontSize: 12, marginLeft: 4 }}>
+                                            Or search existing children:
+                                          </span>
+                                          <button className="btn sm gh" onClick={() => setKitChildPickOpen(kit.pn)} data-test-id={`eco-kit-child-pick-${kit.pn}`}>
+                                            <Search size={12} />Pick from BOM
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="row" style={{ gap: 8 }}>
+                                        {(["ADD", "DELETE", "UPDATE_DESC", "UPDATE_QTY"] as BomEditType[]).map((t) => (
+                                          <button
+                                            key={t}
+                                            className="btn sm gh"
+                                            onClick={() => openBomEditDraft(kit.pn, t)}
+                                            data-test-id={`eco-kit-add-edit-${kit.pn}-${t}`}
+                                          >
+                                            <Plus size={11} />{BOM_EDIT_LABELS[t]}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </Card>
 
-                {manual.length > 0 && (
-                  <Card title="Added individually" sub={`${manual.length} item${manual.length > 1 ? "s" : ""} searched and added by hand`} pad={false}
-                    right={<button className="btn sm" onClick={() => setPickOpen(true)}><Plus size={12} />Add more</button>}>
-                    <table className="tbl">
-                      <thead><tr><th>Item number</th><th>Item name</th><th>Rev</th><th>Phase</th><th>New phase</th>
-                        <th>New revision</th><th>Disposition</th><th></th></tr></thead>
-                      <tbody>
-                        {manual.map((m: any) => (
-                          <tr key={m.pn}>
-                            <td className="pn">{m.pn}</td><td>{m.name}</td><td>{m.rev}</td><td>{phaseChip(m.phase)}</td>
-                            <td><Select style={{ height: 26, width: 140 }} options={["In Production", "Discontinued", "Obsolete"]} /></td>
-                            <td><Input style={{ height: 26, width: 62 }} defaultValue={String.fromCharCode(m.rev.charCodeAt(0) + 1)} /></td>
-                            <td><Select style={{ height: 26, width: 110 }} options={["N/A", "Use up", "Scrap", "Rework"]} /></td>
-                            <td style={{ textAlign: "right" }}>
-                              <button className="btn gh sm" onClick={() => setManual(manual.filter((x: any) => x.pn !== m.pn))}><Trash2 size={12} /></button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </Card>
-                )}
-
-                {ecoItems.length > 0 && (
-                  <div className="note"><b>{ecoItems.length} items on this change</b>
-                    {imported.length > 0 && ` · ${imported.length} imported`}
-                    {manual.length > 0 && ` · ${manual.length} added individually`}.</div>
-                )}
-
-                {pickOpen && (
-                  <Modal title="Add items to ECO-011421" wide onClose={() => { setPickOpen(false); setPicks([]); }}
-                    foot={<>
-                      <span className="sub">{picks.length} selected</span>
-                      <button className="btn" style={{ marginLeft: "auto" }} onClick={() => { setPickOpen(false); setPicks([]); }}>Cancel</button>
-                      <button className="btn pri" disabled={!picks.length} onClick={addManual}>
-                        <Plus size={13} />Add {picks.length || ""} item{picks.length === 1 ? "" : "s"}</button>
-                    </>}>
+                {/* Kit picker modal */}
+                {kitPickOpen && (
+                  <Modal title="Select kit or assembly" wide onClose={() => { setKitPickOpen(false); setKitPickQ(""); }} data-test-id="eco-kit-pick-modal">
                     <div style={{ position: "relative", marginBottom: 12 }}>
                       <Search size={13} color={T.g500} style={{ position: "absolute", left: 9, top: 10 }} />
-                      <input className="inp" style={{ paddingLeft: 28 }} autoFocus value={pickQ}
-                        onChange={(e: any) => setPickQ(e.target.value)}
-                        placeholder="Search by part number, name or category" />
+                      <input
+                        className="inp" style={{ paddingLeft: 28 }} autoFocus value={kitPickQ}
+                        onChange={(e: any) => setKitPickQ(e.target.value)}
+                        placeholder="Search kits and assemblies by number or name"
+                        data-test-id="eco-kit-pick-search"
+                      />
                     </div>
-                    <div style={{ maxHeight: 320, overflow: "auto", border: `1px solid ${T.g200}`, borderRadius: 6 }}>
+                    <div style={{ maxHeight: 360, overflow: "auto", border: `1px solid ${T.g200}`, borderRadius: 6 }}>
                       <table className="tbl">
-                        <thead><tr><th style={{ width: 26 }}></th><th>Item number</th><th>Rev</th><th>Item name</th>
-                          <th>Category</th><th>Phase</th></tr></thead>
+                        <thead><tr><th>Item number</th><th>Rev</th><th>Item name</th><th>Category</th><th>Phase</th><th></th></tr></thead>
                         <tbody>
-                          {(allBackendItems ?? ITEMS).filter((it: any) => !manual.some((m: any) => m.pn === it.pn) &&
-                            (it.pn + it.name + it.cat).toLowerCase().includes(pickQ.toLowerCase())).map((it: any) => {
-                            const on = picks.includes(it.pn);
-                            const clash = imported.some((r: any) => r.pn === it.pn);
-                            return (
-                              <tr key={it.pn} className={on ? "sel" : ""} onClick={() =>
-                                setPicks(on ? picks.filter((x: any) => x !== it.pn) : [...picks, it.pn])}>
-                                <td><input type="checkbox" checked={on} readOnly /></td>
-                                <td className="pn">{it.pn}</td><td>{it.rev}</td>
-                                <td>{it.name}{clash && <Chip k="warn">Already imported</Chip>}</td>
-                                <td className="sub">{it.cat}</td><td>{phaseChip(it.phase)}</td>
+                          {(allBackendItems ?? ASSEMBLIES as any[])
+                            .filter((it: any) => ["KIT", "ASSEMBLY", "PCB"].includes((it.cat || "").toUpperCase()) &&
+                              !kits.some((k) => k.pn === it.pn) &&
+                              (it.pn + it.name + it.cat).toLowerCase().includes(kitPickQ.toLowerCase()))
+                            .map((it: any) => (
+                              <tr key={it.pn} style={{ cursor: "pointer" }} onClick={() => addKit(it)} data-test-id={`eco-kit-pick-row-${it.pn}`}>
+                                <td className="pn" style={{ fontFamily: 'ui-monospace,"SF Mono",Menlo,Consolas,monospace', fontSize: 12 }}>{it.pn}</td>
+                                <td>{it.rev}</td>
+                                <td style={{ fontWeight: 500 }}>{it.name}</td>
+                                <td className="sub">{it.cat}</td>
+                                <td>{phaseChip(it.phase)}</td>
+                                <td><button className="btn sm pri" onClick={(e) => { e.stopPropagation(); addKit(it); }}><Plus size={12} />Add</button></td>
                               </tr>
-                            );
-                          })}
+                            ))}
                         </tbody>
                       </table>
                     </div>
-                    <div className="mini" style={{ marginTop: 10 }}>
-                      Searching 110,351 items. Items already locked on another open change are excluded from the results.
+                    <div className="mini" style={{ marginTop: 10 }}>Showing kits and assemblies. Select to add to this change.</div>
+                  </Modal>
+                )}
+
+                {/* Kit child BOM picker for inline edits */}
+                {kitChildPickOpen && (
+                  <Modal
+                    title={`Pick child from BOM — ${kitChildPickOpen}`}
+                    wide
+                    onClose={() => { setKitChildPickOpen(null); setKitChildQ(""); }}
+                    data-test-id="eco-kit-child-pick-modal"
+                  >
+                    <div style={{ position: "relative", marginBottom: 12 }}>
+                      <Search size={13} color={T.g500} style={{ position: "absolute", left: 9, top: 10 }} />
+                      <input
+                        className="inp" style={{ paddingLeft: 28 }} autoFocus value={kitChildQ}
+                        onChange={(e: any) => setKitChildQ(e.target.value)}
+                        placeholder="Filter by part number or name"
+                        data-test-id="eco-kit-child-pick-search"
+                      />
+                    </div>
+                    <div style={{ maxHeight: 320, overflow: "auto", border: `1px solid ${T.g200}`, borderRadius: 6 }}>
+                      <table className="tbl">
+                        <thead><tr><th>Item number</th><th>Rev</th><th>Item name</th><th>Category</th><th>Qty</th><th></th></tr></thead>
+                        <tbody>
+                          {bomFor(kitChildPickOpen)
+                            .filter((c: any) => (c.pn + c.name).toLowerCase().includes(kitChildQ.toLowerCase()))
+                            .map((child: any) => (
+                              <tr key={child.pn} data-test-id={`eco-kit-child-row-${child.pn}`}>
+                                <td className="pn" style={{ fontFamily: 'ui-monospace,"SF Mono",Menlo,Consolas,monospace', fontSize: 12 }}>{child.pn}</td>
+                                <td>{child.rev}</td>
+                                <td>{child.name}</td>
+                                <td className="sub">{child.cat}</td>
+                                <td>{child.qty}</td>
+                                <td>
+                                  <div className="row" style={{ gap: 4 }}>
+                                    <button className="btn sm" onClick={() => { addBomEditFromChild(kitChildPickOpen, child, "DELETE"); setKitChildPickOpen(null); setKitChildQ(""); }} data-test-id={`eco-kit-child-delete-${child.pn}`}><Trash2 size={11} />Delete</button>
+                                    <button className="btn sm" onClick={() => { addBomEditFromChild(kitChildPickOpen, child, "UPDATE_QTY"); setKitChildPickOpen(null); setKitChildQ(""); }} data-test-id={`eco-kit-child-updateqty-${child.pn}`}>Upd qty</button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          {bomFor(kitChildPickOpen).length === 0 && (
+                            <tr><td colSpan={6}><Empty icon={Boxes} title="No BOM children found" body="This kit has no children in the current data." /></td></tr>
+                          )}
+                        </tbody>
+                      </table>
                     </div>
                   </Modal>
+                )}
+
+                {/* Hidden file input for kit BOM files */}
+                <input
+                  ref={kitFileInputRef}
+                  type="file"
+                  multiple={false}
+                  accept=".pdf,.xlsx,.xls,.csv,.docx"
+                  style={{ display: "none" }}
+                  aria-hidden="true"
+                  data-test-id="eco-kit-file-input"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (!f || !activeKitFilePn) return;
+                    const staged: StagedFile = {
+                      n: f.name,
+                      size: f.size < 1024 * 1024 ? `${(f.size / 1024).toFixed(0)} KB` : `${(f.size / (1024 * 1024)).toFixed(1)} MB`,
+                      fileType: "Drawing",
+                      visibility: "Internal only",
+                    };
+                    updateKit(activeKitFilePn, { bomFile: staged });
+                    setActiveKitFilePn(null);
+                    e.target.value = "";
+                  }}
+                />
+
+                {ecoItems.length > 0 && (
+                  <div className="note" data-test-id="eco-items-count-note">
+                    <b>{ecoItems.length} kit{ecoItems.length !== 1 ? "s" : ""} on this change</b>
+                    {kits.length > 0 && ` · ${kits.reduce((a, k) => a + k.bomEdits.length, 0)} BOM edits across ${kits.length} kit${kits.length !== 1 ? "s" : ""}`}.
+                  </div>
                 )}
               </div>
             )}
@@ -1021,7 +1450,10 @@ function EcoNew({
               <div className="eco-summary-sec-head">
                 <div>
                   <span className="eco-summary-sec-title">Items on this change ({ecoItems.length})</span>
-                  <div className="eco-summary-sec-sub">{imported.length} imported, {manual.length} added individually</div>
+                  <div className="eco-summary-sec-sub">
+                    {kits.length > 0 && `${kits.length} kit${kits.length !== 1 ? "s" : ""} · ${kits.reduce((a, k) => a + k.bomEdits.length, 0)} BOM edits`}
+                    {legacyItems.length > 0 && ` · ${legacyItems.length} individual items`}
+                  </div>
                 </div>
                 <button className="btn sm" onClick={() => { setI(0); setSubSection("items"); }}><Pencil size={12} />Edit items</button>
               </div>
@@ -1037,34 +1469,39 @@ function EcoNew({
                         <th>#</th>
                         <th>Item number</th>
                         <th>Item name</th>
+                        <th>Rev change</th>
+                        <th>BOM edits</th>
                         <th>Source</th>
-                        <th>Compliance / Impact</th>
-                        <th>Validation</th>
                       </tr>
                     </thead>
                     <tbody>
                       {ecoItems.map((r: any, k: any) => {
-                        const isRoHSRisk = r.pn.startsWith("05");
-                        const isFileRisk = r.pn.startsWith("04");
-                        const isClash = r.sev === "warn";
+                        const isKit = r.src === "Kit";
+                        const adds = isKit ? (r.bomEdits || []).filter((e: any) => e.type === "ADD").length : 0;
+                        const dels = isKit ? (r.bomEdits || []).filter((e: any) => e.type === "DELETE").length : 0;
+                        const upds = isKit ? (r.bomEdits || []).filter((e: any) => e.type === "UPDATE_DESC" || e.type === "UPDATE_QTY").length : 0;
                         return (
-                          <tr key={r.pn + k}>
+                          <tr key={r.pn + k} data-test-id={`summary-item-row-${r.pn}`}>
                             <td>{k + 1}</td>
-                            <td><span className="pn">{r.pn}</span></td>
-                            <td>{r.name}</td>
-                            <td><Chip k={r.src === "Import" ? "blue" : "gray"}>{r.src}</Chip></td>
+                            <td><span className="pn" style={{ fontFamily: 'ui-monospace,"SF Mono",Menlo,Consolas,monospace', fontSize: 12 }}>{r.pn}</span></td>
+                            <td style={{ fontWeight: 500 }}>{r.name}</td>
                             <td>
-                              <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
-                                {isRoHSRisk ? (
-                                  <Chip k="warn">RoHS missing</Chip>
-                                ) : (
-                                  <Chip k="ok">RoHS compliant</Chip>
-                                )}
-                                {isFileRisk && <Chip k="warn">No primary file</Chip>}
-                                {isClash && <Chip k="bad">ECO-011302 clash</Chip>}
-                              </div>
+                              {isKit ? (
+                                <span className="sub" style={{ fontSize: 12 }}>Rev {r.currentRev} → {r.newRev}</span>
+                              ) : <span className="mut">—</span>}
                             </td>
-                            <td><Chip k={r.sev === "ok" ? "ok" : "warn"}>{r.rule}</Chip></td>
+                            <td>
+                              {isKit ? (
+                                <div className="row" style={{ gap: 4 }}>
+                                  {adds > 0 && <Chip k="ok">+{adds} add</Chip>}
+                                  {dels > 0 && <Chip k="bad">−{dels} del</Chip>}
+                                  {upds > 0 && <Chip k="warn">{upds} upd</Chip>}
+                                  {r.bomFile && <Chip k="blue">File attached</Chip>}
+                                  {adds === 0 && dels === 0 && upds === 0 && !r.bomFile && <span className="mut">No edits yet</span>}
+                                </div>
+                              ) : <span className="mut">—</span>}
+                            </td>
+                            <td><Chip k={r.src === "Kit" ? "ok" : r.src === "Import" ? "blue" : "gray"}>{r.src}</Chip></td>
                           </tr>
                         );
                       })}

@@ -9,7 +9,7 @@ import { Field, Input, Select } from '@/components/primitives/Field'
 import { Modal } from '@/components/primitives/Modal'
 import { SpecList } from '@/components/primitives/SpecList'
 import { Tabs } from '@/components/primitives/Tabs'
-import { BOM_1003140 } from '@/domain/boms'
+import { BOM_1003140, whereUsed } from '@/domain/boms'
 import { ECO_010870_ITEMS, LC, ecoById, historyFor } from '@/domain/ecos'
 import { ROUTINGS, deriveApprovalState, notificationRecipientsFor } from '@/domain/routings'
 import { ME } from '@/domain/session'
@@ -569,39 +569,116 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: a
 
               {itemSub === "Affected assemblies" && (() => {
                 const isECO010870 = eco.id === "ECO-010870";
-                const affRows = isECO010870
+
+                // Derive affected assemblies from real whereUsed data for each changed item (pn)
+                // Each affected assembly is a parent that contains one of the ECO's items
+                const changedPns: string[] = eco.pns && eco.pns.length > 0 ? eco.pns : ["1003140-01"];
+
+                type AffectedRow = {
+                  parentPn: string;
+                  parentName: string;
+                  containsPn: string;
+                  level: number;
+                  phase: string;
+                  div: string;
+                  impact: string;
+                };
+
+                const derivedRows: AffectedRow[] = [];
+                const seen = new Set<string>();
+                for (const changedPn of changedPns) {
+                  const parents = whereUsed(changedPn).filter(Boolean);
+                  for (const parent of parents) {
+                    if (!parent) continue;
+                    const key = `${parent.pn}-${changedPn}`;
+                    if (seen.has(key)) continue;
+                    seen.add(key);
+                    // Annotate with contextual impact text
+                    const impact = parent.phase === "Discontinued" || parent.phase === "Obsolete"
+                      ? "Discontinued — no action needed"
+                      : changedPn === "9060-1319"
+                      ? "Work instruction still references the removed tape"
+                      : `Inherits rev change — verify no open orders`;
+                    derivedRows.push({
+                      parentPn: parent.pn,
+                      parentName: parent.name,
+                      containsPn: changedPn,
+                      level: 1,
+                      phase: parent.phase,
+                      div: (parent as any).div || "CO",
+                      impact,
+                    });
+                  }
+                }
+
+                // Fallback to curated rows when derived data has no results (for static ECOs)
+                const staticRows: AffectedRow[] = isECO010870
                   ? [
-                      ["1021200-83", "RECEIVER, RL-H5A 1021200-83", "01-080401-03", 1, "Discontinued", "AG", "Discontinued — no action needed"],
-                      ["1007886-02", "ASSY, GNSS ANTENNA MOUNT", "01-080401-03", 1, "Discontinued", "AG", "Obsolete cascade applied"],
-                      ["1029732-01", "FC-5000/SC5000 BATTERY", "01-080401-03", 2, "Discontinued", "AG", "Discontinued — no action needed"],
+                      { parentPn: "1021200-83", parentName: "RECEIVER, RL-H5A 1021200-83", containsPn: "01-080401-03", level: 1, phase: "Discontinued", div: "AG", impact: "Discontinued — no action needed" },
+                      { parentPn: "1007886-02", parentName: "ASSY, GNSS ANTENNA MOUNT", containsPn: "01-080401-03", level: 1, phase: "Discontinued", div: "AG", impact: "Obsolete cascade applied" },
+                      { parentPn: "1029732-01", parentName: "FC-5000/SC5000 BATTERY", containsPn: "01-080401-03", level: 2, phase: "Discontinued", div: "AG", impact: "Discontinued — no action needed" },
                     ]
                   : [
-                      ["1021200-83", "RECEIVER, RL-H5A 1021200-83", "1003140-01", 1, "In Production", "AG", "Inherits rev C — no action needed"],
-                      ["1007886-02", "ASSY, GNSS ANTENNA MOUNT", "1003140-01", 1, "In Production", "CO", "Work instruction still references the removed tape"],
-                      ["01-080401-03", "ASSY, RECEIVER SGR1 (SDF)", "1003140-01", 2, "Discontinued", "AG", "Discontinued — no action needed"],
+                      { parentPn: "1021200-83", parentName: "RECEIVER, RL-H5A 1021200-83", containsPn: "1003140-01", level: 1, phase: "In Production", div: "AG", impact: "Inherits rev C — no action needed" },
+                      { parentPn: "1007886-02", parentName: "ASSY, GNSS ANTENNA MOUNT", containsPn: "1003140-01", level: 1, phase: "In Production", div: "CO", impact: "Work instruction still references the removed tape" },
+                      { parentPn: "01-080401-03", parentName: "ASSY, RECEIVER SGR1 (SDF)", containsPn: "1003140-01", level: 2, phase: "Discontinued", div: "AG", impact: "Discontinued — no action needed" },
                     ];
+
+                const affRows = derivedRows.length > 0 ? derivedRows : staticRows;
+                const hasWorkInstructionWarning = affRows.some((r) => r.impact.includes("still references"));
 
                 return (
                   <>
-                    <div className="sub">Parent assemblies that contain an item on this change. These are not being changed, but they inherit the result.</div>
-                    <div className="card" style={{ overflow: "hidden" }}>
-                      <table className="tbl">
-                        <thead><tr><th>Parent item</th><th>Name</th><th>Contains</th><th>Level</th><th>Phase</th><th>Division</th><th>Impact</th></tr></thead>
-                        <tbody>
-                          {affRows.map((r: any) => (
-                            <tr key={r[0]}>
-                              <td><a className="pn" onClick={() => go({ page: "item", id: r[0] })}>{r[0]}</a></td>
-                              <td>{r[1]}</td><td className="pn">{r[2]}</td><td className="sub">Level {r[3]}</td>
-                              <td>{phaseChip(r[4])}</td><td><Chip k="blue">{r[5]}</Chip></td>
-                              <td className="sub" style={{ color: r[6].includes("still references") ? T.warn : T.g600 }}>{r[6]}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                    <div className="sub">
+                      Parent assemblies that contain an item on this change — derived from the live BOM.
+                      These are not being changed, but they inherit the result.
                     </div>
-                    {!isECO010870 && (
-                      <div className="warnbox">1007886-02 still references 9060-1319 in its assembly instructions. That document sits outside
-                        this change — raise a DCO or add it here before the change goes effective.</div>
+                    {affRows.length === 0 ? (
+                      <div className="card" style={{ padding: 24, textAlign: "center", color: T.g500, fontSize: 13 }}>
+                        No parent assemblies found for the items on this change.
+                      </div>
+                    ) : (
+                      <div className="card" style={{ overflow: "hidden" }}>
+                        <table className="tbl" data-test-id="affected-assemblies-table">
+                          <thead>
+                            <tr>
+                              <th>Parent item</th>
+                              <th>Name</th>
+                              <th>Contains</th>
+                              <th>Level</th>
+                              <th>Phase</th>
+                              <th>Division</th>
+                              <th>Impact</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {affRows.map((r, idx) => (
+                              <tr key={`${r.parentPn}-${r.containsPn}-${idx}`} data-test-id={`affected-row-${r.parentPn}`}>
+                                <td>
+                                  <a className="pn" style={{ fontFamily: 'ui-monospace,"SF Mono",Menlo,Consolas,monospace', fontSize: 12 }}
+                                    onClick={() => go({ page: "item", id: r.parentPn })}>{r.parentPn}</a>
+                                </td>
+                                <td style={{ fontWeight: 500 }}>{r.parentName}</td>
+                                <td>
+                                  <span className="pn" style={{ fontFamily: 'ui-monospace,"SF Mono",Menlo,Consolas,monospace', fontSize: 12 }}>{r.containsPn}</span>
+                                </td>
+                                <td className="sub">Level {r.level}</td>
+                                <td>{phaseChip(r.phase)}</td>
+                                <td><Chip k="blue">{r.div}</Chip></td>
+                                <td className="sub" style={{ color: r.impact.includes("still references") ? T.warn : T.g600 }}>
+                                  {r.impact}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                    {hasWorkInstructionWarning && (
+                      <div className="warnbox" data-test-id="affected-assemblies-warning">
+                        A parent assembly still references a removed item in its assembly instructions.
+                        That document sits outside this change — raise a DCO or add it here before the change goes effective.
+                      </div>
                     )}
                   </>
                 );
