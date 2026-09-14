@@ -27,6 +27,25 @@ export type PlmRole = {
   membersJson: string  // JSON array of plm_user record IDs
 }
 
+export type PlmAiInsight = {
+  id: string
+  ecoId: string
+  lead: string         // one-line headline shown collapsed
+  detail: string       // expanded explanation
+  sub: string          // small metadata line
+  tone: string         // 'warn' | 'ok' | 'bad' | 'blue' | 'vio'
+}
+
+export type PlmNotification = {
+  id: string
+  ecoId: string
+  title: string
+  detail: string
+  timestamp: string
+  tone: string         // 'warn' | 'ok' | 'bad' | 'blue' | 'vio'
+  group: string        // 'Today' | 'Earlier'
+}
+
 export type PlmUser = {
   id: string
   name: string
@@ -34,9 +53,11 @@ export type PlmUser = {
   group: string
   site: string
   division: string
-  type: string   // 'Employee' | 'Partner'
-  access: string // 'Administrator' | 'Standard user' | 'View only'
+  type: string         // 'Employee' | 'Partner'
+  access: string       // 'Administrator' | 'Standard user' | 'View only'
   active: boolean
+  aiInsights: PlmAiInsight[]    // parsed from aiInsightsJson
+  notifications: PlmNotification[]  // parsed from notificationsJson
 }
 
 export type PlmRouting = {
@@ -71,6 +92,11 @@ function flattenRole(raw: any): PlmRole {
   }
 }
 
+function parseJson<T>(raw: string | undefined, fallback: T): T {
+  if (!raw) return fallback
+  try { return JSON.parse(raw) as T } catch { return fallback }
+}
+
 function flattenUser(raw: any): PlmUser {
   const p = raw?.properties ?? raw ?? {}
   return {
@@ -83,6 +109,8 @@ function flattenUser(raw: any): PlmUser {
     type: p.type ?? 'Employee',
     access: p.access ?? 'Standard user',
     active: p.active !== false,
+    aiInsights: parseJson<PlmAiInsight[]>(p.aiInsightsJson, []),
+    notifications: parseJson<PlmNotification[]>(p.notificationsJson, []),
   }
 }
 
@@ -133,10 +161,15 @@ export function useUsers() {
   }
 }
 
+export type PlmUserPayload = Omit<PlmUser, 'id' | 'aiInsights' | 'notifications'> & {
+  aiInsightsJson?: string
+  notificationsJson?: string
+}
+
 export function useCreateUser() {
   const mutation = useExecuteWorkflowNodeMutation()
   const qc = useQueryClient()
-  return async (user: Omit<PlmUser, 'id'>) => {
+  return async (user: PlmUserPayload) => {
     const result = await mutation.mutateAsync({
       data: { id: CREATE.id, context: CREATE.context,
         inputs: { ...CREATE.storedInputs, object_type: ENTITY.plmUser, rawPayload: user } },
@@ -149,7 +182,7 @@ export function useCreateUser() {
 export function useUpdateUser() {
   const mutation = useExecuteWorkflowNodeMutation()
   const qc = useQueryClient()
-  return async (id: string, user: Omit<PlmUser, 'id'>) => {
+  return async (id: string, user: PlmUserPayload) => {
     await mutation.mutateAsync({
       data: { id: UPDATE.id, context: UPDATE.context,
         inputs: { ...UPDATE.storedInputs, object_type: ENTITY.plmUser, recordId: id, rawPayload: user } },
@@ -171,6 +204,14 @@ export function useDeleteUser() {
 }
 
 // ─── Routings ────────────────────────────────────────────────────────────────
+
+// Finds the plm_user record whose name matches the logged-in user and returns
+// their ECO-scoped aiInsights and notifications for personalised home/notif views.
+export function useCurrentUserRecord(userName: string) {
+  const { users, loading, error } = useUsers()
+  const user = users.find((u) => u.name === userName) ?? null
+  return { user, loading, error }
+}
 
 export function useRoutings() {
   const { data, loading, error } = useData<any[]>(QK_ROUTINGS, 'storage', {
