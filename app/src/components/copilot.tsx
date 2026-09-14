@@ -55,6 +55,32 @@ type CopilotProps = {
    * the message. */
   dir?: 'ltr' | 'rtl'
   className?: string
+  /** Reports the chat's generation state and current conversation id to the page above.
+   *
+   * `useCopilotStatus()` only works inside `<CopilotProvider>`, and a page that owns a
+   * split layout has to know about the conversation before the copilot mounts. Rather than
+   * forcing every such page inside the provider, the copilot passes the two values it
+   * already has outwards. See `StatusBridge`. */
+  onStatusChange?: (status: { isGenerating: boolean; chatId?: string }) => void
+}
+
+/** Publishes `useCopilotStatus()` to a callback owned by the page.
+ *
+ * Renders nothing — it exists purely to be a component INSIDE the provider, because that is
+ * the only place the hook can legally be called. The effect fires on every change of either
+ * value, so a page can treat it as the copilot's status feed. */
+function StatusBridge({
+  onStatusChange,
+}: {
+  onStatusChange: (status: { isGenerating: boolean; chatId?: string }) => void
+}) {
+  const { isGenerating, chatId } = useCopilotStatus()
+
+  useEffect(() => {
+    onStatusChange({ isGenerating, chatId })
+  }, [isGenerating, chatId, onStatusChange])
+
+  return null
 }
 
 /** Circle with the title's first letter. Tokens only, so it follows the app's palette
@@ -204,7 +230,13 @@ function MissingAgentId() {
   )
 }
 
-export function Copilot({ agentId, title = 'Copilot', dir, className }: CopilotProps) {
+export function Copilot({
+  agentId,
+  title = 'Copilot',
+  dir,
+  className,
+  onStatusChange,
+}: CopilotProps) {
   // Which chrome to MOUNT, not merely which to show — `hidden md:flex` would leave the
   // sidebar AND the drawer in the tree, putting two <CopilotHistory> lists inside one
   // provider. See the hook for the general rule.
@@ -220,7 +252,15 @@ export function Copilot({ agentId, title = 'Copilot', dir, className }: CopilotP
       agentId={agentId}
       className={cn('flex h-full flex-col', className)}
       dir={dir}
+      // `lg` (the default) opens the SDK's own canvas beside the chat for file artifacts.
+      // For HTML that canvas is permanently blank — it points an `<iframe src>` at the
+      // artifact's download URL, which the platform serves as an attachment, so the frame
+      // is handed to the download manager and left empty. This app renders artifacts
+      // itself (see `features/copilot`), so the SDK canvas would only ever be a blank
+      // column beside a working one. `sm` leaves it out.
+      size="sm"
     >
+      {onStatusChange ? <StatusBridge onStatusChange={onStatusChange} /> : null}
       {!isDesktop ? (
         <header className="relative flex items-center justify-center border-b px-2 py-3">
           <Button

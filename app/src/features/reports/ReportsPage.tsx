@@ -17,8 +17,8 @@ import { useHtmlFromCopilot } from '@/features/copilot/useHtmlFromCopilot'
  * mount, but deliberately not rendered: this screen has no header of its own — the
  * copilot's own chrome occupies that row. */
 export function Reports(_props: { renderHeaderActions?: () => React.ReactNode } = {}) {
-  const { attachRef, preview, failure, dismiss } = useHtmlFromCopilot()
-  const showPanel = Boolean(preview || failure)
+  const { attachRef, onStatusChange, preview, failure, loading, dismiss } = useHtmlFromCopilot()
+  const showPanel = Boolean(preview || failure || loading)
 
   return (
     <div
@@ -36,10 +36,17 @@ export function Reports(_props: { renderHeaderActions?: () => React.ReactNode } 
         style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
       >
         <Suspense fallback={<div style={{ flex: 1 }} />}>
-          <LazyCopilot agentId={PLM_AGENT_ID} title="PLM Agent" className="flex-1 min-h-0" />
+          <LazyCopilot
+            agentId={PLM_AGENT_ID}
+            className="flex-1 min-h-0"
+            onStatusChange={onStatusChange}
+            title="PLM Agent"
+          />
         </Suspense>
       </div>
-      {showPanel ? <HtmlPreviewPanel preview={preview} failure={failure} onClose={dismiss} /> : null}
+      {showPanel ? (
+        <HtmlPreviewPanel failure={failure} loading={loading} onClose={dismiss} preview={preview} />
+      ) : null}
     </div>
   )
 }
