@@ -40,6 +40,8 @@ import { cn } from '@/lib/utils'
 //   * MOBILE  — history is an overlay drawer off a hamburger, and a real title bar says
 //     which screen you are on. There is no room to push anything.
 
+export type CopilotStatus = { isGenerating: boolean; chatId: string | null }
+
 type CopilotProps = {
   /** the AI agent to talk to (`e_ai_agent` id) */
   agentId: string
@@ -55,6 +57,20 @@ type CopilotProps = {
    * the message. */
   dir?: 'ltr' | 'rtl'
   className?: string
+  /** Called whenever the copilot's `isGenerating` or `chatId` changes. Must be stable
+   * (useCallback / module-level) — it fires inside the provider on every status change. */
+  onStatusChange?: (status: CopilotStatus) => void
+}
+
+/** Bridges `useCopilotStatus()` (which must run inside `<CopilotProvider>`) out to the
+ * page-level callback. A tiny component keeps the logic isolated: the hook throws if it
+ * runs outside a provider, so it cannot safely live in the parent component. */
+function StatusBridge({ onStatusChange }: { onStatusChange: (s: CopilotStatus) => void }) {
+  const { isGenerating, chatId } = useCopilotStatus()
+  useEffect(() => {
+    onStatusChange({ isGenerating, chatId: chatId ?? null })
+  }, [isGenerating, chatId, onStatusChange])
+  return null
 }
 
 /** Circle with the title's first letter. Tokens only, so it follows the app's palette
@@ -204,7 +220,7 @@ function MissingAgentId() {
   )
 }
 
-export function Copilot({ agentId, title = 'Copilot', dir, className }: CopilotProps) {
+export function Copilot({ agentId, title = 'Copilot', dir, className, onStatusChange }: CopilotProps) {
   // Which chrome to MOUNT, not merely which to show — `hidden md:flex` would leave the
   // sidebar AND the drawer in the tree, putting two <CopilotHistory> lists inside one
   // provider. See the hook for the general rule.
@@ -222,6 +238,8 @@ export function Copilot({ agentId, title = 'Copilot', dir, className }: CopilotP
       dir={dir}
       size="sm"
     >
+      {/* StatusBridge must be inside CopilotProvider — useCopilotStatus() throws outside it. */}
+      {onStatusChange ? <StatusBridge onStatusChange={onStatusChange} /> : null}
       {!isDesktop ? (
         <header className="relative flex items-center justify-center border-b px-2 py-3">
           <Button

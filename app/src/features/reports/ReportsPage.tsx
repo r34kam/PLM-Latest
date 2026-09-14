@@ -13,11 +13,19 @@ import { useHtmlFromCopilot } from '@/features/copilot/useHtmlFromCopilot'
  * page — a flex child defaults to `min-height: auto` and would otherwise grow to fit
  * every message.
  *
+ * Artifact detection works through the StatusBridge inside the copilot provider:
+ *   agent finishes → StatusBridge fires onStatusChange → handleStatusChange detects the
+ *   isGenerating true→false edge → POST /api/lookup → downloadUrl → fetch with credentials
+ *   → setHtml(text) → render via srcDoc on the panel iframe.
+ *
+ * The same chatId-change path fires on page reload and history navigation so past
+ * artifacts are always visible without waiting for a new generation.
+ *
  * `renderHeaderActions` is accepted for parity with every other screen the shell can
  * mount, but deliberately not rendered: this screen has no header of its own — the
  * copilot's own chrome occupies that row. */
 export function Reports(_props: { renderHeaderActions?: () => React.ReactNode } = {}) {
-  const { attachRef, preview, failure, isFetching, dismiss } = useHtmlFromCopilot()
+  const { preview, failure, isFetching, handleStatusChange, dismiss } = useHtmlFromCopilot()
   const showPanel = Boolean(preview || failure || isFetching)
 
   return (
@@ -32,14 +40,26 @@ export function Reports(_props: { renderHeaderActions?: () => React.ReactNode } 
       }}
     >
       <div
-        ref={attachRef}
         style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}
+        data-test-id="reports-chat-column"
       >
         <Suspense fallback={<div style={{ flex: 1 }} />}>
-          <LazyCopilot agentId={PLM_AGENT_ID} title="PLM Agent" className="flex-1 min-h-0" />
+          <LazyCopilot
+            agentId={PLM_AGENT_ID}
+            title="PLM Agent"
+            className="flex-1 min-h-0"
+            onStatusChange={handleStatusChange}
+          />
         </Suspense>
       </div>
-      {showPanel ? <HtmlPreviewPanel preview={preview} failure={failure} isFetching={isFetching} onClose={dismiss} /> : null}
+      {showPanel ? (
+        <HtmlPreviewPanel
+          preview={preview}
+          failure={failure}
+          isFetching={isFetching}
+          onClose={dismiss}
+        />
+      ) : null}
     </div>
   )
 }
