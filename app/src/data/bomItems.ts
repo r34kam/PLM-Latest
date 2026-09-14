@@ -103,11 +103,11 @@ export function useCreateBomItem() {
   }
 }
 
-/** Update qty, refDes, or notes on an existing BOM line item. */
+/** Update a BOM line item — sends the full record to avoid wiping fields. */
 export function useUpdateBomItem() {
   const mutation = useExecuteWorkflowNodeMutation()
   const qc = useQueryClient()
-  return async (entityId: string, patch: Partial<Pick<BomItem, 'qty' | 'uom' | 'refDes' | 'notes'>>) => {
+  return async (entityId: string, patch: Partial<Omit<BomItem, 'id'>>) => {
     await mutation.mutateAsync({
       data: {
         id: UPDATE.id,

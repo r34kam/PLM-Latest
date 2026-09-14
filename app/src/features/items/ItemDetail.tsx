@@ -37,14 +37,25 @@ function ItemDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: 
   const deleteBomItem = useDeleteBomItem();
 
   // Edit BOM item modal state
-  const [editBomItem, setEditBomItem] = useState<{ id: string; pn: string; name: string; qty: string; uom: string; refDes: string; notes: string } | null>(null);
+  const [editBomItem, setEditBomItem] = useState<{ id: string; pn: string; name: string; cat: string; kitNumber: string; addedAt: string; qty: string; uom: string; refDes: string; notes: string } | null>(null);
   const [editBomSaving, setEditBomSaving] = useState(false);
+
+  // Delete confirmation modal state
+  const [deleteConfirmItem, setDeleteConfirmItem] = useState<BomItem | null>(null);
+  const [deleteSaving, setDeleteSaving] = useState(false);
 
   const handleEditBomItem = async () => {
     if (!editBomItem) return;
     setEditBomSaving(true);
     try {
+      // Send the FULL record payload so a replace-style backend doesn't wipe
+      // fields like kitNumber / pn / name that aren't in the edit form.
       await updateBomItem(editBomItem.id, {
+        kitNumber: editBomItem.kitNumber,
+        pn: editBomItem.pn,
+        name: editBomItem.name,
+        cat: editBomItem.cat,
+        addedAt: editBomItem.addedAt,
         qty: `${editBomItem.qty} ${editBomItem.uom}`,
         uom: editBomItem.uom,
         refDes: editBomItem.refDes.trim(),
@@ -56,6 +67,20 @@ function ItemDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: 
       toast.error("Failed to update BOM item");
     } finally {
       setEditBomSaving(false);
+    }
+  };
+
+  const handleConfirmedDelete = async () => {
+    if (!deleteConfirmItem) return;
+    setDeleteSaving(true);
+    try {
+      await deleteBomItem(deleteConfirmItem.id);
+      toast.success(`${deleteConfirmItem.pn} removed from BOM`);
+      setDeleteConfirmItem(null);
+    } catch {
+      toast.error("Failed to remove BOM item");
+    } finally {
+      setDeleteSaving(false);
     }
   };
 
@@ -79,12 +104,13 @@ function ItemDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: 
     csvMode: boolean;
   } | null>(null);
   const [bomItemSaving, setBomItemSaving] = useState(false);
+  const [csvText, setCsvText] = useState("");
 
-  const openBomItemModal = () => setBomItemModal({
+  const openBomItemModal = () => { setCsvText(""); setBomItemModal({
     selectedPn: "", selectedName: "", selectedCat: "HARDWARE",
     qty: "1", uom: "EA", refDes: "", notes: "",
     pickerQuery: "", showPicker: false, csvMode: false,
-  });
+  }); };
 
   const handleAddBomItem = async () => {
     if (!bomItemModal || !bomItemModal.selectedPn.trim()) return;
@@ -134,14 +160,7 @@ function ItemDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: 
     }
   };
 
-  const handleRemoveBomItem = async (item: BomItem) => {
-    try {
-      await deleteBomItem(item.id);
-      toast.success(`${item.pn} removed from BOM`);
-    } catch {
-      toast.error("Failed to remove BOM item");
-    }
-  };
+
 
 
 
@@ -258,7 +277,7 @@ function ItemDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: 
                                   title="Edit BOM line"
                                   onClick={() => {
                                     const [qty, uom] = b.qty.split(" ");
-                                    setEditBomItem({ id: b.id, pn: b.pn, name: b.name, qty: qty || "1", uom: uom || b.uom || "EA", refDes: b.refDes, notes: b.notes });
+                                    setEditBomItem({ id: b.id, pn: b.pn, name: b.name, cat: b.cat, kitNumber: b.kitNumber, addedAt: b.addedAt, qty: qty || "1", uom: uom || b.uom || "EA", refDes: b.refDes, notes: b.notes });
                                   }}
                                 >
                                   <Pencil size={13} />
@@ -268,7 +287,7 @@ function ItemDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: 
                                   className="iconbtn"
                                   data-test-id={`remove-bom-item-${b.id}`}
                                   title="Remove from BOM"
-                                  onClick={() => handleRemoveBomItem(b)}
+                                  onClick={() => setDeleteConfirmItem(b)}
                                   style={{ color: T.bad }}
                                 >
                                   <Trash2 size={13} />
@@ -653,20 +672,21 @@ function ItemDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: 
                   <textarea
                     className="inp"
                     rows={8}
+                    value={csvText}
                     data-test-id="bom-csv-textarea"
                     placeholder={"PartNumber,Name,Category,Qty,UOM,Notes\n1006394-01,WASHER FLAT M5,HARDWARE,4,EA,Zinc-plated\n2505-0103,SCR M5 HEX HD,HARDWARE,4,EA,"}
                     style={{ fontFamily: "monospace", fontSize: 12 }}
-                    onBlur={(e: any) => { if (e.target.value.trim()) handleCsvBomImport(e.target.value); }}
+                    onChange={(e: any) => setCsvText(e.target.value)}
                   />
                 </Field>
-                <div className="row" style={{ justifyContent: "flex-end" }}>
+                <div className="row" style={{ justifyContent: "flex-end", gap: 8 }}>
                   <label
                     htmlFor="bom-csv-file"
                     className="btn"
                     style={{ cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}
                     data-test-id="bom-csv-file-label"
                   >
-                    <Upload size={13} />Or upload CSV file
+                    <Upload size={13} />Upload CSV file
                   </label>
                   <input
                     id="bom-csv-file"
@@ -677,11 +697,24 @@ function ItemDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: 
                       const file = e.target.files?.[0];
                       if (!file) return;
                       const reader = new FileReader();
-                      reader.onload = (ev: any) => { if (ev.target?.result) handleCsvBomImport(ev.target.result as string); };
+                      reader.onload = (ev: any) => {
+                        const text = ev.target?.result as string;
+                        if (text) { setCsvText(text); handleCsvBomImport(text); }
+                      };
                       reader.readAsText(file);
                       e.target.value = "";
                     }}
                   />
+                  <button
+                    type="button"
+                    className="btn pri"
+                    data-test-id="bom-csv-import-btn"
+                    disabled={bomItemSaving || !csvText.trim()}
+                    onClick={() => handleCsvBomImport(csvText)}
+                  >
+                    {bomItemSaving ? <Loader2 size={13} className="spin" /> : <Upload size={13} />}
+                    CSV import
+                  </button>
                 </div>
               </div>
             ) : (
@@ -846,6 +879,26 @@ function ItemDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: 
                 {editBomSaving ? "Saving…" : "Save changes"}
               </button>
             </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Delete confirmation modal */}
+      {deleteConfirmItem && (
+        <Modal
+          title="Remove from BOM?"
+          onClose={() => !deleteSaving && setDeleteConfirmItem(null)}
+          data-test-id="delete-bom-confirm-modal"
+          foot={<>
+            <button className="btn gh" type="button" disabled={deleteSaving} onClick={() => setDeleteConfirmItem(null)} data-test-id="delete-bom-cancel-btn">Cancel</button>
+            <button className="btn dan" type="button" disabled={deleteSaving} onClick={handleConfirmedDelete} data-test-id="delete-bom-confirm-btn">
+              {deleteSaving ? "Removing…" : "Remove"}
+            </button>
+          </>}
+        >
+          <div style={{ padding: "8px 0", fontSize: 14 }} data-test-id="delete-bom-confirm-body">
+            Remove <strong>{deleteConfirmItem.pn}</strong> — {deleteConfirmItem.name} from the BOM?
+            <div className="sub" style={{ marginTop: 6 }}>This cannot be undone.</div>
           </div>
         </Modal>
       )}
