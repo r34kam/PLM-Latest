@@ -6,31 +6,25 @@ const R = (g: any, req: any, stage: any, site?: any) => ({ g: site ? `${g} – $
 const ROUTINGS: Record<string, any[]> = {
   "ECO Construction": [
     R("Construction Engineering", "One or more", 1), R("Construction Product Mgmt", "One or more", 1),
-    R("ECCN Verification", "Optional", 1),
     R("Manufacturing Engineering", "One or more", 1), R("Master Scheduling", "One or more", 1),
     R("Materials", "One or more", 1), R("PLM", "One or more", 1),
-    R("Production", "One or more", 1), R("Quality Assurance (QA)", "One or more", 1),
-    R("TEP NPI", "Comments only", 1), R("Document Control TPS", "One or more", 2, "Livermore"),
+    R("Quality Assurance (QA)", "One or more", 1), R("Sales", "Comments only", 1),
+    R("Service", "Comments only", 1), R("Document Control TPS", "One or more", 2, "Livermore"),
   ],
   "ECO Agriculture – Fort": [
     R("AG Engineering", "One or more", 1, "Fort Collins"), R("AG Product Mgmt", "One or more", 1, "Fort Collins"),
-    R("Manufacturing Engineering", "One or more", 1), R("Materials", "One or more", 1, "Fort Collins"),
-    R("Quality Assurance (QA)", "One or more", 1, "Fort Collins"), R("ECCN Verification", "Optional", 1),
-    R("AG Doc Control", "One or more", 2, "Fort Collins"),
-  ],
-  "ECO Agriculture – Adelaide": [
-    R("AG Engineering", "All members", 1, "Adelaide"), R("Production", "One or more", 1, "Adelaide"),
-    R("Materials", "One or more", 1, "Adelaide"), R("Service", "Comments only", 1, "Adelaide"),
-    R("AG Doc Control", "One or more", 2, "Adelaide"),
+    R("Manufacturing Engineering", "One or more", 1), R("Materials", "One or more", 1),
+    R("Quality Assurance (QA)", "One or more", 1),
+    R("Document Control TPS", "One or more", 2, "Livermore"),
   ],
   "ECO IA (Inactivation) – Survey": [
     R("PLM", "One or more", 1), R("Materials", "One or more", 1),
     R("Master Scheduling", "One or more", 1), R("Service", "One or more", 1),
-    R("Finance", "Optional", 1), R("Document Control TPS", "One or more", 2, "Livermore"),
+    R("Document Control TPS", "One or more", 2, "Livermore"),
   ],
   "TPCO – Third Party": [
     R("Construction Product Mgmt", "One or more", 1), R("Sales", "One or more", 1),
-    R("Service", "One or more", 1), R("Finance", "All members", 1),
+    R("Service", "One or more", 1),
     R("Document Control TPS", "One or more", 2, "Livermore"),
   ],
   "DCO – Document Control": [
@@ -39,12 +33,7 @@ const ROUTINGS: Record<string, any[]> = {
   ],
   "RFD – Quality": [
     R("Quality Assurance (QA)", "All members", 1), R("Manufacturing Test Engineering", "One or more", 1),
-    R("Construction Engineering", "One or more", 1), R("Production", "Comments only", 1),
-    R("Document Control TPS", "One or more", 2, "Livermore"),
-  ],
-  "ECO Tokyo – Electronics": [
-    R("Manufacturing Engineering", "One or more", 1, "Tokyo"), R("Manufacturing Test Engineering", "One or more", 1, "Tokyo"),
-    R("Master Scheduling", "One or more", 1, "Tokyo"), R("Sales", "Comments only", 1, "Tokyo"),
+    R("Construction Engineering", "One or more", 1),
     R("Document Control TPS", "One or more", 2, "Livermore"),
   ],
 };

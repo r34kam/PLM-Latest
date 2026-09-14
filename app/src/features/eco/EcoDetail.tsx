@@ -565,39 +565,59 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
               })()}
 
               {itemSub === "BOM redline" && (() => {
-                const isECO010870 = eco.id === "ECO-010870";
-                const target = redlineTarget || (isECO010870 ? ECO_010870_ITEMS[0] : null);
-                const redlineTitle = target
+                // Use eco.affectedAssembly as the primary data source for the redlined kit
+                const aa = eco.affectedAssembly;
+                const target = redlineTarget;
+
+                // Title/sub: prefer the linked affected assembly data, fall back to target item or BOM_1003140
+                const redlineTitle = aa
+                  ? `${aa.pn} — ${aa.name}`
+                  : target
                   ? `${target.pn} — ${target.name}`
                   : "1003140-01 — KIT, TS CG MOUNTING";
-                const redlineSub = target
+                const redlineSub = aa
+                  ? `Rev ${aa.fromRev} → Rev ${aa.toRev} · ${aa.bomEdits.filter((e: any) => e.op === "ADD").length} addition${aa.bomEdits.filter((e: any) => e.op === "ADD").length !== 1 ? "s" : ""}, ${aa.bomEdits.filter((e: any) => e.op === "DELETE").length} removal${aa.bomEdits.filter((e: any) => e.op === "DELETE").length !== 1 ? "s" : ""}`
+                  : target
                   ? `Rev ${target.rev} → Rev ${target.newRev} · ${target.bom || "Inactivation redline"}`
                   : "Rev B → Rev C · 2 additions, 1 removal, 0 edited line items";
 
-                const bomRows = (isECO010870 && target?.pn === "01-080401-03")
-                  ? [
-                      { pn: "04-080401-10", rev: "A", name: "RADOME, FLASH GORDON MOLD LTGRAY SDF", cat: "ENCLOSURE", phase: "Discontinued", qty: 1, st: "del" },
-                      { pn: "04-080401-11", rev: "B", name: "RADOME, FLASH GORDON (SDF)", cat: "ENCLOSURE", phase: "Discontinued", qty: 1, st: "del" },
-                      { pn: "05-080401-01LF", rev: "C", name: "ASSY, FLASH GORDON LNA PCB", cat: "PCB", phase: "Discontinued", qty: 1, st: "add" },
-                      { pn: "05-080711-03LF", rev: "R5", name: "ASSY,AG04 RECEIVER PCBA R5", cat: "PCB", phase: "Discontinued", qty: 1, st: "add" },
-                      { pn: "1006394-01", rev: "JE", name: "WASHER FLAT M5", cat: "HARDWARE", phase: "In Production", qty: 4, st: "same" },
-                    ]
-                  : BOM_1003140;
+                // Build BOM rows from affectedAssembly.bomEdits when available
+                const bomRowsFromAA = aa
+                  ? aa.bomEdits.map((e: any) => ({
+                      pn: e.pn, rev: "—", name: e.name, cat: "—", phase: "—",
+                      qty: e.qty || "—",
+                      st: e.op === "ADD" ? "add" : e.op === "DELETE" ? "del" : "upd",
+                      op: e.op,
+                      newValue: e.newValue,
+                    }))
+                  : null;
+
+                const bomRows = bomRowsFromAA ?? BOM_1003140;
 
                 return (
                   <Card title={redlineTitle} sub={redlineSub} pad={false}
-                    right={<Chip k="gray">Editable by requester and document control</Chip>}>
-                    <table className="tbl">
-                      <thead><tr><th>#</th><th>Item number</th><th>Item name</th><th>Category</th><th>Phase</th><th>Qty</th><th>Change</th></tr></thead>
+                    right={<Chip k="gray">Editable by requester and document control</Chip>}
+                    data-test-id="bom-redline-card">
+                    <table className="tbl" data-test-id="bom-redline-table">
+                      <thead><tr><th>#</th><th>Item number</th><th>Item name</th><th>Qty</th><th>Change</th></tr></thead>
                       <tbody>
                         {bomRows.map((b2: any, k: any) => (
-                          <tr key={b2.pn}>
+                          <tr key={`${b2.pn}-${k}`} data-test-id={`bom-redline-row-${b2.pn}`}>
                             <td>{k + 1}</td>
-                            <td className={b2.st === "del" ? "del" : "pn"}>{b2.pn} rev {b2.rev}</td>
-                            <td className={b2.st === "del" ? "del" : b2.st === "add" ? "add" : ""}>{b2.name}</td>
-                            <td className="sub">{b2.cat}</td><td>{phaseChip(b2.phase)}</td><td>{b2.qty}</td>
-                            <td>{b2.st === "add" ? <Chip k="ok">Added</Chip> : b2.st === "del" ? <Chip k="bad">Removed</Chip>
-                              : <span className="mut">Unchanged</span>}</td>
+                            <td className={b2.st === "del" ? "del" : "pn"}>{b2.pn}</td>
+                            <td className={b2.st === "del" ? "del" : b2.st === "add" ? "add" : ""}>
+                              {b2.name}
+                              {b2.op === "UPDATE_DESC" && b2.newValue && (
+                                <span className="mut" style={{ marginLeft: 8 }}>→ {b2.newValue}</span>
+                              )}
+                            </td>
+                            <td>{b2.qty}</td>
+                            <td>
+                              {b2.st === "add" ? <Chip k="ok">Added</Chip>
+                                : b2.st === "del" ? <Chip k="bad">Removed</Chip>
+                                : b2.op === "UPDATE_DESC" ? <Chip k="blue">Desc updated</Chip>
+                                : <span className="mut">Unchanged</span>}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -609,9 +629,12 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
               {itemSub === "Affected assemblies" && (() => {
                 const isECO010870 = eco.id === "ECO-010870";
 
-                // Derive affected assemblies from real whereUsed data for each changed item (pn)
-                // Each affected assembly is a parent that contains one of the ECO's items
-                const changedPns: string[] = eco.pns && eco.pns.length > 0 ? eco.pns : ["1003140-01"];
+                // Derive affected assemblies: whereUsed on the kit being redlined (affectedAssembly.pn),
+                // or fall back to each pn on the ECO.
+                const aa = eco.affectedAssembly;
+                const changedPns: string[] = aa
+                  ? [aa.pn]
+                  : eco.pns && eco.pns.length > 0 ? eco.pns : ["1003140-01"];
 
                 type AffectedRow = {
                   parentPn: string;
@@ -651,16 +674,18 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                 }
 
                 // Fallback to curated rows when derived data has no results (for static ECOs)
+                // Use the affectedAssembly pn when building the containsPn reference
+                const kitPn = aa?.pn ?? "1003140-01";
                 const staticRows: AffectedRow[] = isECO010870
                   ? [
-                      { parentPn: "1021200-83", parentName: "RECEIVER, RL-H5A 1021200-83", containsPn: "01-080401-03", level: 1, phase: "Discontinued", div: "AG", impact: "Discontinued — no action needed" },
-                      { parentPn: "1007886-02", parentName: "ASSY, GNSS ANTENNA MOUNT", containsPn: "01-080401-03", level: 1, phase: "Discontinued", div: "AG", impact: "Obsolete cascade applied" },
-                      { parentPn: "1029732-01", parentName: "FC-5000/SC5000 BATTERY", containsPn: "01-080401-03", level: 2, phase: "Discontinued", div: "AG", impact: "Discontinued — no action needed" },
+                      { parentPn: "1021200-83", parentName: "RECEIVER, RL-H5A 1021200-83", containsPn: kitPn, level: 1, phase: "Discontinued", div: "AG", impact: "Discontinued — no action needed" },
+                      { parentPn: "1007886-02", parentName: "ASSY, GNSS ANTENNA MOUNT", containsPn: kitPn, level: 1, phase: "Discontinued", div: "AG", impact: "Obsolete cascade applied" },
+                      { parentPn: "1029732-01", parentName: "FC-5000/SC5000 BATTERY", containsPn: kitPn, level: 2, phase: "Discontinued", div: "AG", impact: "Discontinued — no action needed" },
                     ]
                   : [
-                      { parentPn: "1021200-83", parentName: "RECEIVER, RL-H5A 1021200-83", containsPn: "1003140-01", level: 1, phase: "In Production", div: "AG", impact: "Inherits rev C — no action needed" },
-                      { parentPn: "1007886-02", parentName: "ASSY, GNSS ANTENNA MOUNT", containsPn: "1003140-01", level: 1, phase: "In Production", div: "CO", impact: "Work instruction still references the removed tape" },
-                      { parentPn: "01-080401-03", parentName: "ASSY, RECEIVER SGR1 (SDF)", containsPn: "1003140-01", level: 2, phase: "Discontinued", div: "AG", impact: "Discontinued — no action needed" },
+                      { parentPn: "1021200-83", parentName: "RECEIVER, RL-H5A 1021200-83", containsPn: kitPn, level: 1, phase: "In Production", div: "AG", impact: `Inherits rev ${aa?.toRev ?? "C"} — no action needed` },
+                      { parentPn: "1007886-02", parentName: "ASSY, GNSS ANTENNA MOUNT", containsPn: kitPn, level: 1, phase: "In Production", div: "CO", impact: "Work instruction still references the removed component" },
+                      { parentPn: "01-080401-03", parentName: "ASSY, RECEIVER SGR1 (SDF)", containsPn: kitPn, level: 2, phase: "Discontinued", div: "AG", impact: "Discontinued — no action needed" },
                     ];
 
                 const affRows = derivedRows.length > 0 ? derivedRows : staticRows;
@@ -669,8 +694,8 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                 return (
                   <>
                     <div className="sub">
-                      Parent assemblies that contain an item on this change — derived from the live BOM.
-                      These are not being changed, but they inherit the result.
+                      Parent assemblies that contain {aa ? <><b>{aa.pn}</b> ({aa.name})</> : "an item on this change"} — derived from the live BOM.
+                      These assemblies are not being redlined, but they inherit the revision result.
                     </div>
                     {affRows.length === 0 ? (
                       <div className="card" style={{ padding: 24, textAlign: "center", color: T.g500, fontSize: 13 }}>

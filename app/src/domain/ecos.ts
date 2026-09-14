@@ -12,44 +12,77 @@ const CAT_BY_PREFIX: Record<string, string> = {
 };
 const TITLE_VERBS = ["Update", "Inactivate", "Correct BOM on", "Extend to plant 1220", "Reactivate", "Add second source to",
   "Revise drawing for", "Roll revision on", "Deviate tolerance on", "Supersede"];
+/* affectedAssembly — the parent kit/assembly whose BOM is being redlined.
+   pn: kit PN, name: kit name, fromRev/toRev: revision bump, bomEdits: exact child changes */
+type BomEdit = { op: 'ADD' | 'DELETE' | 'UPDATE_DESC'; pn: string; name: string; qty: string; newValue?: string };
+type AffectedAssembly = { pn: string; name: string; fromRev: string; toRev: string; bomEdits: BomEdit[] };
+
 const ECOS = (() => {
   const out = [
     { id: "ECO-011420", title: "Update 1003140-01", cat: CAT_BY_PREFIX.ECO, routing: "ECO Construction", stage: "Approval",
-      div: "CO", site: "1210 – TPS Livermore", creator: "Wendy Veth", submitter: ME.name, created: "09/08/2026",
+      div: "CO", site: "1210 – TPS Livermore", creator: "Matthew Harman", submitter: ME.name, created: "09/08/2026",
       submitted: "09/09/2026", items: 1, mods: 2, dc: ME.name, notes: "CCB 09.09 · DCR7-23172", mine: true, awaitingMe: false,
       pns: ["1003140-01"],
+      affectedAssembly: { pn: "1003140-01", name: "KIT, TS CG MOUNTING", fromRev: "B", toRev: "C",
+        bomEdits: [
+          { op: "UPDATE_DESC", pn: "1003140-01", name: "KIT, TS CG MOUNTING", qty: "", newValue: "KIT, TS CG MOUNTING" },
+          { op: "ADD",    pn: "1006394-01", name: "WASHER FLAT M5",                   qty: "4 EA" },
+          { op: "ADD",    pn: "2505-0103",  name: "SCR, M5-0.8 X 16MM HEX HD ZN",   qty: "4 EA" },
+          { op: "DELETE", pn: "9060-1319",  name: "TAPE, DIECUT 3M VHB",             qty: "2 EA" },
+        ] } as AffectedAssembly,
       desc: "Update 1003140-01 to support CG-1 sensor. We are making slight changes to this warehouse kit for IMU mounting options. We are also updating the description of this kit.\n\nNo list price update is required for this change.",
       redline: "UPDATE THE FOLLOWING PRODUCTION BOM\n1003140-01  Rev B\u2192Rev C   KIT, TS CG MOUNTING\nUPDATE DESCRIPTION TO: KIT, TS CG MOUNTING\nADD 1006394-01 WASHER FLAT M5, Qty. 4\nADD 2505-0103 SCR, M5-0.8 X 16MM HEX HD ZN, Qty. 4\nDELETE 9060-1319 TAPE, DIECUT 3M VHB, Qty. 2" },
     { id: "ECO-010870", title: "Move to Status 50 – Ag Kits", cat: CAT_BY_PREFIX.ECO, routing: "ECO IA (Inactivation) – Survey",
-      stage: "Open", div: "AG", site: "1210 – TPS Livermore", creator: "Mamatha Gopal", submitter: "—", created: "08/26/2026",
+      stage: "Open", div: "AG", site: "1210 – TPS Livermore", creator: "Nadia Haddad", submitter: "—", created: "08/26/2026",
       submitted: "—", items: 129, mods: 265, dc: ME.name, notes: "Unique-parts cascade applied", mine: true, awaitingMe: false,
       pns: ["01-080401-03"],
+      affectedAssembly: { pn: "01-080401-03", name: "ASSY, RECEIVER SGR1 (SDF)", fromRev: "RV0", toRev: "IA",
+        bomEdits: [
+          { op: "DELETE", pn: "04-080401-10", name: "RADOME, FLASH GORDON MOLD LTGRAY SDF", qty: "1 EA" },
+          { op: "DELETE", pn: "04-080401-11", name: "RADOME, FLASH GORDON (SDF)",            qty: "1 EA" },
+          { op: "ADD",    pn: "05-080401-01LF", name: "ASSY, FLASH GORDON LNA PCB",          qty: "1 EA" },
+          { op: "ADD",    pn: "05-080711-03LF", name: "ASSY,AG04 RECEIVER PCBA R5",          qty: "1 EA" },
+        ] } as AffectedAssembly,
       desc: "Move all listed Ag kits and their unique child parts to Material Status 50 (Inactive). Parts confirmed obsolete; no remaining demand in TPS.",
       redline: "INACTIVATE THE FOLLOWING ITEMS…IN ALL PLANTS\nMOVE TO STATUS 50" },
     { id: "ECO-011288", title: "Inactivate FC-5000/SHC5000 BATTERY 1029732-01", cat: CAT_BY_PREFIX.ECO,
       routing: "ECO IA (Inactivation) – Survey", stage: "Open", div: "CO", site: "1210 – TPS Livermore",
-      creator: "Mamatha Gopal", submitter: "—", created: "06/26/2026", submitted: "—", items: 1, mods: 1, dc: ME.name,
+      creator: "Nadia Haddad", submitter: "—", created: "06/26/2026", submitted: "—", items: 1, mods: 1, dc: ME.name,
       notes: "", mine: true, awaitingMe: false, pns: ["1029732-01"],
+      affectedAssembly: null as unknown as AffectedAssembly,
       desc: "REFER TO PCPR-64 (EOL of 1029732-01 FC-5000/SHC5000 BATTERY)\n\nThe FC-5000/SHC5000 battery has been discontinued and removed from BIZHUB due to lack of inventory in TPS. PM confirmed there is no replacement part number for this battery.",
       redline: "INACTIVATE THE FOLLOWING ITEM…IN ALL PLANTS\n1029732-01 rev DI to rev IA\nMOVE TO STATUS 50" },
     { id: "ECO-011416", title: "BOM correction to 1007886-02", cat: CAT_BY_PREFIX.ECO, routing: "ECO Construction",
       stage: "Effective", div: "CO", site: "1210 – TPS Livermore", creator: "Matthew Harman", submitter: ME.name,
       created: "09/02/2026", submitted: "09/04/2026", items: 3, mods: 4, dc: ME.name, notes: "SAP sync complete 09/10",
       mine: false, awaitingMe: false, pns: ["1007886-02"],
+      affectedAssembly: { pn: "1007886-02", name: "ASSY, GNSS ANTENNA MOUNT", fromRev: "C", toRev: "D",
+        bomEdits: [
+          { op: "DELETE", pn: "1002260-01", name: "BKT, TS WELD-ON", qty: "2 EA" },
+          { op: "ADD",    pn: "1002260-01", name: "BKT, TS WELD-ON", qty: "4 EA" },
+        ] } as AffectedAssembly,
       desc: "Correct component quantity on 1007886-02 following supplier drawing revision.", redline: "" },
     { id: "DCO-008335", title: "Reactivate 1002261-01", cat: CAT_BY_PREFIX.DCO, routing: "DCO – Document Control",
       stage: "Rejected", div: "CO", site: "1210 – TPS Livermore", creator: "Brian Johmann", submitter: ME.name,
       created: "09/03/2026", submitted: "09/05/2026", items: 1, mods: 1, dc: ME.name, notes: "Rejected by QA – evidence missing",
       mine: true, awaitingMe: false, pns: ["1002261-01"],
+      affectedAssembly: null as unknown as AffectedAssembly,
       desc: "Reactivate 1002261-01 to support service demand in APAC.", redline: "" },
     { id: "CO-002846", title: "Update Two RL-H5A Sales Kits with 1021200-83", cat: CAT_BY_PREFIX.TPCO, routing: "TPCO – Third Party",
       stage: "Approval", div: "AG", site: "1210 – TPS Livermore", creator: "Kathleen Whitten", submitter: ME.name,
       created: "09/05/2026", submitted: "09/08/2026", items: 2, mods: 3, dc: ME.name, notes: "", mine: false, awaitingMe: true,
-      pns: ["1021200-83"], desc: "Replace legacy receiver in two RL-H5A sales kits with 1021200-83.", redline: "" },
+      pns: ["1021200-83"],
+      affectedAssembly: { pn: "1021200-83", name: "RECEIVER, RL-H5A", fromRev: "A", toRev: "B",
+        bomEdits: [
+          { op: "DELETE", pn: "1003140-01", name: "KIT, TS CG MOUNTING (legacy)",  qty: "1 EA" },
+          { op: "ADD",    pn: "1021200-83", name: "RECEIVER, RL-H5A 1021200-83",   qty: "1 EA" },
+        ] } as AffectedAssembly,
+      desc: "Replace legacy receiver in two RL-H5A sales kits with 1021200-83.", redline: "" },
     { id: "RFD-000912", title: "Deviation – solder mask tolerance", cat: CAT_BY_PREFIX.RFD, routing: "RFD – Quality",
       stage: "Approval", div: "CO", site: "1210 – TPS Livermore", creator: "Carol Nosworthy", submitter: ME.name,
       created: "09/08/2026", submitted: "09/09/2026", items: 1, mods: 1, dc: ME.name, notes: "Expires 12/31/2026",
       mine: false, awaitingMe: true, pns: ["1002260-01"],
+      affectedAssembly: null as unknown as AffectedAssembly,
       desc: "Accept 500 pcs at 0.08 mm solder mask tolerance against 0.05 mm drawing callout.", redline: "" },
   ];
 
@@ -59,7 +92,7 @@ const ECOS = (() => {
     const stage = pick(["Open", "Open", "Submit", "Approval", "Approval", "Effective", "Complete", "Complete", "Rejected"]);
     const routing = pre === "RFD" ? "RFD – Quality" : pre === "TPCO" ? "TPCO – Third Party"
       : pre === "DCO" ? "DCO – Document Control" : pick(["ECO Construction", "ECO Agriculture – Fort",
-        "ECO Agriculture – Adelaide", "ECO IA (Inactivation) – Survey", "ECO Tokyo – Electronics"]);
+        "ECO IA (Inactivation) – Survey"]);
     const it = pick(ITEMS);
     const creator = pick(PEOPLE.filter((p: any) => !p.off));
     const items = intIn(1, pre === "ECO" ? 40 : 6);
@@ -68,13 +101,18 @@ const ECOS = (() => {
     const num = String(counters[pre]).padStart(pre === "RFD" ? 6 : 6, "0");
     out.push({
       id: `${pre}-${num}`, title: `${pick(TITLE_VERBS)} ${it.pn}`, cat: CAT_BY_PREFIX[pre], routing, stage,
-      div: it.div, site: pick(["1210 – TPS Livermore", "1220 – Fort Collins", "1310 – Adelaide", "1410 – Tokyo"]),
+      div: it.div, site: pick(["1210 – TPS Livermore", "1220 – Fort Collins", ]),
       creator: creator.n, submitter: stage === "Open" ? "—" : ME.name,
       created: `0${mo}/${String(da).padStart(2, "0")}/2026`,
       submitted: stage === "Open" ? "—" : `0${mo}/${String(Math.min(da + 2, 28)).padStart(2, "0")}/2026`,
-      items, mods: items + intIn(0, items), dc: pick([ME.name, "Adam Royce", "Mamatha Gopal"]),
+      items, mods: items + intIn(0, items), dc: pick([ME.name, "Adam Royce", "Hannerose Santiago"]),
       notes: rnd() > .6 ? `CCB 0${mo}.${da}` : "", mine: rnd() > .55, awaitingMe: stage === "Approval" && rnd() > .5,
       pns: [it.pn],
+      affectedAssembly: it.bom > 0 ? { pn: it.pn, name: it.name,
+        fromRev: pick(["A","B","C","D"]), toRev: pick(["B","C","D","E"]),
+        bomEdits: [{ op: "ADD", pn: "1006394-01", name: "WASHER FLAT M5", qty: `${intIn(1,4)} EA` },
+          { op: "DELETE", pn: "9060-1319", name: "TAPE, DIECUT 3M VHB", qty: "1 EA" }],
+      } as AffectedAssembly : null as unknown as AffectedAssembly,
       desc: `${pick(TITLE_VERBS)} ${it.pn} — ${it.name}. Raised by ${creator.g}, ${creator.s}. ${pick([
         "No list price impact.", "Supplier drawing revision received.", "Service demand in APAC.",
         "Obsolete, no remaining demand.", "Corrects a quantity error found at kitting.",
@@ -116,11 +154,11 @@ const EXCEL_ROWS = [
   { pn: "04-080401-10", name: "RADOME, FLASH GORDON MOLD LTGRAY SDF", rev: "A", phase: "Discontinued", sev: "ok",
     rule: "Passed all checks", msg: "Found, revision current, not locked, no open change" },
   { pn: "05-080401-01LF", name: "ASSY, FLASH GORDON LNA PCB", rev: "C", phase: "Discontinued", sev: "warn",
-    rule: "Open change", msg: "Already on ECO-011302, submitted 04 Sep by Jeni Hirth — the two changes will collide at the effective stage" },
+    rule: "Open change", msg: "Already on ECO-011302, submitted 04 Sep by Kathleen Whitten — the two changes will collide at the effective stage" },
   { pn: "1029732-01", name: "FC-5000/SC5000 BATTERY", rev: "DI", phase: "Discontinued", sev: "warn",
     rule: "Already inactive", msg: "Material status is already 50 — INACTIVE. Adding it makes no change in SAP" },
   { pn: "1006394-01", name: "WASHER FLAT M5", rev: "JE", phase: "In Production", sev: "warn",
-    rule: "Revision locked", msg: "Working revision is checked out by Jeni Hirth and cannot be redlined until released" },
+    rule: "Revision locked", msg: "Working revision is checked out by Kathleen Whitten and cannot be redlined until released" },
   { pn: "2505-0103", name: "SCR, M5-0.8 X 16MM HEX HD ZN", rev: "X", phase: "In Production", sev: "warn",
     rule: "Widely used", msg: "Used on 47 other assemblies — inactivating it will orphan those BOMs" },
   { pn: "05-080711-03LF", name: "ASSY,AG04 RECEIVER PCBA R5", rev: "R5", phase: "Discontinued", sev: "ok",
@@ -143,7 +181,7 @@ const AI_SUGGEST = [
     why: "Added parts 1006394-01 and 2505-0103 have live purchase orders; buyer review recommended." },
   { g: "Quality Assurance (QA)", who: inGroup("Quality Assurance (QA)")[0], conf: 71,
     why: "No first-article or deviation flag on this item. Include only if the mounting tolerance is inspection-critical." },
-  { g: "Finance", who: "Kevin Li", conf: 22,
+  { g: "Sales", who: "Derek Small", conf: 22,
     why: "Description says no list price update is required, so finance review is likely unnecessary.", drop: true },
 ];
 /* 129 items with exactly 265 modifications for ECO-010870 */
