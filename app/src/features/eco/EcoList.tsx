@@ -128,8 +128,8 @@ function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, 
           </>
         ) : (
           <>
-            <Kpi label="Open in workspace" value={kpis.open} note="Editable" icon={Pencil} tint={T.slateBg} bd={T.slateBd} tone={T.slate}
-              onClick={() => { setF("Open"); setSelectedStages(["Open"]); }} data-test-id="eco-kpi-open" />
+            <Kpi label="Open / In flight" value={openCount} note="Not yet complete" icon={Pencil} tint={T.slateBg} bd={T.slateBd} tone={T.slate}
+              onClick={() => { setF("Open"); setSelectedStages([]); }} data-test-id="eco-kpi-open" />
             <Kpi label="In approval" value={kpis.approval} note={`${kpis.awaitingMe} awaiting me`} icon={Clock} tint={T.warnBg} bd={T.warnBd} tone={T.warn}
               onClick={() => { setF("All"); setSelectedStages(["Approval"]); }} data-test-id="eco-kpi-approval" />
             <Kpi label="Effective / Complete" value={kpis.effective + kpis.complete} note="Synced to SAP" icon={Database} tint={T.vioBg} bd={T.vioBd} tone={T.vio}

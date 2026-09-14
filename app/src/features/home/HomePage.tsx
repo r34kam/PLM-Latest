@@ -57,7 +57,8 @@ function HomePage({ go, renderHeaderActions }: { go: any; renderHeaderActions?: 
 
   const homeStages = useMemo(() => [
     { key: "Awaiting me", label: "Awaiting me", count: kpis.awaitingMe, targetFilter: "Approval" },
-    { key: "Open", label: "Open", count: kpis.open, targetFilter: "Open" },
+    // "Open" filter on CO page = not Complete; match that count here
+    { key: "Open", label: "Open", count: kpis.inFlight, targetFilter: "Open" },
     { key: "Submit", label: "Submit", count: kpis.submit, targetFilter: "Submit" },
     { key: "Approval", label: "Approval", count: kpis.approval, targetFilter: "Approval" },
     { key: "Effective", label: "Effective", count: kpis.effective, targetFilter: "Effective" },
@@ -68,6 +69,8 @@ function HomePage({ go, renderHeaderActions }: { go: any; renderHeaderActions?: 
   const currentFilteredList = useMemo(() => {
     if (selectedHomeStage === "Awaiting me") return awaiting;
     if (selectedHomeStage === "All") return allOrders;
+    // "Open" pill = in-flight (not Complete), matching the CO list page's "Open" filter
+    if (selectedHomeStage === "Open") return allOrders.filter((o) => o.stage !== "Complete");
     return allOrders.filter((o) => o.stage === selectedHomeStage);
   }, [selectedHomeStage, awaiting, allOrders]);
 
@@ -99,15 +102,15 @@ function HomePage({ go, renderHeaderActions }: { go: any; renderHeaderActions?: 
         ) : (
           <>
             <Kpi
-              label="Open"
-              value={kpis.open}
+              label="Open / In flight"
+              value={kpis.inFlight}
               icon={Pencil}
               onClick={() => go({ page: "ecos", filter: "Open" })}
               data-test-id="home-kpi-open"
             />
             <Kpi
-              label="Awaiting my approval"
-              value={kpis.awaitingMe}
+              label="In approval"
+              value={kpis.approval}
               icon={Clock}
               onClick={() => go({ page: "ecos", filter: "Approval" })}
               data-test-id="home-kpi-awaiting"

@@ -199,7 +199,9 @@ export function deriveCoKpis(orders: ChangeOrder[]) {
   const complete = orders.filter((o) => o.stage === 'Complete').length
   const rejected = orders.filter((o) => o.stage === 'Rejected').length
   const awaitingMe = orders.filter((o) => o.awaitingMe).length
+  // "In flight" = everything that isn't Complete (matches the EcoList "Open" filter tab)
+  const inFlight = orders.filter((o) => o.stage !== 'Complete').length
   const byType: Record<string, number> = {}
   orders.forEach((o) => { byType[o.type] = (byType[o.type] ?? 0) + 1 })
-  return { open, submit, approval, effective, complete, rejected, awaitingMe, byType, total: orders.length }
+  return { open, inFlight, submit, approval, effective, complete, rejected, awaitingMe, byType, total: orders.length }
 }
