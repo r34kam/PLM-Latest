@@ -1,4 +1,4 @@
-import { FileUpload } from '@/components/data-io/FileUpload'
+import { FileUploadModal } from '@/components/data-io/FileUpload'
 import { Card } from '@/components/primitives/Card'
 import { Chip, phaseChip } from '@/components/primitives/Chip'
 import { Empty } from '@/components/primitives/Empty'
@@ -586,11 +586,11 @@ function ItemDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: 
         </div>
       </Card>
 
-      {fileModal && (
-        <Modal title="Attach files" wide onClose={() => setFileModal(false)}>
-          <FileUpload onClose={() => setFileModal(false)} context="an item" />
-        </Modal>
-      )}
+      <FileUploadModal
+        open={fileModal}
+        onClose={() => setFileModal(false)}
+        context="this item"
+      />
 
       {/* ---- Add BOM Item modal — item picker + CSV upload ---- */}
       {bomItemModal && (() => {

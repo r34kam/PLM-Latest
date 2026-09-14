@@ -1,4 +1,4 @@
-import { FileUpload } from '@/components/data-io/FileUpload'
+import { FileUploadModal, type StagedFile } from '@/components/data-io/FileUpload'
 import { Lifecycle } from '@/components/lifecycle/Lifecycle'
 import { WhereThisStandsBand } from '@/components/lifecycle/WhereThisStandsBand'
 import { SupplierShare } from '@/components/pickers/SupplierShare'
@@ -14,6 +14,7 @@ import { ECO_010870_ITEMS, LC, ecoById, historyFor } from '@/domain/ecos'
 import { ROUTINGS, deriveApprovalState, notificationRecipientsFor } from '@/domain/routings'
 import { ME } from '@/domain/session'
 import { suppliersFor } from '@/domain/suppliers'
+import { useAllChangeOrders } from '@/data/changeOrders'
 import { downloadFile } from '@/lib/download'
 import { initials } from '@/lib/prng'
 import { T } from '@/theme/tokens'
@@ -21,7 +22,34 @@ import { AlertTriangle, Ban, Bell, Check, CheckCircle2, ChevronDown, ChevronLeft
 import React, { useState } from 'react'
 
 function EcoDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: any; initialTab?: string; renderHeaderActions?: () => React.ReactNode }) {
-  const eco = ecoById(id);
+  // Try static domain first; then overlay with backend data for backend-created COs
+  const { data: allBackendOrders } = useAllChangeOrders();
+  const backendCo = allBackendOrders.find((o) => o.coId === id);
+  const staticEco = ecoById(id);
+  // Build a merged ECO object — backend fields win where present
+  const eco = backendCo
+    ? {
+        ...staticEco,
+        id: backendCo.coId,
+        title: backendCo.title,
+        cat: backendCo.cat,
+        stage: backendCo.stage,
+        div: backendCo.div,
+        site: backendCo.site,
+        routing: backendCo.routing,
+        creator: backendCo.creator,
+        submitter: backendCo.submitter,
+        dc: backendCo.dc,
+        created: backendCo.created,
+        submitted: backendCo.submitted,
+        items: backendCo.itemCount,
+        mods: backendCo.modCount,
+        pns: (() => { try { return JSON.parse(backendCo.pnsJson); } catch { return []; } })(),
+        desc: backendCo.desc,
+        redline: backendCo.redline,
+        notes: backendCo.notes,
+      }
+    : staticEco;
   const approvalState = deriveApprovalState(eco);
   const APPROVALS = approvalState.roles;
   const HISTORY = historyFor(eco);
@@ -39,6 +67,8 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: a
   const [actions, setActions] = useState(false);
   const [shared, setShared] = useState<any[]>([]);
   const [shareDraft, setShareDraft] = useState<any[]>([]);
+  const [attachedFiles, setAttachedFiles] = useState<StagedFile[]>([]);
+  const [fileModalOpen, setFileModalOpen] = useState(false);
   const [itemSub, setItemSub] = useState("Modifications");
   const [activeRedlineItem, setActiveRedlineItem] = useState<any>(null);
   const [modPage, setModPage] = useState(1);
@@ -316,9 +346,24 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: a
 
               {itemSub === "Modifications" && (() => {
                 const isECO010870 = eco.id === "ECO-010870";
-                const itemsList = isECO010870 ? ECO_010870_ITEMS : [
-                  { pn: "1003140-01", name: "KIT, TS CG MOUNTING", phase: "In Production", newPhase: "In Production", rev: "B", newRev: "C", bom: "2 add · 1 delete", specs: true }
-                ];
+                // For backend-created COs, build item rows from pnsJson
+                const backendItemsList = backendCo && eco.pns && eco.pns.length > 0
+                  ? eco.pns.map((pn: string, idx: number) => ({
+                      pn,
+                      name: `Part ${pn}`,
+                      phase: "In Production",
+                      newPhase: "In Production",
+                      rev: "A",
+                      newRev: "B",
+                      bom: idx === 0 ? "1 add" : null,
+                      bomCount: idx === 0 ? 1 : 0,
+                      specs: true,
+                    }))
+                  : null;
+                const itemsList = isECO010870 ? ECO_010870_ITEMS
+                  : backendItemsList ?? [
+                      { pn: "1003140-01", name: "KIT, TS CG MOUNTING", phase: "In Production", newPhase: "In Production", rev: "B", newRev: "C", bom: "2 add · 1 delete", specs: true }
+                    ];
                 const pageSize = 25;
                 const totalItems = itemsList.length;
                 const totalPages = Math.ceil(totalItems / pageSize);
@@ -611,42 +656,72 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: a
 
           {tab === "Files" && (() => {
             const isECO010870 = eco.id === "ECO-010870";
+            // Seed files vary per change order for demo realism
+            const seedFiles: StagedFile[] = eco.id === "ECO-010870"
+              ? [{ n: "EOL_Notice_Ag_Kits_2026.pdf", size: "180 KB", fileType: "Reference", visibility: "Internal only" }]
+              : eco.id === "DCO-008335"
+              ? [{ n: "INSP-2026-0448.pdf", size: "1.2 MB", fileType: "Inspection report", visibility: "Internal only" }]
+              : eco.id === "RFD-000912"
+              ? [{ n: "solder_mask_dev_cert.pdf", size: "320 KB", fileType: "Certificate", visibility: "Internal only" }]
+              : eco.id === "CO-002846"
+              ? [
+                  { n: "RL-H5A_kit_update_v2.pdf", size: "412 KB", fileType: "Drawing", visibility: "Share with suppliers" },
+                  { n: "third_party_BOM_CO002846.xlsx", size: "88 KB", fileType: "Specification", visibility: "Internal only" },
+                ]
+              : [{ n: "DCR7-23172_request.pdf", size: "240 KB", fileType: "Reference", visibility: "Internal only" }];
+            const allFiles = [...seedFiles, ...attachedFiles];
             return (
-              <div className="stack">
+              <div className="stack" data-test-id="eco-files-tab">
                 <div className="bet">
-                  <div><h3>Files on this change</h3>
-                    <div className="sub" style={{ marginTop: 3 }}>Reference files support the decision. Implementation files are what
-                      manufacturing works from once the change goes effective.</div></div>
-                  <button className="btn pri" onClick={() => setModal("attach")}><Upload size={13} />Attach files</button>
+                  <div>
+                    <h3>Files on this change</h3>
+                    <div className="sub" style={{ marginTop: 3 }}>Reference files support the decision. Implementation files are what manufacturing works from once the change goes effective.</div>
+                  </div>
+                  <button className="btn pri" onClick={() => setFileModalOpen(true)} data-test-id="attach-files-btn">
+                    <Upload size={13} />Attach files
+                  </button>
                 </div>
                 <div className="card" style={{ overflow: "hidden" }}>
                   <table className="tbl">
-                    <thead><tr><th>File</th><th>Purpose</th><th>Version</th><th>Visibility</th><th>Added by</th><th>Added</th><th></th></tr></thead>
+                    <thead>
+                      <tr><th>File</th><th>Purpose</th><th>Version</th><th>Visibility</th><th>Added by</th><th>Added</th><th></th></tr>
+                    </thead>
                     <tbody>
-                      <tr>
-                        <td><div className="row" style={{ gap: 9 }}>
-                          <span style={{ width: 28, height: 28, borderRadius: 8, background: T.b50, display: "grid", placeItems: "center" }}>
-                            <FileText size={14} color={T.brand} /></span>
-                          <div>
-                            <div style={{ fontWeight: 600 }}>
-                              {isECO010870 ? "EOL_Notice_Ag_Kits_2026.pdf" : "DCR7-23172_request.pdf"}
+                      {allFiles.map((f, k) => (
+                        <tr key={k} data-test-id={`eco-file-row-${k}`}>
+                          <td>
+                            <div className="row" style={{ gap: 9 }}>
+                              <span style={{ width: 28, height: 28, borderRadius: 8, background: T.b50, display: "grid", placeItems: "center" }}>
+                                <FileText size={14} color={T.brand} />
+                              </span>
+                              <div>
+                                <div style={{ fontWeight: 600 }}>{f.n}</div>
+                                <div className="mini">{f.size}</div>
+                              </div>
                             </div>
-                            <div className="mini">{isECO010870 ? "180 KB" : "240 KB"}</div>
-                          </div>
-                        </div></td>
-                        <td><Chip k="gray">Reference</Chip></td><td>v1</td>
-                        <td><Chip k="gray">Internal only</Chip></td>
-                        <td className="sub">{isECO010870 ? "Mamatha Gopal" : "Wendy Veth"}</td>
-                        <td className="sub">{isECO010870 ? "26 Aug 2026" : "08 Sep 2026"}</td>
-                        <td style={{ textAlign: "right" }}><button className="btn gh sm"><Download size={13} /></button></td>
-                      </tr>
+                          </td>
+                          <td><Chip k="gray">{f.fileType}</Chip></td>
+                          <td>v{k + 1}</td>
+                          <td><Chip k="gray">{f.visibility}</Chip></td>
+                          <td className="sub">{k < seedFiles.length ? eco.creator : ME.name}</td>
+                          <td className="sub">{eco.created || "—"}</td>
+                          <td style={{ textAlign: "right" }}>
+                            <button className="btn gh sm" aria-label="Download" data-test-id={`eco-file-download-${k}`}><Download size={13} /></button>
+                          </td>
+                        </tr>
+                      ))}
+                      {allFiles.length === 0 && (
+                        <tr data-test-id="eco-files-empty">
+                          <td colSpan={7} style={{ textAlign: "center", padding: "24px 12px", color: T.g500 }}>No files attached yet.</td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
                 <div className="note">
                   {isECO010870
                     ? "Inactivation change order — drawing updates not required. Obsolescence notice satisfies file audit."
-                    : "This is a sales BOM, so drawings and implementation files are not required. Document control checks this tab and moves on."}
+                    : "Files attached here are versioned. Replacing a file keeps the prior version in History."}
                 </div>
               </div>
             );
@@ -883,11 +958,12 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: a
         </Modal>
       )}
 
-      {modal === "attach" && (
-        <Modal title="Attach files" wide onClose={() => setModal(null)}>
-          <FileUpload onClose={() => setModal(null)} context="a change order" />
-        </Modal>
-      )}
+      <FileUploadModal
+        open={fileModalOpen}
+        onClose={() => setFileModalOpen(false)}
+        onAttach={(files) => setAttachedFiles((prev) => [...prev, ...files])}
+        context="this change order"
+      />
 
       {modal === "cancelEco" && (
         <Modal title="Cancel this change" onClose={() => setModal(null)}

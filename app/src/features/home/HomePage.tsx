@@ -5,6 +5,7 @@ import { Chip, stageChip } from '@/components/primitives/Chip'
 import { Kpi } from '@/components/primitives/Kpi'
 import { useAllChangeOrders, deriveCoKpis } from '@/data/changeOrders'
 import { T } from '@/theme/tokens'
+import { differenceInDays, parse } from 'date-fns'
 import { AlertTriangle, ArrowRight, Boxes, ChevronDown, ChevronUp, Clock, FileText, Pencil, Plus, Send, Sparkles } from 'lucide-react'
 import React, { useMemo, useState } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -30,10 +31,29 @@ function HomePage({ go, renderHeaderActions }: { go: any; renderHeaderActions?: 
     { k: "RFD", v: kpis.byType['RFD'] ?? 0, c: "var(--chart-4)" },
   ], [kpis.byType]);
 
-  const aging = [
-    { k: "0–7 days", v: 22, c: T.teal }, { k: "8–30 days", v: 19, c: T.b400 },
-    { k: "31–90 days", v: 9, c: T.warn }, { k: "Over 90 days", v: 4, c: T.bad },
-  ];
+  // Compute aging from open change orders using their 'created' date
+  const aging = useMemo(() => {
+    const now = new Date();
+    const openOrders = allOrders.filter((o) => o.stage !== 'Complete' && o.stage !== 'Effective');
+    let a07 = 0, a830 = 0, a3190 = 0, a90 = 0;
+    openOrders.forEach((o) => {
+      if (!o.created || o.created === '—') return;
+      try {
+        const d = parse(o.created, 'MM/dd/yyyy', now);
+        const age = differenceInDays(now, d);
+        if (age <= 7) a07++;
+        else if (age <= 30) a830++;
+        else if (age <= 90) a3190++;
+        else a90++;
+      } catch { /* skip unparseable dates */ }
+    });
+    return [
+      { k: '0–7 days', v: a07, c: T.teal },
+      { k: '8–30 days', v: a830, c: T.b400 },
+      { k: '31–90 days', v: a3190, c: T.warn },
+      { k: 'Over 90 days', v: a90, c: T.bad },
+    ];
+  }, [allOrders]);
 
   const homeStages = useMemo(() => [
     { key: "Awaiting me", label: "Awaiting me", count: kpis.awaitingMe, targetFilter: "Approval" },

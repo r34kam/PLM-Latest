@@ -1,4 +1,4 @@
-import { FileUpload } from '@/components/data-io/FileUpload'
+import { FileUploadModal, type StagedFile } from '@/components/data-io/FileUpload'
 import { ImportPanel } from '@/components/data-io/ImportPanel'
 import { MemberPicker } from '@/components/pickers/MemberPicker'
 import { Card } from '@/components/primitives/Card'
@@ -72,7 +72,8 @@ function EcoNew({
     seedStock: "",
     disposition: "",
   });
-  const [associatedFiles, setAssociatedFiles] = useState<string[]>([]);
+  const [associatedFiles, setAssociatedFiles] = useState<StagedFile[]>([]);
+  const [fileUploadOpen, setFileUploadOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const createChangeOrder = useCreateChangeOrder();
@@ -83,6 +84,7 @@ function EcoNew({
   const isGeneralFilled = Boolean(form.cat && form.div && form.site && form.title);
   const isDescFilled = Boolean(form.desc && form.eff);
   const isFilesFilled = associatedFiles.length > 0;
+  // Build pnsJson from the ecoItems for submission
   const isConfirmationsFilled = Boolean(form.eccn && form.dc && confirmations.validations && confirmations.disposition);
   const isItemsFilled = ecoItems.length > 0;
   const addManual = () => {
@@ -326,17 +328,51 @@ function EcoNew({
 
             {subSection === "files" && (
               <Card title="Associated Files" sub="Upload CAD drawing redlines, test specifications, and manufacturing work instructions">
-                <div style={{ marginBottom: 14 }}>
-                  <FileUpload onClose={() => {}} context="this change" />
+                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  <button
+                    type="button"
+                    className="drop"
+                    onClick={() => setFileUploadOpen(true)}
+                    data-test-id="eco-new-attach-files-btn"
+                    aria-label="Attach files"
+                  >
+                    <span style={{ width: 44, height: 44, borderRadius: 12, background: "var(--color-b50, #eff6ff)", display: "grid", placeItems: "center", margin: "0 auto" }}>
+                      <Upload size={20} />
+                    </span>
+                    <div style={{ fontWeight: 600, marginTop: 11 }}>Click to attach files</div>
+                    <div className="sub" style={{ marginTop: 4 }}>PDF, DWG, STEP, Office documents and images · up to 100 MB each</div>
+                  </button>
+                  {associatedFiles.length > 0 && (
+                    <div className="card" style={{ overflow: "hidden" }}>
+                      <table className="tbl">
+                        <thead><tr><th>File</th><th>Type</th><th>Visibility</th></tr></thead>
+                        <tbody>
+                          {associatedFiles.map((f, k) => (
+                            <tr key={k} data-test-id={`eco-new-file-row-${k}`}>
+                              <td style={{ fontWeight: 600 }}>{f.n}<div className="mini">{f.size}</div></td>
+                              <td>{f.fileType}</td>
+                              <td>{f.visibility}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                  {associatedFiles.length > 0 && (
+                    <div className="note" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <CheckCircle2 size={14} color="#0B7A4B" />
+                      <span><b>{associatedFiles.length} file{associatedFiles.length === 1 ? "" : "s"} attached</b></span>
+                    </div>
+                  )}
                 </div>
-                {associatedFiles.length > 0 && (
-                  <div className="note" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <CheckCircle2 size={14} color="#0B7A4B" />
-                    <span><b>{associatedFiles.length} file attached:</b> {associatedFiles.join(", ")}</span>
-                  </div>
-                )}
               </Card>
             )}
+            <FileUploadModal
+              open={fileUploadOpen}
+              onClose={() => setFileUploadOpen(false)}
+              onAttach={(files) => setAssociatedFiles((prev) => [...prev, ...files])}
+              context="this change order"
+            />
 
             {subSection === "confirmations" && (
               <Card title="Confirmations & Processing" pad={false}>
