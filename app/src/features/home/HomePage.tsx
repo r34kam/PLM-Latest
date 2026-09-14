@@ -56,21 +56,19 @@ function HomePage({ go, renderHeaderActions }: { go: any; renderHeaderActions?: 
   }, [allOrders]);
 
   const homeStages = useMemo(() => [
-    { key: "Awaiting me", label: "Awaiting me", count: kpis.awaitingMe, targetFilter: "Approval" },
-    // "Open" filter on CO page = not Complete; match that count here
-    { key: "Open", label: "Open", count: kpis.inFlight, targetFilter: "Open" },
-    { key: "Submit", label: "Submit", count: kpis.submit, targetFilter: "Submit" },
-    { key: "Approval", label: "Approval", count: kpis.approval, targetFilter: "Approval" },
-    { key: "Effective", label: "Effective", count: kpis.effective, targetFilter: "Effective" },
-    { key: "Rejected", label: "Rejected", count: kpis.rejected, targetFilter: "Rejected" },
-    { key: "All", label: "All", count: kpis.total, targetFilter: "All" },
+    { key: "Awaiting me", label: "Awaiting me", count: kpis.awaitingMe },
+    { key: "Open", label: "Open", count: kpis.open },
+    { key: "Submit", label: "Submit", count: kpis.submit },
+    { key: "Approval", label: "Approval", count: kpis.approval },
+    { key: "Effective", label: "Effective", count: kpis.effective },
+    { key: "Complete", label: "Complete", count: kpis.complete },
+    { key: "Rejected", label: "Rejected", count: kpis.rejected },
+    { key: "All", label: "All", count: kpis.total },
   ], [kpis]);
 
   const currentFilteredList = useMemo(() => {
     if (selectedHomeStage === "Awaiting me") return awaiting;
     if (selectedHomeStage === "All") return allOrders;
-    // "Open" pill = in-flight (not Complete), matching the CO list page's "Open" filter
-    if (selectedHomeStage === "Open") return allOrders.filter((o) => o.stage !== "Complete");
     return allOrders.filter((o) => o.stage === selectedHomeStage);
   }, [selectedHomeStage, awaiting, allOrders]);
 
@@ -102,8 +100,9 @@ function HomePage({ go, renderHeaderActions }: { go: any; renderHeaderActions?: 
         ) : (
           <>
             <Kpi
-              label="Open / In flight"
-              value={kpis.inFlight}
+              label="Open / Submit"
+              value={kpis.open + kpis.submit}
+              note="Being worked"
               icon={Pencil}
               onClick={() => go({ page: "ecos", filter: "Open" })}
               data-test-id="home-kpi-open"
@@ -111,20 +110,23 @@ function HomePage({ go, renderHeaderActions }: { go: any; renderHeaderActions?: 
             <Kpi
               label="In approval"
               value={kpis.approval}
+              note={`${kpis.awaitingMe} awaiting me`}
               icon={Clock}
               onClick={() => go({ page: "ecos", filter: "Approval" })}
               data-test-id="home-kpi-awaiting"
             />
             <Kpi
-              label="Submitted"
-              value={kpis.submit}
+              label="Effective / Complete"
+              value={kpis.effective + kpis.complete}
+              note="Synced to SAP"
               icon={Send}
-              onClick={() => go({ page: "ecos", filter: "Submit" })}
+              onClick={() => go({ page: "ecos", filter: "Effective" })}
               data-test-id="home-kpi-submit"
             />
             <Kpi
               label="Rejected"
               value={kpis.rejected}
+              note="Held by document control"
               icon={AlertTriangle}
               onClick={() => go({ page: "ecos", filter: "Rejected" })}
               data-test-id="home-kpi-rejected"
@@ -153,7 +155,7 @@ function HomePage({ go, renderHeaderActions }: { go: any; renderHeaderActions?: 
             right={
               <button
                 className="btn sm gh"
-                onClick={() => go({ page: "ecos", filter: activeStageObj.targetFilter })}
+                onClick={() => go({ page: "ecos", filter: activeStageObj.key === "Awaiting me" ? "Approval" : activeStageObj.key })}
                 data-test-id="home-view-in-changes-btn"
               >
                 View in Changes ({activeStageObj.count}) <ArrowRight size={12} />
