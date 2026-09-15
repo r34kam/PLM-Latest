@@ -68,7 +68,7 @@ html,body,#root{margin:0;padding:0;background:${T.brand};min-height:100vh}
 .rightrail-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border:none;background:#fff;flex:none}
 .rightrail-body{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:14px}
 .tbl tr.inspected-row{background:${T.b50} !important;outline:1px solid ${T.b200}}
-.crumb{font-size:11px;color:#7993a8;margin-bottom:5px;display:flex;align-items:center;gap:5px}
+.crumb{display:none}
 .crumb-link{background:none;border:none;padding:0;font-size:inherit;color:inherit;cursor:pointer;text-decoration:none}
 .crumb-link:hover{color:#055aaf;text-decoration:underline}
 
@@ -253,8 +253,8 @@ textarea.inp{height:auto;padding:8px 10px;line-height:1.5;resize:vertical}
 /* toolbar: left side = filter pills / selects; search + actions pushed to the right */
 .toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 20px;border:none}
 .toolbar-right{display:flex;align-items:center;gap:8px;margin-left:auto}
-.srch{position:relative;display:flex;align-items:center}
-.srch input{padding-left:30px;height:32px;border-radius:10px;width:250px;border:1px solid #D4DEE9;outline:none;background:#fff;transition:border-color .12s,box-shadow .12s}
+.srch{position:relative;display:flex;align-items:center;flex-shrink:0}
+.srch input{padding-left:30px;padding-right:10px;height:32px;border-radius:10px;width:240px;border:1px solid #D4DEE9;outline:none;background:#fff;font:inherit;font-size:13px;color:#0a2233;transition:border-color .12s,box-shadow .12s}
 .srch input:hover{border-color:#B6C6D8}
 .srch input:focus{border-color:#0A4F8F;outline:2px solid #0A4F8F;outline-offset:0px;box-shadow:none}
 .srch svg{position:absolute;left:10px;pointer-events:none}

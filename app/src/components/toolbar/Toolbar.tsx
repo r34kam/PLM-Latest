@@ -35,7 +35,7 @@ function Toolbar({ q, setQ, placeholder = "Search", segs, seg, setSeg, count, se
         {setQ && (
           <div className="srch" data-test-id="toolbar-search">
             <Search size={14} color={T.g500} />
-            <input className="inp" placeholder={placeholder} value={q} onChange={(e: any) => setQ(e.target.value)} />
+            <input placeholder={placeholder} value={q} onChange={(e: any) => setQ(e.target.value)} />
             {q && <button className="clr" onClick={() => setQ("")}><X size={12} /></button>}
           </div>
         )}
