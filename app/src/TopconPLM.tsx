@@ -124,7 +124,7 @@ function TopconPLM({
   const effectivePage = isApprover && !APPROVER_ALLOWED_PAGES.has(currentPage) ? 'home' : currentPage
 
   switch (effectivePage) {
-    case "home": body = <HomePage go={go} renderHeaderActions={renderHeaderActions} userRole={role} userName={userName} aiInsights={userAiInsights} />; break;
+    case "home": body = <HomePage go={go} renderHeaderActions={renderHeaderActions} userRole={role} userName={userName} aiInsights={userAiInsights} currentUser={currentUser} />; break;
     case "ecos": body = <EcoList go={go} initialFilter={isApprover ? "Needs me" : (v.filter ?? undefined)} onInspect={handleInspectEco} inspectedId={inspectedEcoId} railOpen={false} renderHeaderActions={renderHeaderActions} role={role} currentUserName={userName} />; break;
     case "eco": body = <EcoDetail id={v.id} go={go} initialTab={v.tab} renderHeaderActions={renderHeaderActions} role={role} currentUserName={userName} />; break;
     case "eco-new": body = !isApprover ? <EcoNew go={go} startStep={v.step !== undefined ? v.step : 0} initialApprovalMode={initialApprovalMode} initialManualItems={initialManualItems} renderHeaderActions={renderHeaderActions} /> : <HomePage go={go} renderHeaderActions={renderHeaderActions} />; break;

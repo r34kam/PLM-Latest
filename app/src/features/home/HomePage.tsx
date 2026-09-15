@@ -3,19 +3,36 @@ import { HBars } from '@/components/charts/HBars'
 import { Card } from '@/components/primitives/Card'
 import { Chip, stageChip } from '@/components/primitives/Chip'
 import { Kpi } from '@/components/primitives/Kpi'
-import type { PlmAiInsight } from '@/data/admin'
+import type { PlmAiInsight, PlmUser } from '@/data/admin'
 import { useAllChangeOrders, deriveCoKpis } from '@/data/changeOrders'
 import { T } from '@/theme/tokens'
-import { differenceInDays, parse } from 'date-fns'
+import { differenceInDays, format, parse } from 'date-fns'
 import { AlertTriangle, ArrowRight, Boxes, ChevronDown, ChevronUp, Clock, FileText, Pencil, Plus, Send, Sparkles } from 'lucide-react'
 import React, { useMemo, useState } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
 
 /* ============================== HOME ================================ */
 
-function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = '', aiInsights = [] }: { go: any; renderHeaderActions?: () => React.ReactNode; userRole?: string; userName?: string; aiInsights?: PlmAiInsight[] }) {
+function greetingWord(): string {
+  const h = new Date().getHours()
+  if (h < 12) return 'Good morning'
+  if (h < 17) return 'Good afternoon'
+  return 'Good evening'
+}
+
+function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = '', aiInsights = [], currentUser = null }: { go: any; renderHeaderActions?: () => React.ReactNode; userRole?: string; userName?: string; aiInsights?: PlmAiInsight[]; currentUser?: PlmUser | null }) {
   const [expandedInsights, setExpandedInsights] = useState<Record<string, boolean>>({});
   const toggleInsight = (key: string) => setExpandedInsights((prev) => ({ ...prev, [key]: !prev[key] }));
+
+  // Greeting — derived live from the current user record and real clock
+  const now = new Date()
+  const displayName = currentUser?.name ? currentUser.name.split(' ')[0] : (userName.split(' ')[0] || 'there')
+  const greeting = `${greetingWord()}, ${displayName}`
+  const dateStr = format(now, "EEEE, d MMMM yyyy")
+  const timeStr = format(now, "h:mm a")
+  const groupLabel = currentUser?.group ?? ''
+  const siteLabel = currentUser?.site ?? ''
+  const subLine = [dateStr, timeStr, groupLabel, siteLabel].filter(Boolean).join(' · ')
   const [selectedHomeStage, setSelectedHomeStage] = useState("Awaiting me");
 
   // Backend change orders
@@ -77,8 +94,8 @@ function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = ''
     <div className="stack" data-test-id="home-page">
       <div className="bet">
         <div>
-          <h1>Good morning, Hannerose</h1>
-          <div className="sub" style={{ marginTop: 4 }}>Friday, 11 September 2026 · Document Control · TPS Livermore</div>
+          <h1 data-test-id="home-greeting">{greeting}</h1>
+          <div className="sub" style={{ marginTop: 4 }} data-test-id="home-greeting-sub">{subLine}</div>
         </div>
         <div className="row">
           <button className="btn" onClick={() => go({ page: "reports" })}><FileText size={13} />Build a report</button>
