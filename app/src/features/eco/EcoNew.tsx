@@ -442,8 +442,7 @@ function EcoNew({
           {/* Right Content Area for Step 0 */}
           <div style={{ minWidth: 0 }}>
             {subSection === "general" && (
-              <Card title="Change Details" pad={false}>
-                <div className="kv-form" data-test-id="kv-general-details">
+              <div className="kv-form" data-test-id="kv-general-details">
                   <div className="kv-row">
                     <div className="kv-key">
                       <span className="kv-label">Change category</span>
@@ -491,13 +490,11 @@ function EcoNew({
                       <Input value={form.title} placeholder="Enter a descriptive title" onChange={(e: any) => setForm({ ...form, title: e.target.value })} />
                     </div>
                   </div>
-                </div>
-              </Card>
+              </div>
             )}
 
             {subSection === "desc" && (
-              <Card title="Description & Effectivity" pad={false}>
-                <div className="kv-form" data-test-id="kv-desc-effectivity">
+              <div className="kv-form" data-test-id="kv-desc-effectivity">
                   <div className="kv-row" style={{ alignItems: "flex-start" }}>
                     <div className="kv-key" style={{ paddingTop: 6 }}>
                       <span className="kv-label">Redline instructions</span>
@@ -559,13 +556,11 @@ function EcoNew({
                       <Input type="date" value={form.deadline} onChange={(e: any) => setForm({ ...form, deadline: e.target.value })} />
                     </div>
                   </div>
-                </div>
-              </Card>
+              </div>
             )}
 
             {subSection === "files" && (
-              <Card title="Associated Files" sub="Upload CAD drawing redlines, test specifications, and manufacturing work instructions">
-                <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   {/* Hidden file input — triggered directly by the drop zone button */}
                   <input
                     ref={fileInputRef}
@@ -641,13 +636,11 @@ function EcoNew({
                       <span><b>{associatedFiles.length} file{associatedFiles.length === 1 ? "" : "s"} attached</b></span>
                     </div>
                   )}
-                </div>
-              </Card>
+              </div>
             )}
 
             {subSection === "confirmations" && (
-              <Card title="Confirmations & Processing" pad={false}>
-                <div className="kv-form" data-test-id="kv-confirmations">
+              <div className="kv-form" data-test-id="kv-confirmations">
                   <div className="kv-row">
                     <div className="kv-key">
                       <span className="kv-label">Validations complete?</span>
@@ -707,8 +700,7 @@ function EcoNew({
                         onChange={(e: any) => setForm({ ...form, notes: e.target.value })} />
                     </div>
                   </div>
-                </div>
-              </Card>
+              </div>
             )}
 
           </div>
@@ -1186,10 +1178,12 @@ function EcoNew({
               </div>
             </div>
           ) : (
-            <Card
-              title="Approvals"
-              sub="Configure reviewer stages and sign-off requirements for this change order"
-              right={
+            <div data-test-id="eco-approvals-configured">
+              <div className="bet" style={{ marginBottom: 16 }}>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 15, color: '#0a2233', marginBottom: 2 }}>Approvals</div>
+                  <div className="sub" style={{ fontSize: 12 }}>Configure reviewer stages and sign-off requirements</div>
+                </div>
                 <button
                   type="button"
                   className="btn sm gh"
@@ -1198,35 +1192,15 @@ function EcoNew({
                 >
                   <ChevronLeft size={12} />Change method
                 </button>
-              }
-            >
-              <div
-                className="bet"
-                style={{
-                  marginBottom: 16,
-                  paddingBottom: 12,
-                  borderBottom: "1px solid #E2E8F0",
-                  flexWrap: "wrap",
-                  gap: 10
-                }}
-              >
-                <div className="row" style={{ gap: 8, alignItems: "center" }}>
-                  <button
-                    type="button"
-                    className="btn sm gh"
-                    onClick={() => setMode(null)}
-                    title="Change approval method"
-                  >
-                    <ChevronLeft size={12} />Change method
-                  </button>
-                  <span style={{ color: T.g300 }}>|</span>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: T.g800 }}>
-                    Method: {mode === "routing" ? "Standard Routing" : mode === "ai" ? "Assistant Suggestion" : "Manual Flow"}
-                  </span>
-                  {mode === "ai" && <Chip k="vio" icon={Sparkles}>AI Powered</Chip>}
-                  {mode === "routing" && <Chip k="blue" icon={Layers}>Standard</Chip>}
-                  {mode === "manual" && <Chip k="gray" icon={Users}>Manual</Chip>}
-                </div>
+              </div>
+              <div className="row" style={{ gap: 6, marginBottom: 16, paddingBottom: 12, borderBottom: "1px solid #E2E8F0" }}>
+                <span className="sub" style={{ fontSize: 12 }}>Method:</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#0a2233' }}>
+                  {mode === "routing" ? "Standard Routing" : mode === "ai" ? "Assistant Suggestion" : "Manual Flow"}
+                </span>
+                {mode === "ai" && <Chip k="vio" icon={Sparkles}>AI Powered</Chip>}
+                {mode === "routing" && <Chip k="blue" icon={Layers}>Standard</Chip>}
+                {mode === "manual" && <Chip k="gray" icon={Users}>Manual</Chip>}
               </div>
 
               {mode === "ai" && (
@@ -1536,7 +1510,7 @@ function EcoNew({
                   })}
                 </div>
               )}
-            </Card>
+            </div>
           )}
         </div>
       )}
