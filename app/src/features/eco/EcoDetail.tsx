@@ -664,18 +664,6 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                 const aa = eco.affectedAssembly;
                 const target = redlineTarget;
 
-                // Title/sub: prefer the linked affected assembly data, fall back to target item or BOM_1003140
-                const redlineTitle = aa
-                  ? `${aa.pn} — ${aa.name}`
-                  : target
-                  ? `${target.pn} — ${target.name}`
-                  : "1003140-01 — KIT, TS CG MOUNTING";
-                const redlineSub = aa
-                  ? `Rev ${aa.fromRev} → Rev ${aa.toRev} · ${aa.bomEdits.filter((e: any) => e.op === "ADD").length} addition${aa.bomEdits.filter((e: any) => e.op === "ADD").length !== 1 ? "s" : ""}, ${aa.bomEdits.filter((e: any) => e.op === "DELETE").length} removal${aa.bomEdits.filter((e: any) => e.op === "DELETE").length !== 1 ? "s" : ""}`
-                  : target
-                  ? `Rev ${target.rev} → Rev ${target.newRev} · ${target.bom || "Inactivation redline"}`
-                  : "Rev B → Rev C · 2 additions, 1 removal, 0 edited line items";
-
                 // Build BOM rows: prefer affectedAssembly, then ecoItems (from creation), then static fallback
                 const bomRowsFromAA = aa
                   ? aa.bomEdits.map((e: any) => ({
@@ -693,7 +681,8 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                   if (!eco.ecoItems || eco.ecoItems.length === 0) return null;
                   const kitPn = activeRedlineItem?.pn ?? eco.ecoItems[0]?.pn;
                   const kit = eco.ecoItems.find((ki: any) => ki.pn === kitPn) ?? eco.ecoItems[0];
-                  if (!kit || kit.bomEdits.length === 0) return null;
+                  if (!kit) return null;
+                  // Return empty array (not null) when kit exists but has no BOM edits
                   return kit.bomEdits.map((e: any) => ({
                     pn: e.pn, rev: "—", name: e.name, cat: "—", phase: "—",
                     qty: e.qty || "—",
@@ -704,7 +693,34 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                   }));
                 })();
 
-                const bomRows = bomRowsFromAA ?? ecoItemEdits ?? BOM_1003140;
+                // Only fall back to static demo data when this is the specific demo ECO (ECO-010870)
+                const staticFallback = eco.id === "ECO-010870" ? BOM_1003140 : [];
+                const bomRows = bomRowsFromAA ?? ecoItemEdits ?? staticFallback;
+
+                // Title/sub: prefer the linked affected assembly data, fall back to ecoItems or target
+                const redlineTitle = aa
+                  ? `${aa.pn} — ${aa.name}`
+                  : target
+                  ? `${target.pn} — ${target.name}`
+                  : "1003140-01 — KIT, TS CG MOUNTING";
+                const redlineSub = (() => {
+                  if (aa) {
+                    const adds = aa.bomEdits.filter((e: any) => e.op === "ADD").length;
+                    const dels = aa.bomEdits.filter((e: any) => e.op === "DELETE").length;
+                    return `Rev ${aa.fromRev} → Rev ${aa.toRev} · ${adds} addition${adds !== 1 ? "s" : ""}, ${dels} removal${dels !== 1 ? "s" : ""}`;
+                  }
+                  if (ecoItemEdits) {
+                    const adds = ecoItemEdits.filter((e: any) => e.st === "add").length;
+                    const dels = ecoItemEdits.filter((e: any) => e.st === "del").length;
+                    const counts = [adds > 0 ? `${adds} addition${adds !== 1 ? "s" : ""}` : "", dels > 0 ? `${dels} removal${dels !== 1 ? "s" : ""}` : ""].filter(Boolean).join(", ");
+                    const kitPn2 = activeRedlineItem?.pn ?? eco.ecoItems?.[0]?.pn;
+                    const kit2 = eco.ecoItems?.find((ki: any) => ki.pn === kitPn2) ?? eco.ecoItems?.[0];
+                    const revPart = kit2 ? `Rev ${kit2.rev} → Rev ${kit2.newRev}` : "";
+                    return [revPart, counts || "No BOM edits"].filter(Boolean).join(" · ");
+                  }
+                  if (target) return `Rev ${target.rev} → Rev ${target.newRev} · ${target.bom || "Inactivation redline"}`;
+                  return eco.id === "ECO-010870" ? "Rev B → Rev C · 2 additions, 1 removal, 0 edited line items" : "No BOM edits recorded";
+                })();
 
                 return (
                   <Card title={redlineTitle} sub={redlineSub} pad={false}
