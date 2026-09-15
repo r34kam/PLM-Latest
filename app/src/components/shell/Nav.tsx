@@ -254,7 +254,7 @@ function Nav({
                   { id: "Routings", label: "Routings" },
                   { id: "Form Builder", label: "Form Builder" },
                 ].map((sub: any) => {
-                  const isSubActive = (adminTab || "Users") === sub.id;
+                  const isSubActive = !!adminTab && adminTab === sub.id;
                   return (
                     <button
                       key={sub.id}

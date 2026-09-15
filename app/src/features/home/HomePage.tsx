@@ -38,7 +38,10 @@ function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = ''
   // Backend change orders
   const { data: allOrders, loading: ordersLoading } = useAllChangeOrders();
   const kpis = useMemo(() => deriveCoKpis(allOrders), [allOrders]);
-  const awaiting = useMemo(() => allOrders.filter((o) => o.awaitingMe), [allOrders]);
+  const awaiting = useMemo(
+    () => allOrders.filter((o) => o.awaitingMe || o.stage === 'Rejected'),
+    [allOrders]
+  );
 
   const byCat = useMemo(() => [
     { k: "ECO", v: kpis.byType['ECO'] ?? 0, c: "var(--chart-1)" },
@@ -72,7 +75,7 @@ function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = ''
   }, [allOrders]);
 
   const homeStages = useMemo(() => [
-    { key: "Awaiting me", label: "Awaiting me", count: kpis.awaitingMe },
+    { key: "Awaiting me", label: "Awaiting me", count: awaiting.length },
     { key: "Open", label: "Open", count: kpis.open },
     { key: "Submit", label: "Submit", count: kpis.submit },
     { key: "Approval", label: "Approval", count: kpis.approval },
@@ -80,7 +83,7 @@ function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = ''
     { key: "Complete", label: "Complete", count: kpis.complete },
     { key: "Rejected", label: "Rejected", count: kpis.rejected },
     { key: "All", label: "All", count: kpis.total },
-  ], [kpis]);
+  ], [kpis, awaiting]);
 
   const currentFilteredList = useMemo(() => {
     if (selectedHomeStage === "Awaiting me") return awaiting;
