@@ -338,7 +338,6 @@ function EcoNew({
         {i === 0 && (
           <span className="mini" style={{ marginRight: 6 }}>
             {!isGeneralFilled ? "Change Details incomplete — fill required fields"
-              : !isDescFilled ? "Effectivity incomplete"
               : "Ready to proceed"}
           </span>
         )}
@@ -356,7 +355,7 @@ function EcoNew({
         <button className="btn gh" onClick={() => toast.info("Draft saved")} data-test-id="eco-wizard-save-draft-btn">Save draft</button>
         {i < 3 && (
           <button className="btn pri" onClick={next}
-            disabled={(i === 0 && (!isGeneralFilled || !isDescFilled)) || (i === 1 && ecoItems.length === 0) || (i === 2 && !mode)}
+            disabled={(i === 0 && !isGeneralFilled) || (i === 1 && ecoItems.length === 0) || (i === 2 && !mode)}
             data-test-id="eco-wizard-continue-btn">
             Continue
           </button>
@@ -1778,7 +1777,6 @@ function EcoNew({
           {i === 0 && (
             <span className="mini" style={{ marginRight: 6 }}>
               {!isGeneralFilled ? "Change Details incomplete — fill required fields"
-                : !isDescFilled ? "Description & Effectivity incomplete"
                 : ecoItems.length === 0 ? "Add at least 1 item to continue"
                 : "Ready to proceed"}
             </span>
@@ -1803,7 +1801,7 @@ function EcoNew({
             <button
               className="btn pri"
               onClick={next}
-              disabled={(i === 0 && (!isGeneralFilled || !isDescFilled)) || (i === 1 && ecoItems.length === 0) || (i === 2 && !mode)}
+              disabled={(i === 0 && !isGeneralFilled) || (i === 1 && ecoItems.length === 0) || (i === 2 && !mode)}
               data-test-id="eco-wizard-continue-btn"
             >
               Continue <ChevronRight size={13} />
