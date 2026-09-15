@@ -1,6 +1,7 @@
 // Sub-labels shown beneath certain stage names
 const STAGE_SUB: Record<string, string> = {
   'Approval': 'Approvers',
+  'Document Control': 'Document control',
 }
 
 const BRAND       = '#0A4F8F'
@@ -10,7 +11,7 @@ const Lifecycle = ({ stages, current, rejected }: {
   stages: string[]
   current: string
   rejected?: boolean
-  sub?: number[]  // kept for API compat, unused now stages are discrete
+  sub?: number[]  // kept for API compat
 }) => {
   const currentIdx = stages.indexOf(current)
   const n = stages.length
@@ -29,58 +30,50 @@ const Lifecycle = ({ stages, current, rejected }: {
         const numLabel   = String(k + 1).padStart(2, '0')
         const subLabel   = STAGE_SUB[stage]
 
-        // Connector colours: segment left of this node is done-coloured if this or a prior step is active
-        const leftDone  = k > 0 && (isDone || isCurrent)
-        const rightDone = k < n - 1 && isDone
+        // Line to the right of this number: blue if this step is done, grey if upcoming
+        const lineColor = isDone ? BRAND : '#E2E8F0'
 
         return (
           <div key={stage} style={{ display: 'flex', flexDirection: 'column' }} data-test-id={`lifecycle-stage-${k}`}>
 
-            {/* ── Number + solid line row ── */}
-            <div style={{ display: 'flex', alignItems: 'center', width: '100%', height: 28 }}>
-              {/* Left connector */}
-              <div style={{
-                flex: 1, height: 2,
-                background: k === 0 ? 'transparent' : leftDone ? BRAND : '#E2E8F0',
-                transition: 'background .3s',
-              }} aria-hidden="true" />
-
-              {/* Number badge */}
+            {/* ── Number badge + line going RIGHT ── */}
+            <div style={{ display: 'flex', alignItems: 'center', width: '100%', height: 26 }}>
+              {/* Number: left-anchored */}
               {isCurrent ? (
                 <div style={{
-                  padding: '2px 8px', borderRadius: 6,
+                  padding: '2px 7px', borderRadius: 6,
                   background: BRAND, color: '#fff',
-                  fontSize: 11, fontWeight: 700, letterSpacing: '0.04em',
+                  fontSize: 11, fontWeight: 700, letterSpacing: '0.03em',
                   flexShrink: 0, lineHeight: '18px',
                 }}>
                   {numLabel}
                 </div>
               ) : (
                 <div style={{
-                  fontSize: 11, fontWeight: 700, letterSpacing: '0.04em',
-                  color: isDone ? BRAND : '#CBD5E1',
+                  fontSize: 11, fontWeight: 700, letterSpacing: '0.03em',
+                  color: isDone ? BRAND : '#B8C7D9',
                   flexShrink: 0, lineHeight: '18px',
-                  minWidth: 20, textAlign: 'center',
                 }}>
                   {numLabel}
                 </div>
               )}
 
-              {/* Right connector */}
-              <div style={{
-                flex: 1, height: 2,
-                background: k === n - 1 ? 'transparent' : rightDone ? BRAND : '#E2E8F0',
-                transition: 'background .3s',
-              }} aria-hidden="true" />
+              {/* Line fills the rest of the cell (except last) */}
+              {k < n - 1 && (
+                <div style={{
+                  flex: 1, height: 2, marginLeft: 8,
+                  background: lineColor,
+                  transition: 'background .3s',
+                }} aria-hidden="true" />
+              )}
             </div>
 
-            {/* ── Label row ── */}
-            <div style={{ paddingTop: 8, paddingLeft: 0 }}>
+            {/* ── Labels: left-aligned directly below the number ── */}
+            <div style={{ paddingTop: 8 }}>
               <div style={{
                 fontSize: 13,
                 fontWeight: isCurrent ? 700 : isDone ? 600 : 400,
                 color: isUpcoming ? '#94a3b8' : '#0a2233',
-                whiteSpace: 'nowrap',
               }}>
                 {stage}
                 {isRejected && (
@@ -89,8 +82,8 @@ const Lifecycle = ({ stages, current, rejected }: {
               </div>
               {subLabel && (
                 <div style={{
-                  fontSize: 11, marginTop: 1,
-                  color: isUpcoming ? '#cbd5e1' : '#64748b',
+                  fontSize: 11, marginTop: 2,
+                  color: isUpcoming ? '#B8C7D9' : '#64748b',
                 }}>
                   {subLabel}
                 </div>
