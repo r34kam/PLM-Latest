@@ -1,9 +1,8 @@
 import { Chip } from '@/components/primitives/Chip'
 import { Empty } from '@/components/primitives/Empty'
 import { Field, Input, Select } from '@/components/primitives/Field'
-import { useCreateBomItem } from '@/data/bomItems'
-import { useAllItems, useCreateItem } from '@/data/items'
-import { ITEMS } from '@/domain/catalog'
+import { useAllBomItems, useCreateBomItem } from '@/data/bomItems'
+import { useCreateItem } from '@/data/items'
 import { PEOPLE } from '@/domain/people'
 import { T } from '@/theme/tokens'
 import { useUppy } from '@unifyapps/app-builder-sdk/hooks/upload'
@@ -62,8 +61,8 @@ function ItemNew({ go, renderHeaderActions, isModal = false, onClose }: {
     pn: string; name: string; cat: string; qty: string; uom: string; refDes: string; notes: string;
     pickerQuery: string;
   } | null>(null);
-  // All items catalogue for the BOM picker in ItemNew
-  const { data: newItemCatalogue } = useAllItems();
+  // Unique parts catalogue for the BOM picker — sourced from bom_item object
+  const { bomItems: allBomItemsForPicker } = useAllBomItems();
   const sections = isKitCat ? ["Identity", "Attributes", "SAP attributes", "BOM items"] : ["Identity", "Attributes", "SAP attributes"];
 
   const createItem = useCreateItem();
@@ -458,18 +457,16 @@ function ItemNew({ go, renderHeaderActions, isModal = false, onClose }: {
 
           {/* Inline Add BOM draft — item picker */}
           {addBomDraftModal && (() => {
-            const allCat = (newItemCatalogue ?? []).concat(ITEMS as any[]);
+            // Deduplicate by pn — show each unique part once
             const seen = new Set<string>();
-            // Exclude kit-type categories — BOM components should be leaf-level items
-            const KIT_CATS = new Set(['KIT', 'ASSEMBLY', 'PCB']);
-            const pickerPool = allCat.filter((i: any) => {
+            const pickerPool = allBomItemsForPicker.filter((i) => {
               if (seen.has(i.pn)) return false;
               seen.add(i.pn);
-              return !KIT_CATS.has((i.cat ?? '').toUpperCase());
+              return true;
             });
             const dq = addBomDraftModal.pickerQuery.toLowerCase();
             const dFiltered = dq
-              ? pickerPool.filter((i: any) => (i.pn + " " + i.name).toLowerCase().includes(dq)).slice(0, 16)
+              ? pickerPool.filter((i) => (i.pn + ' ' + i.name).toLowerCase().includes(dq)).slice(0, 16)
               : pickerPool.slice(0, 10);
             return (
               <div style={{ background: T.b25, border: `1px solid ${T.g200}`, borderRadius: 10, padding: 16 }} data-test-id="add-bom-draft-panel">
