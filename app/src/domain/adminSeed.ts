@@ -25,7 +25,7 @@ const ROUTING_SEED = ROUTING_NAMES.map((n: any) => ({
   used: 40 + (n.length * 17) % 380, stages: ROUTINGS[n],
   formId: ROUTING_FORM_MAP[n] ?? "form-eco",
 }));
-const FIELD_TYPES = ["Single line text", "Long text", "Picklist", "Number", "Date", "Person", "Checkbox", "Item reference"];
+const FIELD_TYPES = ["Single line text", "Long text", "Picklist", "Number", "Date", "Person", "Checkbox", "Item reference", "Auto-generated"];
 
 export { ROLE_SEED, ROUTING_FORM_MAP, ROUTING_SEED, FIELD_TYPES }
 
