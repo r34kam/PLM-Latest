@@ -154,7 +154,7 @@ export function useUsers() {
   const { data, loading, error } = useData<any[]>(QK_USERS, 'storage', {
     object: ENTITY.plmUser,
     where: [],
-    sort: [{ field: 'properties.name', order: 'ASC' }],
+    sort: [{ field: 'id', order: 'DESC' }],
     limit: 200,
   })
   return {
@@ -220,7 +220,7 @@ export function useRoutings() {
   const { data, loading, error } = useData<any[]>(QK_ROUTINGS, 'storage', {
     object: ENTITY.plmRouting,
     where: [],
-    sort: [{ field: 'properties.name', order: 'ASC' }],
+    sort: [{ field: 'id', order: 'DESC' }],
     limit: 100,
   })
   return {
@@ -326,7 +326,7 @@ export function useRoles() {
   const { data, loading, error } = useData<any[]>(QK_ROLES, 'storage', {
     object: ENTITY.plmRole,
     where: [],
-    sort: [{ field: 'properties.name', order: 'ASC' }],
+    sort: [{ field: 'id', order: 'DESC' }],
     limit: 200,
   })
   return {
