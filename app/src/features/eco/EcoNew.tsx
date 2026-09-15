@@ -81,6 +81,9 @@ function EcoNew({
   const [pickQ, setPickQ] = useState("");
 
   // Kit-first BOM redline state
+  const [itemMode, setItemMode] = useState<'manual' | 'instructions' | null>(null);
+  const [instructionsParsing, setInstructionsParsing] = useState(false);
+
   const [kits, setKits] = useState<KitItem[]>([]);
   const [kitPickOpen, setKitPickOpen] = useState(false);
   const [kitPickQ, setKitPickQ] = useState("");
@@ -215,6 +218,29 @@ function EcoNew({
     setExpandedKits((prev) => ({ ...prev, [it.pn]: true }));
     setKitPickQ(""); // picker stays open — user clicks "Done adding" to close
   };
+  // Parse redline instructions to find matching catalog items and auto-add them
+  const pickFromInstructions = () => {
+    setInstructionsParsing(true);
+    const text = form.desc ?? '';
+    // Extract tokens that look like part numbers: 7+ alphanumeric chars or patterns like 1003140-01
+    const pnPattern = /\b([A-Z0-9]{4,}-[0-9]{2,}|[0-9]{6,})\b/gi;
+    const found = Array.from(new Set(Array.from(text.matchAll(pnPattern), (m) => m[1].toUpperCase())));
+    const catalog: any[] = allBackendItems ?? [...ITEMS, ...ASSEMBLIES];
+    const matched = catalog.filter((it: any) => found.includes((it.pn ?? '').toUpperCase()));
+    // Also do a fuzzy word match on item names present in instructions
+    const words = text.toLowerCase().split(/\W+/).filter((w) => w.length > 4);
+    const nameMatched = catalog.filter((it: any) =>
+      !matched.includes(it) &&
+      words.some((w) => (it.name ?? '').toLowerCase().includes(w))
+    );
+    const toAdd = [...matched, ...nameMatched].slice(0, 10);
+    toAdd.forEach((it) => addKit(it));
+    setTimeout(() => {
+      setInstructionsParsing(false);
+      setItemMode('manual'); // switch to manual view showing the added items
+    }, 800);
+  };
+
   const removeKit = (pn: string) => setKits((prev) => prev.filter((k) => k.pn !== pn));
   const updateKit = (pn: string, patch: Partial<KitItem>) =>
     setKits((prev) => prev.map((k) => k.pn === pn ? { ...k, ...patch } : k));
@@ -736,8 +762,81 @@ function EcoNew({
       {i === 1 && (
         <div className="stack" data-test-id="eco-new-items-step">
 
-          <div className="stack" data-test-id="eco-items-section">
-            {/* Step 1: Select kits/assemblies to add to this change */}
+          {/* ── Item mode selection (shown when no mode chosen yet) ── */}
+          {!itemMode && (
+            <div data-test-id="item-method-selection">
+              <div style={{ fontWeight: 700, fontSize: 15, color: '#0a2233', marginBottom: 4 }}>How would you like to add items?</div>
+              <div className="sub" style={{ fontSize: 12, marginBottom: 20 }}>Choose how to populate the affected kits and assemblies for this change order</div>
+              <div className="approval-choice-grid" data-test-id="item-choices-grid">
+                <button
+                  type="button"
+                  className="approval-choice-card"
+                  onClick={() => setItemMode('manual')}
+                  data-test-id="item-choice-manual"
+                >
+                  <span className="approval-choice-radio" aria-hidden="true"><span className="approval-choice-radio-dot" /></span>
+                  <div className="approval-choice-title">Add manually</div>
+                  <div className="approval-choice-desc">
+                    Search and select kits or assemblies from the catalog and specify BOM edits inline or via redline file.
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  className="approval-choice-card"
+                  onClick={() => { setItemMode('instructions'); pickFromInstructions(); }}
+                  disabled={!form.desc}
+                  data-test-id="item-choice-instructions"
+                >
+                  <span className="approval-choice-radio" aria-hidden="true"><span className="approval-choice-radio-dot" /></span>
+                  <div className="approval-choice-title">Pick from instructions</div>
+                  <div className="approval-choice-desc">
+                    {form.desc
+                      ? 'Automatically extract affected part numbers from your Redline instructions and add them to this change.'
+                      : 'Fill in Redline instructions in Basic Details first to use this option.'}
+                  </div>
+                </button>
+              </div>
+
+              {!form.desc && (
+                <div className="approval-tip-card" data-test-id="item-instructions-tip" style={{ marginTop: 16 }}>
+                  <div style={{ fontSize: 12, fontWeight: 700, color: T.g800, marginBottom: 4 }}>Tip</div>
+                  <div style={{ fontSize: 12, color: T.g600, lineHeight: 1.5 }}>
+                    Add Redline instructions in the <strong>Basic Details</strong> step to unlock the <em>Pick from instructions</em> option. Part numbers and assembly names mentioned there will be matched automatically.
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Parsing spinner shown while extracting from instructions ── */}
+          {itemMode === 'instructions' && instructionsParsing && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, padding: '40px 0' }} data-test-id="item-instructions-parsing">
+              <Loader2 size={28} className="animate-spin" color={T.brand} />
+              <div style={{ fontSize: 13, color: T.g600 }}>Reading redline instructions and matching parts…</div>
+            </div>
+          )}
+
+          {/* ── Header with "Change method" when a mode is chosen ── */}
+          {itemMode === 'manual' && (
+            <div className="bet" style={{ marginBottom: 4 }} data-test-id="eco-items-mode-header">
+              <div style={{ fontSize: 12, color: T.g500 }}>
+                {kits.length > 0
+                  ? `${kits.length} kit${kits.length !== 1 ? 's' : ''} added`
+                  : 'Manual — search and add kits below'}
+              </div>
+              <button
+                type="button"
+                className="btn sm gh"
+                onClick={() => setItemMode(null)}
+                data-test-id="item-change-method-btn"
+              >
+                Change method
+              </button>
+            </div>
+          )}
+
+          <div className="stack" data-test-id="eco-items-section" style={{ display: itemMode === 'manual' ? undefined : 'none' }}>
             {/* Section header — no nested Card, content fills the right pane */}
             <div className="bet" style={{ marginBottom: 4 }} data-test-id="eco-items-header">
               <div>
