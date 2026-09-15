@@ -435,7 +435,7 @@ textarea.inp{height:auto;padding:8px 10px;line-height:1.5;resize:vertical}
 .eco-summary-section-title{font-size:14px;font-weight:700;color:#0a2233}
 .eco-summary-edit-link{background:none;border:none;cursor:pointer;font-size:13px;color:#3b6ea8;font-weight:600;padding:0;line-height:1}
 .eco-summary-edit-link:hover{text-decoration:underline}
-.eco-summary-stage-row{padding:12px 16px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:8px;background:#fff}
+.eco-summary-stage-row{padding:14px 18px;border:1px solid #e5eaf1;border-radius:8px;margin-bottom:8px;background:#fafbfd}
 .eco-summary-stage-row:last-child{margin-bottom:0}
 .eco-summary-kv-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 36px}
 @media(max-width:840px){.eco-summary-kv-grid{grid-template-columns:1fr;gap:12px}}

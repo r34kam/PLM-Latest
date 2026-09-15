@@ -1744,9 +1744,11 @@ function EcoNew({
             <div className="eco-summary-header-left">
               <div className="row" style={{ gap: 8, marginBottom: 7, alignItems: 'center' }}>
                 <span className="eco-draft-chip">DRAFT</span>
-                <span style={{ fontSize: 13, color: '#3b6ea8', fontWeight: 600 }}>{form.cat.includes(':') ? form.cat.split(':')[1]?.trim() : form.cat}</span>
+                <span style={{ fontSize: 13, color: '#3b6ea8', fontWeight: 600 }}>
+                  {form.cat.includes(':') ? `${form.cat.split(':')[0].trim()} — ${form.cat.split(':')[1]?.trim()}` : form.cat}
+                </span>
               </div>
-              <div style={{ fontWeight: 700, fontSize: 17, color: '#0a2233', lineHeight: 1.3 }}>
+              <div style={{ fontWeight: 700, fontSize: 18, color: '#0a2233', lineHeight: 1.3 }}>
                 {form.title || 'New change order'}
               </div>
             </div>
@@ -1757,7 +1759,7 @@ function EcoNew({
                 ['APPROVERS', mode === 'ai' ? picked.length : mode === 'manual' ? manStages.reduce((a2: any, x: any) => a2 + x.people.length, 0) : selectedStages.length]
               ].map(([label, val]: any) => (
                 <div key={label} className="eco-summary-stat-box">
-                  <div style={{ fontSize: 24, fontWeight: 700, color: '#0a2233', lineHeight: 1 }}>{val}</div>
+                  <div style={{ fontSize: 26, fontWeight: 700, color: '#0a2233', lineHeight: 1 }}>{val}</div>
                   <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#7993a8', marginTop: 5 }}>{label}</div>
                 </div>
               ))}
@@ -1815,35 +1817,44 @@ function EcoNew({
               <span className="eco-summary-section-title">Approval routing</span>
               <button className="eco-summary-edit-link" onClick={() => setI(2)} data-test-id="summary-edit-approvals-btn">Edit</button>
             </div>
-            <div className="sub" style={{ fontSize: 12, marginBottom: 10 }}>
-              {mode === 'routing' ? `Predefined routing — ${routing}` : mode === 'ai' ? 'Assistant suggestion, editable' : 'Built manually'}
+            <div className="sub" style={{ fontSize: 12, marginBottom: 12 }}>
+              {mode === 'routing' ? `Predefined routing — ${routing}` : mode === 'ai' ? 'Assistant suggestion' : 'Built manually'}
             </div>
             {mode === 'manual' ? manStages.map((st: any, k: any) => (
               <div key={k} className="eco-summary-stage-row" data-test-id={`summary-routing-stage-${k}`}>
-                <span style={{ fontWeight: 700 }}>{k + 1}. {st.name}</span>
-                <div className="sub" style={{ marginTop: 2 }}>{st.people.join(', ') || 'No one selected'} — {st.req}</div>
+                <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>{k + 1}. {st.name}</div>
+                {st.people.length ? st.people.map((person: string) => (
+                  <div key={person} className="sub" style={{ fontSize: 13, lineHeight: 1.9 }}>{person}</div>
+                )) : <div className="sub" style={{ fontSize: 13 }}>No one selected</div>}
               </div>
             )) : (
               <>
                 {selectedStages.filter((r: any, idx3: number, arr: any[]) => arr.findIndex((x: any) => x.stage === r.stage) === idx3).map((stageRow: any) => {
                   const stageNum = stageRow.stage;
                   const stageRoles = selectedStages.filter((r: any) => r.stage === stageNum);
-                  const stageNamesMap: Record<number, string> = { 1: 'Engineering sign-off', 2: 'Regulatory sign-off', 3: 'Document control sign-off' };
+                  const stageNamesMap: Record<number, string> = { 1: 'Reviewer approval', 2: 'Regulatory sign-off', 3: 'Document control sign-off' };
                   return (
                     <div key={stageNum} className="eco-summary-stage-row" data-test-id={`summary-routing-stage-${stageNum}`}>
-                      <span style={{ fontWeight: 700 }}>{stageNum}. {stageNamesMap[stageNum] ?? `Stage ${stageNum}`}</span>
-                      <div className="sub" style={{ marginTop: 2 }}>
-                        {stageRoles.map((r: any) => `${r.g} — ${r.req}, ${(r.members ?? []).join(', ')}`).join(' · ')}
-                      </div>
+                      <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>{stageNum}. {stageNamesMap[stageNum] ?? `Stage ${stageNum}`}</div>
+                      {stageRoles.map((r: any) => (
+                        <div key={r.g} className="sub" style={{ fontSize: 13, lineHeight: 1.9 }}>{r.g}</div>
+                      ))}
                     </div>
                   );
                 })}
-                {!selectedStages.length && (
+                {!selectedStages.length && mode === 'ai' && picked.length > 0 && (
                   <div className="eco-summary-stage-row" data-test-id="summary-routing-stage-1">
-                    <span style={{ fontWeight: 700 }}>1. Engineering sign-off</span>
-                    <div className="sub" style={{ marginTop: 2 }}>
-                      {mode === 'ai' ? picked.join(' · ') : 'Engineering Lead – Livermore — One or more, Dana Kim'}
-                    </div>
+                    <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>1. Reviewer approval</div>
+                    {picked.map((person: string) => (
+                      <div key={person} className="sub" style={{ fontSize: 13, lineHeight: 1.9 }}>{person}</div>
+                    ))}
+                  </div>
+                )}
+                {!selectedStages.length && mode !== 'ai' && (
+                  <div className="eco-summary-stage-row" data-test-id="summary-routing-stage-1">
+                    <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4 }}>1. Engineering sign-off</div>
+                    <div className="sub" style={{ fontSize: 13, lineHeight: 1.9 }}>Engineering Lead</div>
+                    <div className="sub" style={{ fontSize: 13, lineHeight: 1.9 }}>Dana Kim</div>
                   </div>
                 )}
               </>
@@ -1866,7 +1877,7 @@ function EcoNew({
             {!collapsedStages['summary-additional'] && (
               <div className="eco-summary-kv-grid" style={{ marginTop: 14 }}>
                 {[
-                  ['CHANGE CATEGORY', form.cat.split(':')[0]],
+                  ['CHANGE CATEGORY', form.cat.includes(':') ? `${form.cat.split(':')[0].trim()} — ${form.cat.split(':')[1]?.trim()}` : form.cat],
                   ['DIVISION', form.div],
                   ['SITE / PLANT', form.site],
                   ['EFFECTIVITY', form.eff],
