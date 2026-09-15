@@ -965,68 +965,71 @@ function EcoNew({
           )}
 
           <div className="stack" data-test-id="eco-items-section" style={{ display: itemMode === 'manual' && !instructionsParsing ? undefined : 'none' }}>
-            {/* Always-visible search bar */}
-            <div style={{ position: 'relative', marginBottom: 4 }} data-test-id="eco-items-search-wrap">
-              <Search size={14} color="#94a3b8" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
-              <input
-                className="inp" style={{ paddingLeft: 36 }} value={kitPickQ}
-                onChange={(e: any) => { setKitPickQ(e.target.value); setKitPickOpen(true); }}
-                onFocus={() => setKitPickOpen(true)}
-                placeholder="Search kits and assemblies by number or name"
-                data-test-id="eco-kit-pick-search"
-              />
-            </div>
-
-            {/* Catalog results table — shown when searching or when no kits added yet */}
-            {(kitPickOpen || kits.length === 0) && (
+            {/* Empty state with + Add kit CTA — hidden once picker is open or kits exist */}
+            {!kitPickOpen && kits.length === 0 && (
               <div className="eco-kit-catalog-panel" data-test-id="eco-kit-pick-results">
-                {kits.length === 0 && !kitPickQ && (
-                  <div className="eco-kit-empty-dashed" data-test-id="eco-kit-empty-state">
-                    <Boxes size={36} color="#b0bec5" style={{ marginBottom: 10 }} />
-                    <div style={{ fontWeight: 700, fontSize: 14, color: '#0a2233', marginBottom: 4 }}>No kits added yet</div>
-                    <div className="sub" style={{ fontSize: 13, marginBottom: 16 }}>Search the catalog for the kit or assembly whose BOM is changing.</div>
-                    <button
-                      className="btn pri"
-                      onClick={() => { setKitPickOpen(true); }}
-                      data-test-id="eco-add-kit-btn"
-                    >
-                      <Plus size={13} />+ Add kit
-                    </button>
+                <div className="eco-kit-empty-dashed" data-test-id="eco-kit-empty-state">
+                  <Boxes size={36} color="#b0bec5" style={{ marginBottom: 10 }} />
+                  <div style={{ fontWeight: 700, fontSize: 14, color: '#0a2233', marginBottom: 4 }}>No kits added yet</div>
+                  <div className="sub" style={{ fontSize: 13, marginBottom: 16 }}>Search the catalog for the kit or assembly whose BOM is changing.</div>
+                  <button
+                    className="btn pri"
+                    onClick={() => { setKitPickOpen(true); setKitPickQ(''); }}
+                    data-test-id="eco-add-kit-btn"
+                  >
+                    <Plus size={13} />Add kit
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Search bar + results — shown when picker is open */}
+            {kitPickOpen && (
+              <div className="eco-kit-catalog-panel" data-test-id="eco-kit-pick-results">
+                <div style={{ padding: '10px 10px 6px', borderBottom: '1px solid #e9eef4' }}>
+                  <div style={{ position: 'relative' }}>
+                    <Search size={14} color="#94a3b8" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+                    <input
+                      className="inp" style={{ paddingLeft: 32 }} value={kitPickQ} autoFocus
+                      onChange={(e: any) => setKitPickQ(e.target.value)}
+                      placeholder="Search kits and assemblies by number or name"
+                      data-test-id="eco-kit-pick-search"
+                      onBlur={() => { if (!kitPickQ) setTimeout(() => setKitPickOpen(false), 200); }}
+                    />
                   </div>
-                )}
-                {kitPickQ && (
-                  <table className="tbl" data-test-id="eco-kit-pick-table">
-                    <thead>
-                      <tr>
-                        <th>ITEM</th>
-                        <th>NAME</th>
-                        <th>STATUS</th>
-                        <th></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(allBackendItems ?? ASSEMBLIES as any[])
-                        .filter((it: any) => ["KIT", "ASSEMBLY", "PCB"].includes((it.cat || "").toUpperCase()) &&
-                          !kits.some((k) => k.pn === it.pn) &&
-                          (it.pn + it.name + it.cat).toLowerCase().includes(kitPickQ.toLowerCase()))
-                        .map((it: any) => (
-                          <tr key={it.pn} data-test-id={`eco-kit-pick-row-${it.pn}`}>
-                            <td>
-                              <div style={{ fontWeight: 700, fontSize: 13, fontFamily: 'ui-monospace,"SF Mono",Menlo,Consolas,monospace' }}>{it.pn}</div>
-                              <div className="sub" style={{ fontSize: 11 }}>Rev {it.rev}</div>
-                            </td>
-                            <td style={{ fontWeight: 500 }}>{it.name}</td>
-                            <td>{phaseChip(it.phase)}</td>
-                            <td>
-                              <button className="btn pri sm" onClick={() => { addKit(it); setKitPickQ(''); setKitPickOpen(false); }} data-test-id={`eco-kit-pick-add-${it.pn}`}>
-                                + Add
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
-                )}
+                </div>
+                <table className="tbl" data-test-id="eco-kit-pick-table">
+                  <thead>
+                    <tr>
+                      <th>ITEM</th>
+                      <th>NAME</th>
+                      <th>STATUS</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(allBackendItems ?? ASSEMBLIES as any[])
+                      .filter((it: any) => ["KIT", "ASSEMBLY", "PCB"].includes((it.cat || "").toUpperCase()) &&
+                        !kits.some((k) => k.pn === it.pn) &&
+                        (it.pn + it.name + it.cat).toLowerCase().includes(kitPickQ.toLowerCase()))
+                      .slice(0, 20)
+                      .map((it: any) => (
+                        <tr key={it.pn} data-test-id={`eco-kit-pick-row-${it.pn}`}>
+                          <td>
+                            <div style={{ fontWeight: 700, fontSize: 13, fontFamily: 'ui-monospace,"SF Mono",Menlo,Consolas,monospace' }}>{it.pn}</div>
+                            <div className="sub" style={{ fontSize: 11 }}>Rev {it.rev}</div>
+                          </td>
+                          <td style={{ fontWeight: 500 }}>{it.name}</td>
+                          <td>{phaseChip(it.phase)}</td>
+                          <td>
+                            <button className="btn pri sm" onClick={() => { addKit(it); setKitPickQ(''); setKitPickOpen(false); }} data-test-id={`eco-kit-pick-add-${it.pn}`}>
+                              + Add
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
               </div>
             )}
 
@@ -1591,76 +1594,49 @@ function EcoNew({
                         const stageLabel = st === 1 ? "Functional approval" : "Document control sign-off";
                         const checkedCount = rows.filter((r) => picked.includes(r.g)).length;
                         return (
-                          <div key={st} className="stagecard" data-test-id={`ai-stagecard-${st}`}>
+                          <div key={st} className="eco-stage-card" data-test-id={`ai-stagecard-${st}`}>
                             <div
-                              className="stagehead"
-                              style={{ cursor: "pointer", userSelect: "none" }}
+                              className="eco-stage-head"
                               onClick={() => toggleStageCollapse(`ai-${st}`)}
                               data-test-id={`ai-stage-toggle-${st}`}
                             >
-                              <button
-                                type="button"
-                                className="btn gh sm"
-                                style={{ width: 24, height: 24, minWidth: 24, padding: 0, display: "grid", placeItems: "center", marginRight: 2 }}
-                                title={isCollapsed ? "Expand stage" : "Collapse stage"}
-                                aria-label={isCollapsed ? "Expand stage" : "Collapse stage"}
-                                onClick={(e) => { e.stopPropagation(); toggleStageCollapse(`ai-${st}`); }}
-                                data-test-id={`ai-stage-chevron-${st}`}
-                              >
-                                {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
-                              </button>
-                              <span className="stagepill">Stage {st}</span>
-                              <b style={{ padding: "3px 6px" }}>{stageLabel}</b>
-                              <span className="mini">{checkedCount} of {rows.length} selected</span>
+                              <ChevronDown size={14} color={T.g500} style={{ transform: isCollapsed ? 'rotate(-90deg)' : 'none', transition: 'transform .15s', flexShrink: 0 }} />
+                              <span style={{ fontWeight: 700, fontSize: 14, color: '#0a2233' }}>{st}.&nbsp;&nbsp;{stageLabel}</span>
+                              <span className="sub" style={{ fontSize: 12, marginLeft: 8 }}>{checkedCount} of {rows.length} selected</span>
                               <Chip k="vio" icon={Sparkles}>AI suggested</Chip>
                             </div>
 
                             {!isCollapsed && (
-                              <table className="tbl" data-test-id={`ai-stage-table-${st}`}>
-                                <thead>
-                                  <tr>
-                                    <th style={{ width: 30 }}></th>
-                                    <th>Approval role</th>
-                                    <th>People</th>
-                                    <th style={{ width: 90 }}>Requirement</th>
-                                    <th style={{ width: 150 }}>Confidence</th>
-                                    <th>Why</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {rows.map((a2) => {
-                                    const on = picked.includes(a2.g);
-                                    return (
-                                      <tr key={a2.g} className={on ? "sel" : ""} data-test-id={`ai-suggestion-row-${a2.g}`}>
-                                        <td>
-                                          <input
-                                            type="checkbox"
-                                            checked={on}
-                                            onChange={() => setPicked(on ? picked.filter((x) => x !== a2.g) : [...picked, a2.g])}
-                                            aria-label={`Include ${a2.g}`}
-                                          />
-                                        </td>
-                                        <td style={{ fontWeight: 600 }}>{a2.g}</td>
-                                        <td className="sub">{a2.who}</td>
-                                        <td>
-                                          <Chip k={a2.req === "One or more" ? "blue" : a2.req === "Optional" ? "gray" : a2.req === "Comments only" ? "gray" : "vio"}>
-                                            {a2.req}
-                                          </Chip>
-                                        </td>
-                                        <td>
-                                          <div className="row" style={{ gap: 7 }}>
-                                            <div style={{ flex: 1, height: 6, background: T.g200, borderRadius: 3, overflow: "hidden" }}>
-                                              <div style={{ width: `${a2.conf}%`, height: "100%", background: a2.conf > 80 ? T.ok : a2.conf > 60 ? T.warn : T.g400 }} />
-                                            </div>
-                                            <b style={{ fontSize: 11 }}>{a2.conf}%</b>
-                                          </div>
-                                        </td>
-                                        <td className="sub" style={{ maxWidth: 320 }}>{a2.why}</td>
-                                      </tr>
-                                    );
-                                  })}
-                                </tbody>
-                              </table>
+                              <div className="eco-stage-body" data-test-id={`ai-stage-table-${st}`}>
+                                {rows.map((a2) => {
+                                  const on = picked.includes(a2.g);
+                                  return (
+                                    <div key={a2.g} className="eco-role-row" data-test-id={`ai-suggestion-row-${a2.g}`}>
+                                      <input
+                                        type="checkbox"
+                                        checked={on}
+                                        onChange={() => setPicked(on ? picked.filter((x) => x !== a2.g) : [...picked, a2.g])}
+                                        aria-label={`Include ${a2.g}`}
+                                        style={{ flexShrink: 0, marginRight: 12 }}
+                                      />
+                                      <span style={{ fontWeight: 600, fontSize: 13, flex: '0 0 220px' }}>{a2.g}</span>
+                                      <span className="sub" style={{ flex: '0 0 160px', fontSize: 13 }}>{a2.who}</span>
+                                      <span style={{ flex: '0 0 110px' }}>
+                                        <Chip k={a2.req === "One or more" ? "blue" : a2.req === "Optional" ? "gray" : a2.req === "Comments only" ? "gray" : "vio"}>
+                                          {a2.req}
+                                        </Chip>
+                                      </span>
+                                      <span
+                                        style={{ fontSize: 13, fontWeight: 700, color: a2.conf > 80 ? T.ok : a2.conf > 60 ? T.warn : T.g400, cursor: 'help' }}
+                                        title={a2.why}
+                                        aria-label={`Confidence ${a2.conf}% — ${a2.why}`}
+                                      >
+                                        {a2.conf}%
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
                             )}
                           </div>
                         );
