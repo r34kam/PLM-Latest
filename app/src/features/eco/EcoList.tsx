@@ -143,8 +143,7 @@ function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, 
         </div>
       )}
 
-      <Card pad={false}>
-        <Toolbar q={q} setQ={setQ} placeholder="Search change or title"
+      <Toolbar q={q} setQ={setQ} placeholder="Search change or title"
           segs={filters} seg={f} setSeg={(newF: any) => { setF(newF); }} count={count}
           right={<>
             <div style={{ position: "relative" }}>
@@ -242,6 +241,7 @@ function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, 
             </div>
           </>} />
 
+      <Card pad={false}>
         {ordersLoading ? (
           <div style={{ padding: "20px" }} data-test-id="eco-list-loading">
             {[1,2,3,4,5].map((i) => <Skeleton key={i} className="h-12 mb-2" />)}

@@ -250,8 +250,9 @@ textarea.inp{height:auto;padding:8px 10px;line-height:1.5;resize:vertical}
 .seg button.on{background:${T.brand};color:#ffffff;border-color:${T.brand}}
 .seg button.on:hover{background:${T.b700};border-color:${T.b700}}
 .seg button .n{display:none}
-/* toolbar: left side = filter pills / selects; search + actions always on the right edge */
-.toolbar{display:flex;align-items:center;gap:12px;padding:14px 20px;border:none;min-width:0}
+/* toolbar: floats above the table card on the page background — no card, no background.
+   Left side = filter pills / selects. Right edge = search + actions. */
+.toolbar{display:flex;align-items:center;gap:12px;padding:0 0 12px;border:none;min-width:0;background:transparent}
 .toolbar-right{display:flex;align-items:center;gap:8px;margin-left:auto;flex-shrink:0}
 .srch{position:relative;display:flex;align-items:center;flex-shrink:0}
 .srch input{padding-left:30px;padding-right:10px;height:32px;border-radius:10px;width:240px;border:1px solid #D4DEE9;outline:none;background:#fff;font:inherit;font-size:13px;color:#0a2233;transition:border-color .12s,box-shadow .12s}

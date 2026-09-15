@@ -64,11 +64,11 @@ function ItemList({ go, railOpen = false, renderHeaderActions }: { go: any; rail
         <Kpi label="Items with a BOM" value={items.filter((i: any) => i.bom > 0).length} icon={Layers} />
       </div>
 
-      <Card pad={false}>
-        <Toolbar q={q} setQ={setQ} placeholder="Part number, name or category"
+      <Toolbar q={q} setQ={setQ} placeholder="Part number, name or category"
           segs={segs} seg={seg} setSeg={setSeg} count={count}
           selects={[["All categories", "KIT", "ASSEMBLY", "HARDWARE", "BRACKETS & PLATES", "PCB", "BATTERY"]]}
 />
+      <Card pad={false}>
         <div className="scrollx">
           <table className="tbl">
             <thead><tr>
