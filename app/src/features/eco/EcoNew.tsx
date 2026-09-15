@@ -452,6 +452,7 @@ function EcoNew({
         rejectionReason: '',
         rejectionNotes: '',
         rejectedBy: '',
+        extraNotifyNames: [],
         history: [{
           id: `h-${Date.now()}`,
           timestamp: new Date().toISOString(),

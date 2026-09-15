@@ -15,6 +15,7 @@ import { ROUTINGS, deriveApprovalState, notificationRecipientsFor } from '@/doma
 import { ME } from '@/domain/session'
 import { suppliersFor } from '@/domain/suppliers'
 import { useAllChangeOrders, useUpdateChangeOrder, type EcoComment, type CoHistoryEntry } from '@/data/changeOrders'
+import { useUsers } from '@/data/admin'
 import { useExportEcoExcel } from '@/data/export'
 import { useSendReminder } from '@/data/reminder'
 import { downloadFile } from '@/lib/download'
@@ -59,8 +60,9 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
         rejectionNotes: backendCo.rejectionNotes ?? '',
         rejectedBy: backendCo.rejectedBy ?? '',
         history: backendCo.history ?? [],
+        extraNotifyNames: backendCo.extraNotifyNames ?? [],
       }
-    : { ...staticEco, ecoItems: [] as any[], comments: [] as any[], rejectionReason: '', rejectionNotes: '', rejectedBy: '', history: [] as CoHistoryEntry[] };
+    : { ...staticEco, ecoItems: [] as any[], comments: [] as any[], rejectionReason: '', rejectionNotes: '', rejectedBy: '', history: [] as CoHistoryEntry[], extraNotifyNames: [] as string[] };
   // Use real persisted approvals from backend when available; fall back to derived for static ECOs.
   // Normalise backend ApprovalEntry shape to the legacy {g, n, req, st, at, cm, others} shape
   // that the Approvals tab rendering already uses — keeping one render path.
@@ -211,6 +213,29 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
       toast.error('Failed to update status — please try again.')
     } finally {
       setIsRejecting(false)
+    }
+  }
+
+  /* ---- Add notification recipient modal ---- */
+  const { users: allUsers } = useUsers()
+  const [notifyModalOpen, setNotifyModalOpen] = useState(false)
+  const [notifySearch, setNotifySearch] = useState('')
+  const [isSavingNotify, setIsSavingNotify] = useState(false)
+  const handleAddNotifyUser = async (userName: string) => {
+    if (!backendCo) return
+    const current: string[] = (eco as any).extraNotifyNames ?? []
+    if (current.includes(userName)) { setNotifyModalOpen(false); return }
+    const updated = [...current, userName]
+    setIsSavingNotify(true)
+    try {
+      await updateChangeOrder(backendCo.id, { extraNotifyNames: updated } as any)
+      toast.success(`${userName} added to notifications.`)
+      setNotifyModalOpen(false)
+      setNotifySearch('')
+    } catch {
+      toast.error('Failed to add — please try again.')
+    } finally {
+      setIsSavingNotify(false)
     }
   }
 
@@ -1317,19 +1342,38 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                 }
               }
 
+              // Also add manually-added extra recipients
+              const extraNames: string[] = (eco as any).extraNotifyNames ?? []
+              for (const name of extraNames) {
+                if (!map.has(name)) {
+                  map.set(name, { name, reason: 'Manually added', notifyOn: 'Every status change', checked: true })
+                }
+              }
+
               recipients = Array.from(map.values())
             } else {
               recipients = notificationRecipientsFor(eco).map((r: any) => ({ ...r, checked: true }))
+              // Merge extra notify names for static ECOs too
+              const extraNames: string[] = (eco as any).extraNotifyNames ?? []
+              for (const name of extraNames) {
+                if (!recipients.find((r) => r.name === name)) {
+                  recipients.push({ name, reason: 'Manually added', notifyOn: 'Every status change', checked: true })
+                }
+              }
             }
 
             return (
               <div className="stack">
                 <div className="bet">
                   <div>
-                    <h3 data-test-id="notifications-heading">{`${recipients.length} users will be notified of status changes`}</h3>
+                    <h3 data-test-id="notifications-heading">{`${recipients.length} user${recipients.length === 1 ? '' : 's'} will be notified of status changes`}</h3>
                     <div className="sub" style={{ marginTop: 2 }}>Employees and partners are notified on status change. Suppliers are notified only when the change completes.</div>
                   </div>
-                  <div className="row"><button className="btn sm" data-test-id="notifications-add-btn"><Plus size={12} />Add</button><button className="btn sm gh" data-test-id="notifications-delete-btn"><Trash2 size={12} /></button></div>
+                  {backendCo && (
+                    <button className="btn sm" data-test-id="notifications-add-btn" onClick={() => setNotifyModalOpen(true)}>
+                      <Plus size={12} />Add
+                    </button>
+                  )}
                 </div>
                 <div className="card" style={{ overflow: "hidden" }}>
                   <table className="tbl" data-test-id="notifications-table">
@@ -1598,6 +1642,61 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
           </Field>
         </Modal>
       )}
+      {/* ── Add Notification Recipient Modal ── */}
+      {notifyModalOpen && (() => {
+        const existingNames = new Set((eco as any).extraNotifyNames ?? [])
+        const query = notifySearch.toLowerCase()
+        const filtered = (allUsers ?? []).filter((u) =>
+          u.active && (u.name.toLowerCase().includes(query) || u.email.toLowerCase().includes(query) || u.group.toLowerCase().includes(query))
+        )
+        return (
+          <Modal
+            title="Add notification recipient"
+            onClose={() => { setNotifyModalOpen(false); setNotifySearch('') }}
+            foot={<button className="btn" onClick={() => { setNotifyModalOpen(false); setNotifySearch('') }}>Close</button>}
+            data-test-id="notify-add-modal"
+          >
+            <input
+              className="inp"
+              placeholder="Search by name, email or group…"
+              value={notifySearch}
+              onChange={(e) => setNotifySearch(e.target.value)}
+              autoFocus
+              data-test-id="notify-search-input"
+            />
+            <div style={{ marginTop: 12, maxHeight: 340, overflowY: 'auto' }}>
+              {filtered.length === 0 && (
+                <div className="sub" style={{ textAlign: 'center', padding: '24px 0' }}>No users match your search.</div>
+              )}
+              {filtered.map((u) => {
+                const already = existingNames.has(u.name)
+                return (
+                  <div
+                    key={u.id}
+                    className="row"
+                    style={{ padding: '8px 4px', borderBottom: '1px solid var(--border)', alignItems: 'center', justifyContent: 'space-between' }}
+                    data-test-id={`notify-user-row-${u.id}`}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 600 }}>{u.name}</div>
+                      <div className="sub" style={{ marginTop: 2 }}>{u.group} · {u.email}</div>
+                    </div>
+                    <button
+                      className="btn sm ok"
+                      disabled={already || isSavingNotify}
+                      onClick={() => handleAddNotifyUser(u.name)}
+                      data-test-id={`notify-user-add-${u.id}`}
+                    >
+                      {already ? 'Added' : <><Plus size={11} />Add</>}
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          </Modal>
+        )
+      })()}
+
       {/* ── Comment Drawer ── */}
       {commentDrawerOpen && (
         <>

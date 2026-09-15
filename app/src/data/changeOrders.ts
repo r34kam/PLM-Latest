@@ -57,7 +57,8 @@ export type ChangeOrder = {
   rejectionReason: string     // reason selected when rejected
   rejectionNotes: string      // free-text notes entered at rejection
   rejectedBy: string          // name of person who rejected
-  history: CoHistoryEntry[]   // parsed from historyJson — audit trail
+  history: CoHistoryEntry[]         // parsed from historyJson — audit trail
+  extraNotifyNames: string[]        // parsed from extraNotifyJson — manually added notification recipients
 }
 
 /** One kit/assembly added to the ECO during creation, with its BOM edits. */
@@ -100,9 +101,10 @@ export type NewChangeOrder = Omit<ChangeOrder, 'id'>
 // Payload shape sent to the backend — complex fields serialised to JSON strings.
 // ecoItemsJson and commentsJson are sent separately in a follow-up UPDATE because
 // the workflow CREATE node rejects unregistered schema fields in rawPayload.
-type CoPayload = Omit<NewChangeOrder, 'approvals' | 'ecoItems' | 'comments' | 'history'> & {
+type CoPayload = Omit<NewChangeOrder, 'approvals' | 'ecoItems' | 'comments' | 'history' | 'extraNotifyNames'> & {
   approvalsJson: string
   historyJson: string
+  extraNotifyJson: string
 }
 
 
@@ -157,6 +159,7 @@ function flatten(raw: any): ChangeOrder {
     rejectionNotes: p.rejectionNotes ?? '',
     rejectedBy: p.rejectedBy ?? '',
     history: parseJsonSafe<CoHistoryEntry[]>(p.historyJson, []),
+    extraNotifyNames: parseJsonSafe<string[]>(p.extraNotifyJson, []),
   }
 }
 
@@ -222,11 +225,12 @@ export function useChangeOrdersAwaitingMe() {
 
 // Create payload — omits ecoItemsJson/commentsJson which the workflow CREATE node rejects
 function toPayload(co: NewChangeOrder): CoPayload {
-  const { approvals, ecoItems: _ecoItems, comments: _comments, history, ...rest } = co
+  const { approvals, ecoItems: _ecoItems, comments: _comments, history, extraNotifyNames, ...rest } = co
   return {
     ...rest,
     approvalsJson: JSON.stringify(approvals ?? []),
     historyJson: JSON.stringify(history ?? []),
+    extraNotifyJson: JSON.stringify(extraNotifyNames ?? []),
   }
 }
 
@@ -284,12 +288,13 @@ export function useUpdateChangeOrder() {
   return async (recordId: string, co: Partial<NewChangeOrder>) => {
     // Serialize any array fields that the backend stores as JSON strings.
     // Sending the raw array bypasses the backend schema and the update is silently dropped.
-    const { approvals, ecoItems, comments, history, ...rest } = co as Partial<NewChangeOrder>
+    const { approvals, ecoItems, comments, history, extraNotifyNames, ...rest } = co as Partial<NewChangeOrder>
     const payload: Record<string, unknown> = { ...rest }
     if (approvals !== undefined) payload.approvalsJson = JSON.stringify(approvals)
     if (ecoItems !== undefined) payload.ecoItemsJson = JSON.stringify(ecoItems)
     if (comments !== undefined) payload.commentsJson = JSON.stringify(comments)
     if (history !== undefined) payload.historyJson = JSON.stringify(history)
+    if (extraNotifyNames !== undefined) payload.extraNotifyJson = JSON.stringify(extraNotifyNames)
     await mutation.mutateAsync({
       data: {
         id: UPDATE.id,
