@@ -69,6 +69,8 @@ html,body,#root{margin:0;padding:0;background:${T.brand};min-height:100vh}
 .rightrail-body{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:14px}
 .tbl tr.inspected-row{background:${T.b50} !important;outline:1px solid ${T.b200}}
 .crumb{font-size:11px;color:#7993a8;margin-bottom:5px;display:flex;align-items:center;gap:5px}
+.crumb-link{background:none;border:none;padding:0;font-size:inherit;color:inherit;cursor:pointer;text-decoration:none}
+.crumb-link:hover{color:#055aaf;text-decoration:underline}
 
 /* ---- surfaces ---- */
 .card{min-width:0;background:#ffffff;border:none;border-radius:10px;box-shadow:0 1px 2px rgba(2,42,66,.05), 0 10px 26px -14px rgba(2,42,66,.18)}
