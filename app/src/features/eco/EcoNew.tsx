@@ -627,79 +627,50 @@ function EcoNew({
           {/* Right Content Area for Step 0 */}
           <div style={{ minWidth: 0 }}>
             {subSection === "general" && (
-              <div className="kv-form" data-test-id="kv-general-details">
-                  <div className="kv-row">
-                    <div className="kv-key">
-                      <span className="kv-label">Change category</span>
-                    </div>
-                    <div className="kv-val">
-                      <Select value={form.cat} onChange={(e: any) => setForm({ ...form, cat: e.target.value })}
-                        options={["ECO: Engineering Change Order", "DCO: Document Change Order", "TPCO: Third Party Change Order", "RFD: Request for Deviation"]} />
-                    </div>
-                  </div>
-
-                  <div className="kv-row">
-                    <div className="kv-key">
-                      <span className="kv-label">Change number</span>
-                    </div>
-                    <div className="kv-val">
-                      <Input value="Auto — ECO-011421" readOnly style={{ background: T.g50, color: T.g600 }} />
-                    </div>
-                  </div>
-
-                  <div className="kv-row">
-                    <div className="kv-key">
-                      <span className="kv-label">Division</span>
-                    </div>
-                    <div className="kv-val">
-                      <Select value={form.div} onChange={(e: any) => setForm({ ...form, div: e.target.value })}
-                        options={["CO – Construction", "AG – Agriculture"]} />
-                    </div>
-                  </div>
-
-                  <div className="kv-row">
-                    <div className="kv-key">
-                      <span className="kv-label">Site / plant</span>
-                    </div>
-                    <div className="kv-val">
-                      <Select value={form.site} onChange={(e: any) => setForm({ ...form, site: e.target.value })}
-                        options={["1210 – TPS Livermore", "Fort Collins", "Adelaide", "Sask"]} />
-                    </div>
-                  </div>
-
-                  <div className="kv-row">
-                    <div className="kv-key">
-                      <span className="kv-label">Title</span>
-                    </div>
-                    <div className="kv-val">
-                      <Input value={form.title} placeholder="Enter a descriptive title" onChange={(e: any) => setForm({ ...form, title: e.target.value })} />
-                    </div>
-                  </div>
-
-                  {/* Redline instructions — under Title, with tooltip */}
-                  <div className="kv-row" style={{ alignItems: "flex-start" }} data-test-id="kv-row-redline-instructions">
-                    <div className="kv-key" style={{ paddingTop: 6 }}>
-                      <span className="kv-label" style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-                        Redline instructions
-                        <span className="eco-info-tip" data-test-id="redline-instructions-tooltip-icon">
-                          <Info size={13} />
-                          <span className="eco-info-tip-bubble" role="tooltip">
-                            This description will be used to create Item list automatically
-                          </span>
-                        </span>
+              <div className="eco-flat-form" data-test-id="kv-general-details">
+                <div className="eco-flat-field">
+                  <label className="eco-flat-label" htmlFor="eco-cat">Change category</label>
+                  <Select id="eco-cat" value={form.cat} onChange={(e: any) => setForm({ ...form, cat: e.target.value })}
+                    options={["ECO: Engineering Change Order", "DCO: Document Change Order", "TPCO: Third Party Change Order", "RFD: Request for Deviation"]} />
+                </div>
+                <div className="eco-flat-field">
+                  <label className="eco-flat-label" htmlFor="eco-num">Change number</label>
+                  <Input id="eco-num" value="Auto — ECO-011421" readOnly style={{ background: T.g50, color: T.g600 }} />
+                </div>
+                <div className="eco-flat-field">
+                  <label className="eco-flat-label" htmlFor="eco-div">Division</label>
+                  <Select id="eco-div" value={form.div} onChange={(e: any) => setForm({ ...form, div: e.target.value })}
+                    options={["CO – Construction", "AG – Agriculture"]} />
+                </div>
+                <div className="eco-flat-field">
+                  <label className="eco-flat-label" htmlFor="eco-site">Site / plant</label>
+                  <Select id="eco-site" value={form.site} onChange={(e: any) => setForm({ ...form, site: e.target.value })}
+                    options={["1210 – TPS Livermore", "Fort Collins", "Adelaide", "Sask"]} />
+                </div>
+                <div className="eco-flat-field">
+                  <label className="eco-flat-label" htmlFor="eco-title">Title <span style={{ color: '#e53e3e' }}>*</span></label>
+                  <Input id="eco-title" value={form.title} placeholder="Enter a descriptive title" onChange={(e: any) => setForm({ ...form, title: e.target.value })} data-test-id="eco-title-input" />
+                </div>
+                <div className="eco-flat-field" data-test-id="kv-row-redline-instructions">
+                  <label className="eco-flat-label" htmlFor="eco-redline" style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                    Redline instructions
+                    <span className="eco-info-tip" data-test-id="redline-instructions-tooltip-icon">
+                      <Info size={13} />
+                      <span className="eco-info-tip-bubble" role="tooltip">
+                        This description will be used to create Item list automatically
                       </span>
-                    </div>
-                    <div className="kv-val">
-                      <textarea
-                        className="inp"
-                        rows={6}
-                        value={form.desc}
-                        onChange={(e: any) => setForm({ ...form, desc: e.target.value })}
-                        placeholder="Detailed instructions for reviewers and shop floor..."
-                        data-test-id="redline-instructions-textarea"
-                      />
-                    </div>
-                  </div>
+                    </span>
+                  </label>
+                  <textarea
+                    id="eco-redline"
+                    className="inp"
+                    rows={6}
+                    value={form.desc}
+                    onChange={(e: any) => setForm({ ...form, desc: e.target.value })}
+                    placeholder="Detailed instructions for reviewers and shop floor..."
+                    data-test-id="redline-instructions-textarea"
+                  />
+                </div>
               </div>
             )}
 
@@ -977,80 +948,89 @@ function EcoNew({
             </div>
           )}
 
-          {/* ── Header with "Change method" when a mode is chosen ── */}
-          {itemMode === 'manual' && (
-            <div className="bet" style={{ marginBottom: 4 }} data-test-id="eco-items-mode-header">
-              <div style={{ fontSize: 12, color: T.g500 }}>
-                {kits.length > 0
-                  ? `${kits.length} kit${kits.length !== 1 ? 's' : ''} added`
-                  : 'Manual — search and add kits below'}
-              </div>
+          {/* ── "Change method" back-link + section heading (when mode is manual) ── */}
+          {itemMode === 'manual' && !instructionsParsing && (
+            <div data-test-id="eco-items-mode-header">
               <button
                 type="button"
-                className="btn sm gh"
+                className="eco-back-link"
                 onClick={() => setItemMode(null)}
                 data-test-id="item-change-method-btn"
               >
-                Change method
+                ← Change method
               </button>
+              <div style={{ fontWeight: 700, fontSize: 20, color: '#0a2233', marginTop: 8, marginBottom: 4 }}>Add kits &amp; assemblies</div>
+              <div className="sub" style={{ fontSize: 13, marginBottom: 16 }}>Search for the kit or assembly whose BOM is changing, then choose how you want to specify the edit for each one.</div>
             </div>
           )}
 
           <div className="stack" data-test-id="eco-items-section" style={{ display: itemMode === 'manual' && !instructionsParsing ? undefined : 'none' }}>
-            {/* Section header — no nested Card, content fills the right pane */}
-            <div className="bet" style={{ marginBottom: 4 }} data-test-id="eco-items-header">
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 15, color: '#0a2233' }}>Add kits &amp; assemblies</div>
-                <div className="sub" style={{ fontSize: 12, marginTop: 2 }}>Select the kit or assembly whose BOM is changing. Specify each edit inline or upload a redline file.</div>
-              </div>
-              <button
-                className={`btn${kitPickOpen ? ' pri' : ''}`}
-                onClick={() => { setKitPickOpen((v) => !v); setKitPickQ(''); }}
-                data-test-id="eco-add-kit-btn"
-              >
-                <Plus size={13} />{kitPickOpen ? 'Done adding' : 'Add kit'}
-              </button>
+            {/* Always-visible search bar */}
+            <div style={{ position: 'relative', marginBottom: 4 }} data-test-id="eco-items-search-wrap">
+              <Search size={14} color="#94a3b8" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+              <input
+                className="inp" style={{ paddingLeft: 36 }} value={kitPickQ}
+                onChange={(e: any) => { setKitPickQ(e.target.value); setKitPickOpen(true); }}
+                onFocus={() => setKitPickOpen(true)}
+                placeholder="Search kits and assemblies by number or name"
+                data-test-id="eco-kit-pick-search"
+              />
             </div>
 
-            {/* Inline kit picker — expands in place when "Add kit" is clicked */}
-            {kitPickOpen && (
-              <div className="eco-kit-inline-picker" data-test-id="eco-kit-inline-picker">
-                <div style={{ position: 'relative', marginBottom: 8 }}>
-                  <Search size={13} color="#94a3b8" style={{ position: 'absolute', left: 9, top: 9 }} />
-                  <input
-                    className="inp" style={{ paddingLeft: 28 }} autoFocus value={kitPickQ}
-                    onChange={(e: any) => setKitPickQ(e.target.value)}
-                    placeholder="Search kits and assemblies by number or name"
-                    data-test-id="eco-kit-pick-search"
-                  />
-                </div>
-                <div className="eco-kit-inline-results" data-test-id="eco-kit-pick-results">
-                  <table className="tbl">
-                    <thead><tr><th>Item number</th><th>Rev</th><th>Item name</th><th>Category</th><th>Phase</th><th></th></tr></thead>
+            {/* Catalog results table — shown when searching or when no kits added yet */}
+            {(kitPickOpen || kits.length === 0) && (
+              <div className="eco-kit-catalog-panel" data-test-id="eco-kit-pick-results">
+                {kits.length === 0 && !kitPickQ && (
+                  <div className="eco-kit-empty-dashed" data-test-id="eco-kit-empty-state">
+                    <Boxes size={36} color="#b0bec5" style={{ marginBottom: 10 }} />
+                    <div style={{ fontWeight: 700, fontSize: 14, color: '#0a2233', marginBottom: 4 }}>No kits added yet</div>
+                    <div className="sub" style={{ fontSize: 13, marginBottom: 16 }}>Search the catalog for the kit or assembly whose BOM is changing.</div>
+                    <button
+                      className="btn pri"
+                      onClick={() => { setKitPickOpen(true); }}
+                      data-test-id="eco-add-kit-btn"
+                    >
+                      <Plus size={13} />+ Add kit
+                    </button>
+                  </div>
+                )}
+                {kitPickQ && (
+                  <table className="tbl" data-test-id="eco-kit-pick-table">
+                    <thead>
+                      <tr>
+                        <th>ITEM</th>
+                        <th>NAME</th>
+                        <th>STATUS</th>
+                        <th></th>
+                      </tr>
+                    </thead>
                     <tbody>
                       {(allBackendItems ?? ASSEMBLIES as any[])
                         .filter((it: any) => ["KIT", "ASSEMBLY", "PCB"].includes((it.cat || "").toUpperCase()) &&
                           !kits.some((k) => k.pn === it.pn) &&
                           (it.pn + it.name + it.cat).toLowerCase().includes(kitPickQ.toLowerCase()))
                         .map((it: any) => (
-                          <tr key={it.pn} style={{ cursor: 'pointer' }} onClick={() => addKit(it)} data-test-id={`eco-kit-pick-row-${it.pn}`}>
-                            <td className="pn" style={{ fontFamily: 'ui-monospace,"SF Mono",Menlo,Consolas,monospace', fontSize: 12 }}>{it.pn}</td>
-                            <td>{it.rev}</td>
+                          <tr key={it.pn} data-test-id={`eco-kit-pick-row-${it.pn}`}>
+                            <td>
+                              <div style={{ fontWeight: 700, fontSize: 13, fontFamily: 'ui-monospace,"SF Mono",Menlo,Consolas,monospace' }}>{it.pn}</div>
+                              <div className="sub" style={{ fontSize: 11 }}>Rev {it.rev}</div>
+                            </td>
                             <td style={{ fontWeight: 500 }}>{it.name}</td>
-                            <td className="sub">{it.cat}</td>
                             <td>{phaseChip(it.phase)}</td>
-                            <td><button className="btn sm pri" onClick={(e) => { e.stopPropagation(); addKit(it); }} data-test-id={`eco-kit-pick-add-${it.pn}`}><Plus size={12} />Add</button></td>
+                            <td>
+                              <button className="btn pri sm" onClick={() => { addKit(it); setKitPickQ(''); setKitPickOpen(false); }} data-test-id={`eco-kit-pick-add-${it.pn}`}>
+                                + Add
+                              </button>
+                            </td>
                           </tr>
                         ))}
                     </tbody>
                   </table>
-                </div>
-                <div className="mini" style={{ marginTop: 6 }}>Click a row or press Add to include a kit. Click "Done adding" when finished.</div>
+                )}
               </div>
             )}
-              {kits.length === 0 ? (
-                <Empty icon={Boxes} title="No kits added" body="Search for and add the kit or assembly whose BOM you are changing." />
-              ) : (
+
+              {kits.length > 0 && (
                 <div className="stack" style={{ gap: 12 }} data-test-id="eco-kit-list">
                   {kits.map((kit) => {
                     const isExpanded = expandedKits[kit.pn] !== false;
@@ -1693,58 +1673,52 @@ function EcoNew({
 
               {mode === "routing" && (
                 <div className="stack">
-                  <div className="grid2">
-                    <Field label="Routing" hint={`${routingOptions.length} routings defined in Admin`}>
-                      <Select value={routing} onChange={(e: any) => setRouting(e.target.value)} options={routingOptions} /></Field>
-                    <Field label="Matched on" hint="Division and item category of the items on this change">
-                      <Input value="Division CO · category KIT" readOnly style={{ background: T.g50, color: T.g600 }} /></Field>
+                  {/* Routing selector row */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 8 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: T.g500, letterSpacing: '0.06em', textTransform: 'uppercase', flexShrink: 0 }}>ROUTING</div>
+                    <div style={{ flex: 1, maxWidth: 360 }}>
+                      <Select value={routing} onChange={(e: any) => setRouting(e.target.value)} options={routingOptions} style={{ fontWeight: 700 }} />
+                    </div>
+                    <div className="sub" style={{ fontSize: 12 }}>
+                      Matched on <b>Division {form.div.split('–')[0].trim()} · category {kits[0]?.cat ?? 'KIT'}</b> · {selectedStages.length} stage{selectedStages.length !== 1 ? 's' : ''}, {selectedStages.length} role{selectedStages.length !== 1 ? 's' : ''}
+                    </div>
                   </div>
-                  {[1, 2].map((st: any) => {
+
+                  {/* Stage cards — numbered, bordered, with role rows */}
+                  {[1, 2, 3].map((st: any) => {
                     const rows = selectedStages.filter((r: any) => r.stage === st);
+                    if (!rows.length) return null;
                     const isCollapsed = Boolean(collapsedStages[`routing-${st}`]);
+                    const stageNames: Record<number, string> = { 1: 'Engineering review', 2: 'Regulatory sign-off', 3: 'Document control sign-off' };
+                    const stageLabel = stageNames[st] ?? (st === 1 ? 'Functional approval' : 'Document control sign-off');
                     return (
-                      <div key={st} className="stagecard" data-test-id={`routing-stagecard-${st}`}>
+                      <div key={st} className="eco-stage-card" data-test-id={`routing-stagecard-${st}`}>
                         <div
-                          className="stagehead"
-                          style={{ cursor: "pointer", userSelect: "none" }}
-                          data-test-id={`routing-stage-toggle-${st}`}
+                          className="eco-stage-head"
                           onClick={() => toggleStageCollapse(`routing-${st}`)}
+                          data-test-id={`routing-stage-toggle-${st}`}
                         >
-                          <button
-                            type="button"
-                            className="btn gh sm"
-                            data-test-id={`routing-stage-chevron-${st}`}
-                            style={{ width: 24, height: 24, minWidth: 24, padding: 0, display: "grid", placeItems: "center", marginRight: 2 }}
-                            title={isCollapsed ? "Expand stage" : "Collapse stage"}
-                            aria-label={isCollapsed ? "Expand stage" : "Collapse stage"}
-                            onClick={(e: any) => {
-                              e.stopPropagation();
-                              toggleStageCollapse(`routing-${st}`);
-                            }}
-                          >
-                            {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
-                          </button>
-                          <span className="stagepill">Stage {st}</span>
-                          <b style={{ padding: "3px 6px" }}>{st === 1 ? "Functional approval" : "Document control sign-off"}</b>
-                          <span className="mini">{rows.length} role{rows.length === 1 ? "" : "s"}</span>
-                          <Chip k="gray" icon={Layers}>From routing</Chip>
+                          <ChevronDown size={14} color={T.g500} style={{ transform: isCollapsed ? 'rotate(-90deg)' : 'none', transition: 'transform .15s', flexShrink: 0 }} />
+                          <span style={{ fontWeight: 700, fontSize: 14, color: '#0a2233' }}>{st}.&nbsp;&nbsp;{stageLabel}</span>
+                          <span className="sub" style={{ fontSize: 12, marginLeft: 8 }}>{rows.length} role{rows.length !== 1 ? 's' : ''}</span>
                         </div>
                         {!isCollapsed && (
-                          <table className="tbl">
-                            <thead><tr><th>Approval role</th><th style={{ width: 170 }}>Requirement</th><th>Members</th></tr></thead>
-                            <tbody>
-                              {rows.map((r: any) => (
-                                <tr key={r.g}><td style={{ fontWeight: 600 }}>{r.g}</td>
-                                  <td><Chip k={r.req === "One or more" ? "blue" : r.req === "Optional" ? "gray" : "vio"}>{r.req}</Chip></td>
-                                  <td className="sub">{r.members.join(", ")}</td></tr>
-                              ))}
-                            </tbody>
-                          </table>
+                          <div className="eco-stage-body">
+                            {rows.map((r: any) => (
+                              <div key={r.g} className="eco-role-row" data-test-id={`routing-role-row-${r.g}`}>
+                                <span style={{ fontWeight: 600, fontSize: 13, flex: '0 0 260px' }}>{r.g}</span>
+                                <span className="sub" style={{ flex: '0 0 120px', fontSize: 13 }}>{r.req}</span>
+                                <span className="sub" style={{ fontSize: 13 }}>{(r.members ?? []).join(', ')}</span>
+                              </div>
+                            ))}
+                            <button type="button" className="eco-add-role-link" data-test-id={`routing-add-role-${st}`}>
+                              + Add role
+                            </button>
+                          </div>
                         )}
                       </div>
                     );
                   })}
-
                 </div>
               )}
 
@@ -1830,228 +1804,148 @@ function EcoNew({
       {/* STEP 2: Summary */}
       {i === 3 && (
         <div className="stack" data-test-id="eco-new-summary-step">
-          {/* Unified Single Summary Card with Sub-Sections */}
-          <div className="eco-summary-unified-card" data-test-id="eco-summary-exec-card">
-            {/* Sub-Section 1: Executive Overview */}
-            <div className="eco-exec-top">
-              <div className="eco-exec-left">
-                <div className="row" style={{ gap: 10, alignItems: "center", marginBottom: 6 }}>
-                  <span className="pn" style={{ fontSize: 13, fontWeight: 700, letterSpacing: "0.02em" }}>ECO-011421</span>
-                  <Chip k="blue">Open</Chip>
-                  <span style={{ fontSize: 12, color: T.g500 }}>·</span>
-                  <span style={{ fontSize: 12, color: T.g600, fontWeight: 500 }}>{form.cat.split(":")[0]}</span>
-                </div>
-                <h2 style={{ margin: "0 0 8px 0", fontSize: 18, fontWeight: 700, color: T.g900, letterSpacing: "-0.01em" }}>
-                  {form.title || "Untitled Change Order"}
-                </h2>
-                <div className="row" style={{ gap: 16, fontSize: 12, color: T.g600 }}>
-                  <span><b>Division:</b> {form.div.split("–")[0].trim()}</span>
-                  <span>·</span>
-                  <span><b>Site:</b> {form.site.split("–")[0].trim()}</span>
-                  <span>·</span>
-                  <span><b>Effectivity:</b> {form.eff}</span>
-                </div>
-              </div>
 
-              <div className="eco-exec-metrics">
-                {[
-                  ["Items", ecoItems.length],
-                  ["Stages", mode === "manual" ? manStages.length : 2],
-                  ["Approvers", mode === "ai" ? picked.length : mode === "manual"
-                    ? manStages.reduce((a2: any, x: any) => a2 + x.people.length, 0) : selectedStages.length]
-                ].map(([l, v]: any) => (
-                  <div key={l} className="eco-exec-metric-tile">
-                    <div style={{ fontSize: 20, fontWeight: 700, color: T.brand, lineHeight: 1 }}>{v}</div>
-                    <div style={{ fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em", color: T.g500, marginTop: 4 }}>{l}</div>
-                  </div>
-                ))}
+          {/* ── Header card: DRAFT + type + title + stats ── */}
+          <div className="eco-summary-header-card" data-test-id="eco-summary-header">
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="row" style={{ gap: 8, marginBottom: 6 }}>
+                <span className="eco-draft-chip">DRAFT</span>
+                <span style={{ fontSize: 13, color: '#3b6ea8', fontWeight: 600 }}>{form.cat.split(':')[0]} — {form.cat.split(':')[1]?.trim() ?? form.cat}</span>
+              </div>
+              <div style={{ fontWeight: 700, fontSize: 18, color: '#0a2233' }}>
+                {form.title || 'New change order'}
               </div>
             </div>
-
-            {/* Sub-Section 2: Redline Instructions */}
-            <div className="eco-exec-instructions">
-              <div className="bet" style={{ alignItems: "center", marginBottom: 8 }}>
-                <span style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em", color: T.g600 }}>
-                  Description & Redline Instructions
-                </span>
-                <button className="btn sm" onClick={() => { setI(0); setSubSection("desc"); }} data-test-id="summary-edit-desc-btn">
-                  <Pencil size={12} />Edit
-                </button>
-              </div>
-              <div style={{ whiteSpace: "pre-wrap", fontSize: 13, lineHeight: 1.6, color: form.desc ? T.g800 : T.g500, background: "#F8FAFC", padding: "12px 14px", borderRadius: 8, border: "1px solid #E2E8F0" }}>
-                {form.desc || "No redline instructions provided yet."}
-              </div>
+            <div className="eco-summary-stats">
+              {[
+                ['ITEMS', ecoItems.length],
+                ['STAGES', mode === 'manual' ? manStages.length : (selectedStages.filter((r: any, idx2: number, arr: any[]) => arr.findIndex((x: any) => x.stage === r.stage) === idx2).length || 2)],
+                ['APPROVERS', mode === 'ai' ? picked.length : mode === 'manual' ? manStages.reduce((a2: any, x: any) => a2 + x.people.length, 0) : selectedStages.length]
+              ].map(([label, val]: any) => (
+                <div key={label} className="eco-summary-stat-box">
+                  <div style={{ fontSize: 22, fontWeight: 700, color: '#0a2233', lineHeight: 1 }}>{val}</div>
+                  <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#7993a8', marginTop: 3 }}>{label}</div>
+                </div>
+              ))}
             </div>
+          </div>
 
-            {/* Sub-Section 3: Basic Details (Full-width, Stacked) */}
-            <div className="eco-summary-sec">
-              <div className="eco-summary-sec-head">
-                <div>
-                  <span className="eco-summary-sec-title">Basic Details</span>
-                  <div className="eco-summary-sec-sub">Core identification, ownership, and release schedule</div>
-                </div>
-                <button className="btn sm" onClick={() => { setI(0); setSubSection("general"); }}><Pencil size={12} />Edit</button>
-              </div>
-              <div className="eco-summary-kv-grid">
-                {[
-                  ["Change category", form.cat],
-                  ["Change number", "ECO-011421"],
-                  ["Title", form.title || "—"],
-                  ["Division", form.div],
-                  ["Site / plant", form.site],
-                  ["Effectivity", form.eff],
-                  ["Expiration date", "N/A (permanent change)"],
-                  ["Approval deadline", form.deadline || "None specified"]
-                ].map(([label, val]: any) => (
-                  <div key={label} className="eco-summary-kv-item">
-                    <span className="eco-summary-kv-label">{label}</span>
-                    <span className="eco-summary-kv-value">{val}</span>
-                  </div>
-                ))}
-              </div>
+          {/* ── Items on this change ── */}
+          <div className="eco-summary-section" data-test-id="eco-summary-items-section">
+            <div className="eco-summary-section-head">
+              <span className="eco-summary-section-title">Items on this change ({ecoItems.length})</span>
+              <button className="eco-summary-edit-link" onClick={() => setI(1)} data-test-id="summary-edit-items-btn">Edit</button>
             </div>
-
-            {/* Sub-Section 4: Confirmations & Processing (Full-width, Stacked below Basic Details) */}
-            <div className="eco-summary-sec">
-              <div className="eco-summary-sec-head">
-                <div>
-                  <span className="eco-summary-sec-title">Confirmations & Processing</span>
-                  <div className="eco-summary-sec-sub">Compliance validations, trade classifications, and document ownership</div>
-                </div>
-                <button className="btn sm" onClick={() => { setI(0); setSubSection("confirmations"); }}><Pencil size={12} />Edit</button>
-              </div>
-              <div className="eco-summary-kv-grid">
-                {[
-                  ["Validations complete?", confirmations.validations],
-                  ["Seed stock approved?", confirmations.seedStock],
-                  ["ECCN classification", form.eccn],
-                  ["Inventory disposition filled?", confirmations.disposition],
-                  ["DC representative", form.dc],
-                  ["Status notes", form.notes || "—"],
-                  ["Change creator", ME.name],
-                  ["Associated files", `${associatedFiles.length} file attached`]
-                ].map(([label, val]: any) => (
-                  <div key={label} className="eco-summary-kv-item">
-                    <span className="eco-summary-kv-label">{label}</span>
-                    <span className="eco-summary-kv-value">{val}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Sub-Section 5: Items on this Change */}
-            <div className="eco-summary-sec" style={{ paddingBottom: 0 }}>
-              <div className="eco-summary-sec-head">
-                <div>
-                  <span className="eco-summary-sec-title">Items on this change ({ecoItems.length})</span>
-                  <div className="eco-summary-sec-sub">
-                    {kits.length > 0 && `${kits.length} kit${kits.length !== 1 ? "s" : ""} · ${kits.reduce((a, k) => a + k.bomEdits.length, 0)} BOM edits`}
-                    {legacyItems.length > 0 && ` · ${legacyItems.length} individual items`}
-                  </div>
-                </div>
-                <button className="btn sm" onClick={() => setI(1)}><Pencil size={12} />Edit items</button>
-              </div>
-              {ecoItems.length === 0 ? (
-                <div style={{ padding: "20px 0 24px" }}>
-                  <Empty icon={Boxes} title="No items yet" body="Go back to step 1 and add some." />
-                </div>
-              ) : (
-                <div style={{ margin: "0 -28px" }}>
-                  <table className="tbl" data-test-id="summary-items-table" style={{ borderLeft: "none", borderRight: "none" }}>
-                    <thead>
-                      <tr>
-                        <th>#</th>
-                        <th>Item number</th>
-                        <th>Item name</th>
-                        <th>Rev change</th>
-                        <th>BOM edits</th>
-                        <th>Source</th>
+            {ecoItems.length === 0 ? (
+              <Empty icon={Boxes} title="No items yet" body="Go back to step 1 and add some." />
+            ) : (
+              <table className="tbl" data-test-id="summary-items-table">
+                <thead>
+                  <tr>
+                    <th>ITEM</th>
+                    <th>NAME</th>
+                    <th>REV CHANGE</th>
+                    <th>BOM EDITS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ecoItems.map((r: any, k: any) => {
+                    const isKit = r.src === 'Kit';
+                    const adds = isKit ? (r.bomEdits || []).filter((e: any) => e.type === 'ADD').length : 0;
+                    const dels = isKit ? (r.bomEdits || []).filter((e: any) => e.type === 'DELETE').length : 0;
+                    const upds = isKit ? (r.bomEdits || []).filter((e: any) => e.type === 'UPDATE_DESC' || e.type === 'UPDATE_QTY').length : 0;
+                    return (
+                      <tr key={r.pn + k} data-test-id={`summary-item-row-${r.pn}`}>
+                        <td style={{ fontWeight: 700, fontFamily: 'ui-monospace,"SF Mono",Menlo,Consolas,monospace', fontSize: 13 }}>{r.pn}</td>
+                        <td style={{ fontWeight: 500 }}>{r.name}</td>
+                        <td>{isKit ? <span className="sub">{r.currentRev} → {r.newRev}</span> : <span className="mut">—</span>}</td>
+                        <td>
+                          {isKit ? (
+                            <span className="sub">
+                              {adds === 0 && dels === 0 && upds === 0 && !r.bomFile ? 'No edits yet' :
+                                [adds > 0 && `+${adds} add`, dels > 0 && `−${dels} del`, upds > 0 && `${upds} upd`, r.bomFile && 'File'].filter(Boolean).join(' · ')}
+                            </span>
+                          ) : <span className="mut">—</span>}
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {ecoItems.map((r: any, k: any) => {
-                        const isKit = r.src === "Kit";
-                        const adds = isKit ? (r.bomEdits || []).filter((e: any) => e.type === "ADD").length : 0;
-                        const dels = isKit ? (r.bomEdits || []).filter((e: any) => e.type === "DELETE").length : 0;
-                        const upds = isKit ? (r.bomEdits || []).filter((e: any) => e.type === "UPDATE_DESC" || e.type === "UPDATE_QTY").length : 0;
-                        return (
-                          <tr key={r.pn + k} data-test-id={`summary-item-row-${r.pn}`}>
-                            <td>{k + 1}</td>
-                            <td><span className="pn" style={{ fontFamily: 'ui-monospace,"SF Mono",Menlo,Consolas,monospace', fontSize: 12 }}>{r.pn}</span></td>
-                            <td style={{ fontWeight: 500 }}>{r.name}</td>
-                            <td>
-                              {isKit ? (
-                                <span className="sub" style={{ fontSize: 12 }}>Rev {r.currentRev} → {r.newRev}</span>
-                              ) : <span className="mut">—</span>}
-                            </td>
-                            <td>
-                              {isKit ? (
-                                <div className="row" style={{ gap: 4 }}>
-                                  {adds > 0 && <Chip k="ok">+{adds} add</Chip>}
-                                  {dels > 0 && <Chip k="bad">−{dels} del</Chip>}
-                                  {upds > 0 && <Chip k="warn">{upds} upd</Chip>}
-                                  {r.bomFile && <Chip k="blue">File attached</Chip>}
-                                  {adds === 0 && dels === 0 && upds === 0 && !r.bomFile && <span className="mut">No edits yet</span>}
-                                </div>
-                              ) : <span className="mut">—</span>}
-                            </td>
-                            <td><Chip k={r.src === "Kit" ? "ok" : r.src === "Import" ? "blue" : "gray"}>{r.src}</Chip></td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </div>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
 
-            {/* Sub-Section 6: Approval Routing */}
-            <div className="eco-summary-sec">
-              <div className="eco-summary-sec-head">
-                <div>
-                  <span className="eco-summary-sec-title">Approval Routing</span>
-                  <div className="eco-summary-sec-sub">
-                    {mode === "ai" ? "Assistant suggestion, editable"
-                      : mode === "routing" ? `Routing: ${routing}` : "Built manually"}
-                  </div>
-                </div>
-                <button className="btn sm" onClick={() => setI(2)}><Pencil size={12} />Change</button>
-              </div>
-              <div style={{ background: "#F8FAFC", borderRadius: 8, padding: "8px 14px", border: "1px solid #E2E8F0" }}>
-                {mode === "manual" ? manStages.map((st: any, k: any) => (
-                  <div key={k} className="routeline">
-                    <span className="stagepill">Stage {k + 1}</span>
-                    <div style={{ flex: 1 }}>
-                      <b>{st.name}</b>
-                      <div className="sub" style={{ marginTop: 2 }}>{st.people.join(", ") || "No one selected"}</div>
-                    </div>
-                    <Chip k="blue">{st.req}</Chip>
-                  </div>
-                )) : (
-                  <>
-                    <div className="routeline">
-                      <span className="stagepill">Stage 1</span>
-                      <div style={{ flex: 1 }}>
-                        <b>Functional approval</b>
-                        <div className="sub" style={{ marginTop: 2 }}>
-                          {mode === "ai" ? picked.join(" · ")
-                            : selectedStages.filter((r: any) => r.stage === 1).map((r: any) => r.g).join(" · ")}
-                        </div>
-                      </div>
-                      <Chip k="blue">One or more each</Chip>
-                    </div>
-                    <div className="routeline">
-                      <span className="stagepill">Stage 2</span>
-                      <div style={{ flex: 1 }}>
-                        <b>Document control sign-off</b>
-                        <div className="sub" style={{ marginTop: 2 }}>Document Control TPS – Livermore · {ME.name}, Adam Royce</div>
-                      </div>
-                      <Chip k="blue">One or more</Chip>
-                    </div>
-                  </>
-                )}
-              </div>
+          {/* ── Approval routing ── */}
+          <div className="eco-summary-section" data-test-id="eco-summary-approvals-section">
+            <div className="eco-summary-section-head">
+              <span className="eco-summary-section-title">Approval routing</span>
+              <button className="eco-summary-edit-link" onClick={() => setI(2)} data-test-id="summary-edit-approvals-btn">Edit</button>
             </div>
+            <div className="sub" style={{ fontSize: 12, marginBottom: 10 }}>
+              {mode === 'routing' ? `Predefined routing — ${routing}` : mode === 'ai' ? 'Assistant suggestion, editable' : 'Built manually'}
+            </div>
+            {mode === 'manual' ? manStages.map((st: any, k: any) => (
+              <div key={k} className="eco-summary-stage-row" data-test-id={`summary-routing-stage-${k}`}>
+                <span style={{ fontWeight: 700 }}>{k + 1}. {st.name}</span>
+                <div className="sub" style={{ marginTop: 2 }}>{st.people.join(', ') || 'No one selected'} — {st.req}</div>
+              </div>
+            )) : (
+              <>
+                {selectedStages.filter((r: any, idx3: number, arr: any[]) => arr.findIndex((x: any) => x.stage === r.stage) === idx3).map((stageRow: any) => {
+                  const stageNum = stageRow.stage;
+                  const stageRoles = selectedStages.filter((r: any) => r.stage === stageNum);
+                  const stageNamesMap: Record<number, string> = { 1: 'Engineering sign-off', 2: 'Regulatory sign-off', 3: 'Document control sign-off' };
+                  return (
+                    <div key={stageNum} className="eco-summary-stage-row" data-test-id={`summary-routing-stage-${stageNum}`}>
+                      <span style={{ fontWeight: 700 }}>{stageNum}. {stageNamesMap[stageNum] ?? `Stage ${stageNum}`}</span>
+                      <div className="sub" style={{ marginTop: 2 }}>
+                        {stageRoles.map((r: any) => `${r.g} — ${r.req}, ${(r.members ?? []).join(', ')}`).join(' · ')}
+                      </div>
+                    </div>
+                  );
+                })}
+                {!selectedStages.length && (
+                  <div className="eco-summary-stage-row" data-test-id="summary-routing-stage-1">
+                    <span style={{ fontWeight: 700 }}>1. Engineering sign-off</span>
+                    <div className="sub" style={{ marginTop: 2 }}>
+                      {mode === 'ai' ? picked.join(' · ') : 'Engineering Lead – Livermore — One or more, Dana Kim'}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* ── Additional details (collapsible) ── */}
+          <div className="eco-summary-section" data-test-id="eco-summary-additional-section">
+            <div
+              className="eco-summary-section-head"
+              style={{ cursor: 'pointer', userSelect: 'none' }}
+              onClick={() => setCollapsedStages((p: any) => ({ ...p, 'summary-additional': !p['summary-additional'] }))}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <ChevronDown size={14} color="#7993a8" style={{ transform: collapsedStages['summary-additional'] ? 'rotate(-90deg)' : 'none', transition: 'transform .15s' }} />
+                <span className="eco-summary-section-title">Additional details</span>
+              </span>
+              <span className="sub" style={{ fontSize: 12 }}>Division, site, compliance &amp; ownership</span>
+            </div>
+            {!collapsedStages['summary-additional'] && (
+              <div className="eco-summary-kv-grid" style={{ marginTop: 14 }}>
+                {[
+                  ['CHANGE CATEGORY', form.cat.split(':')[0]],
+                  ['DIVISION', form.div],
+                  ['SITE / PLANT', form.site],
+                  ['EFFECTIVITY', form.eff],
+                  ['INVENTORY DISPOSITION FILLED?', confirmations.disposition],
+                  ['CHANGE CREATOR', ME.name],
+                ].map(([label, val]: any) => (
+                  <div key={label} className="eco-summary-kv-item" data-test-id={`summary-kv-${label}`}>
+                    <span className="eco-summary-kv-label">{label}</span>
+                    <span className="eco-summary-kv-value">{val || '—'}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
         </div>
