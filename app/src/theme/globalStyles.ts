@@ -287,7 +287,7 @@ textarea.inp{height:auto;padding:8px 10px;line-height:1.5;resize:vertical}
 /* ── wizard modal ────────────────────────────────────────────────────
    Two-panel creation journey: left = numbered step list, right = form.
    Matches the reference (wide, 88 vh tall, left panel 240px fixed).     */
-.modal-wizard{background:#ffffff;border-radius:14px;width:100%;max-width:960px;height:88vh;max-height:840px;
+.modal-wizard{background:#ffffff;border-radius:14px;width:100%;max-width:1152px;height:88vh;max-height:860px;
   overflow:hidden;display:flex;flex-direction:column;box-shadow:0 4px 32px rgba(2,42,66,.22)}
 .modal-wizard-body{display:flex;flex:1;min-height:0}
 .modal-wizard-steps{width:240px;min-width:240px;border-right:1px solid #e2e8f0;padding:28px 16px;
@@ -305,7 +305,7 @@ textarea.inp{height:auto;padding:8px 10px;line-height:1.5;resize:vertical}
 .modal-wizard-step.active .mws-label{color:#0a2233}
 .modal-wizard-step.done .mws-label{color:#0a2233}
 .modal-wizard-step .mws-sub{font-size:11px;color:#7993a8;line-height:1.3}
-.modal-wizard-content{flex:1;min-width:0;overflow-y:auto;padding:32px 36px}
+.modal-wizard-content{flex:1;min-width:0;overflow-y:auto;padding:32px 36px;background:#f5f7fa}
 .modal-wizard-head{display:flex;align-items:center;justify-content:space-between;padding:18px 24px;
   border-bottom:1px solid #e2e8f0;flex-shrink:0}
 .modal-wizard-head h2{margin:0;font-size:16px;font-weight:700;color:#0a2233}
@@ -446,7 +446,7 @@ textarea.inp{height:auto;padding:8px 10px;line-height:1.5;resize:vertical}
 @media(max-width:900px){.approval-choices-grid{grid-template-columns:1fr}}
 /* Approval method cards — radio-style, subtle, matching reference */
 .approval-choice-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
-.approval-choice-card{position:relative;display:flex;flex-direction:column;padding:16px;background:#ffffff;border:2px solid #c8d8e8;border-radius:10px;cursor:pointer;transition:border-color .14s,box-shadow .14s;outline:none;width:100%;text-align:left}
+.approval-choice-card{position:relative;display:flex;flex-direction:column;padding:16px;background:#ffffff;border:1.5px solid #c8d8e8;border-radius:10px;cursor:pointer;transition:border-color .14s,box-shadow .14s;outline:none;width:100%;text-align:left}
 .approval-choice-card:hover{border-color:#94a3b8;box-shadow:0 2px 8px rgba(2,42,66,.06)}
 .approval-choice-card.selected{border-color:#0A4F8F;box-shadow:0 0 0 2px rgba(10,79,143,.12)}
 .approval-choice-radio{position:absolute;top:14px;right:14px;width:18px;height:18px;border-radius:50%;border:1.5px solid #cbd5e1;background:#fff;display:grid;place-items:center;flex-shrink:0;transition:border-color .12s}
