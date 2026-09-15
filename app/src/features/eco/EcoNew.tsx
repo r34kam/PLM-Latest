@@ -1740,11 +1740,21 @@ function EcoNew({
         <div className="stack" data-test-id="eco-new-summary-step">
 
           {/* ── Header card: DRAFT + type + title + stats ── */}
-          <div className="eco-summary-header-card" data-test-id="eco-summary-header">
+          <div
+            className="eco-summary-header-card"
+            data-test-id="eco-summary-header"
+            style={{
+              backgroundColor: "#eef4ff"
+            }}>
             <div className="eco-summary-header-left">
               <div className="row" style={{ gap: 8, marginBottom: 7, alignItems: 'center' }}>
                 <span className="eco-draft-chip">DRAFT</span>
-                <span style={{ fontSize: 13, color: '#3b6ea8', fontWeight: 600 }}>
+                <span style={{
+                  fontSize: 13,
+                  color: "#005fa8",
+                  fontWeight: 600,
+                  backgroundColor: "#00000000"
+                }}>
                   {form.cat.includes(':') ? `${form.cat.split(':')[0].trim()} — ${form.cat.split(':')[1]?.trim()}` : form.cat}
                 </span>
               </div>
