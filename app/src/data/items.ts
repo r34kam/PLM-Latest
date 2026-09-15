@@ -5,7 +5,10 @@
 import { useMemo } from 'react'
 import { useData } from '@/lib/data'
 import { useExecuteWorkflowNodeMutation } from '@unifyapps/app-builder-sdk/hooks/workflow'
+import { useQueryClient } from '@tanstack/react-query'
 import { ENTITY, CREATE, UPDATE, DELETE, andFilter } from './bindings'
+
+const EXECUTE_NODE_QK = '/api/workflow/execute/node'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -112,14 +115,18 @@ export function useItemByPn(pn: string) {
 
 // ─── Writes ───────────────────────────────────────────────────────────────────
 
-/** Create a new item record. */
+/** Create a new item record and invalidate the list cache. */
 export function useCreateItem() {
   const mutate = useExecuteWorkflowNodeMutation()
-  return (item: NewItem) =>
-    mutate.mutateAsync({
+  const qc = useQueryClient()
+  return async (item: NewItem) => {
+    const result = await mutate.mutateAsync({
       data: { id: CREATE.id, context: CREATE.context,
         inputs: { ...CREATE.storedInputs, object_type: ITEM, rawPayload: item } },
     })
+    qc.invalidateQueries({ queryKey: [EXECUTE_NODE_QK] })
+    return result
+  }
 }
 
 /** Update an existing item by its backend record id. Send the full item payload. */

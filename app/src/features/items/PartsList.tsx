@@ -1,13 +1,24 @@
-import { ImportPanel } from '@/components/data-io/ImportPanel'
+import { ImportPanel, type ColumnDef } from '@/components/data-io/ImportPanel'
 import { Card } from '@/components/primitives/Card'
 import { Empty } from '@/components/primitives/Empty'
 import { Kpi } from '@/components/primitives/Kpi'
 import { Modal } from '@/components/primitives/Modal'
 import { PAGE_SIZE, Pagination } from '@/components/primitives/Pagination'
-import { useAllBomItems } from '@/data/bomItems'
+import { useAllBomItems, useCreateBomItem } from '@/data/bomItems'
 import { useExportData } from '@/data/export'
 import { BOM_ITEM_TEMPLATE } from '@/domain/templates'
 import { T } from '@/theme/tokens'
+
+const PART_COLUMNS: ColumnDef[] = [
+  { header: 'Kit number', field: 'kitNumber', required: true },
+  { header: 'Part number', field: 'pn', required: true },
+  { header: 'Part name', field: 'name', required: true },
+  { header: 'Category', field: 'cat' },
+  { header: 'Quantity', field: 'qty' },
+  { header: 'Unit of measure', field: 'uom' },
+  { header: 'Reference designator', field: 'refDes' },
+  { header: 'Notes', field: 'notes' },
+]
 import {
   AlertTriangle, ChevronDown, ChevronRight,
   Database, Download, Layers, Loader2, Package, Upload, Wrench,
@@ -93,6 +104,32 @@ function PartsList({ renderHeaderActions }: { renderHeaderActions?: () => React.
 
   const { bomItems, loading, error } = useAllBomItems()
   const { runExport, isPending: exporting } = useExportData()
+  const createBomItem = useCreateBomItem()
+
+  // Part numbers that already exist in ANY kit — warn on reimport
+  const existingPartKeys = useMemo(
+    () => new Set(bomItems.map((b) => b.pn.toLowerCase())),
+    [bomItems]
+  )
+
+  async function handlePartImport(rows: Record<string, unknown>[]) {
+    const today = new Date().toISOString().slice(0, 10)
+    for (const row of rows) {
+      const qty = String(row.qty ?? '1')
+      const uom = String(row.uom ?? 'EA')
+      await createBomItem({
+        kitNumber: String(row.kitNumber ?? ''),
+        pn: String(row.pn ?? ''),
+        name: String(row.name ?? ''),
+        cat: String(row.cat ?? 'HARDWARE'),
+        qty: qty.includes(' ') ? qty : `${qty} ${uom}`,
+        uom,
+        refDes: String(row.refDes ?? ''),
+        notes: String(row.notes ?? ''),
+        addedAt: today,
+      })
+    }
+  }
 
   // Unique categories for filter pills
   const cats = useMemo(() => {
@@ -218,14 +255,16 @@ function PartsList({ renderHeaderActions }: { renderHeaderActions?: () => React.
           title="Bulk upload parts"
           wide
           onClose={() => setBulk(false)}
-          foot={
-            <>
-              <span className="sub">Upload BOM line items using the template below. Each row must reference an existing kit number.</span>
-              <button className="btn" style={{ marginLeft: 'auto' }} onClick={() => setBulk(false)}>Close</button>
-            </>
-          }
         >
-          <ImportPanel template={BOM_ITEM_TEMPLATE} templateName="topcon-parts-template.csv" entity="parts" />
+          <ImportPanel
+            template={BOM_ITEM_TEMPLATE}
+            templateName="topcon-parts-template.csv"
+            entity="parts"
+            columns={PART_COLUMNS}
+            primaryKey="pn"
+            existingKeys={existingPartKeys}
+            onConfirm={handlePartImport}
+          />
         </Modal>
       )}
     </div>

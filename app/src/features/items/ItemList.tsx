@@ -1,4 +1,4 @@
-import { ImportPanel } from '@/components/data-io/ImportPanel'
+import { ImportPanel, type ColumnDef } from '@/components/data-io/ImportPanel'
 import { Card } from '@/components/primitives/Card'
 import { Chip, phaseChip } from '@/components/primitives/Chip'
 import { Empty } from '@/components/primitives/Empty'
@@ -6,7 +6,7 @@ import { Kpi } from '@/components/primitives/Kpi'
 import { Modal } from '@/components/primitives/Modal'
 import { PAGE_SIZE, Pagination } from '@/components/primitives/Pagination'
 import { useAllBomItems } from '@/data/bomItems'
-import { useAllItems } from '@/data/items'
+import { useAllItems, useCreateItem } from '@/data/items'
 import { ITEM_TEMPLATE } from '@/domain/templates'
 import { downloadFile } from '@/lib/download'
 import { T } from '@/theme/tokens'
@@ -19,6 +19,21 @@ import React, { useState } from 'react'
 /* ============================== ITEMS =============================== */
 
 const KIT_CAT = 'KIT'
+
+const ITEM_COLUMNS: ColumnDef[] = [
+  { header: 'Item number', field: 'pn', required: true },
+  { header: 'Item name', field: 'name', required: true },
+  { header: 'Category', field: 'cat', required: true },
+  { header: 'Revision', field: 'rev' },
+  { header: 'Lifecycle phase', field: 'phase' },
+  { header: 'Owner', field: 'owner' },
+  { header: 'Unit of measure', field: 'uom' },
+  { header: 'Procurement type', field: 'proc' },
+  { header: 'Plant', field: 'plant' },
+  { header: 'Material status', field: 'status' },
+  { header: 'Material group', field: 'mg' },
+  { header: 'RoHS compliant', field: 'rohs' },
+]
 
 /** One expandable kit row */
 function KitRow({ it, go }: { it: any; go: any }) {
@@ -181,6 +196,43 @@ function ItemList({ go, railOpen = false, renderHeaderActions }: { go: any; rail
 
   // Kits — from item object, cat = KIT
   const { data: allItems, loading: itemsLoading, error: itemsError } = useAllItems()
+  const createItem = useCreateItem()
+
+  const existingPns = React.useMemo(
+    () => new Set((allItems ?? []).map((i: any) => String(i.pn ?? '').toLowerCase())),
+    [allItems]
+  )
+
+  async function handleItemImport(rows: Record<string, unknown>[]) {
+    const today = new Date().toLocaleDateString('en-US')
+    for (const row of rows) {
+      await createItem({
+        pn: String(row.pn ?? ''),
+        name: String(row.name ?? ''),
+        cat: String(row.cat ?? ''),
+        rev: String(row.rev ?? 'A'),
+        phase: String(row.phase ?? 'Design'),
+        owner: String(row.owner ?? ''),
+        uom: String(row.uom ?? 'EA'),
+        proc: String(row.proc ?? ''),
+        plant: String(row.plant ?? ''),
+        status: String(row.status ?? '10 – NEW'),
+        mg: String(row.mg ?? ''),
+        rohs: String(row.rohs ?? 'Yes'),
+        bom: 0,
+        div: '',
+        created: today,
+        cost: '0.00',
+        assemblyType: 'Component',
+        primaryFile: '',
+        erpSystem: 'SAP',
+        bomUsage: 'Production',
+        description: '',
+        bomLines: '[]',
+      })
+    }
+  }
+
   const kits = (allItems ?? []).filter((i: any) => i.cat === KIT_CAT)
   const filteredKits = kits.filter((i: any) =>
     (i.pn + ' ' + i.name).toLowerCase().includes(kitQ.toLowerCase()))
@@ -356,15 +408,16 @@ function ItemList({ go, railOpen = false, renderHeaderActions }: { go: any; rail
       </Card>
 
       {bulk && (
-        <Modal title="Bulk upload items" wide onClose={() => setBulk(false)}
-          foot={
-            <>
-              <span className="sub">New items land in Design phase and need a change order before they reach SAP.</span>
-              <button className="btn" style={{ marginLeft: 'auto' }} onClick={() => setBulk(false)}>Close</button>
-            </>
-          }
-        >
-          <ImportPanel template={ITEM_TEMPLATE} templateName="topcon-items-template.csv" entity="items" />
+        <Modal title="Bulk upload items" wide onClose={() => setBulk(false)}>
+          <ImportPanel
+            template={ITEM_TEMPLATE}
+            templateName="topcon-items-template.csv"
+            entity="items"
+            columns={ITEM_COLUMNS}
+            primaryKey="pn"
+            existingKeys={existingPns}
+            onConfirm={handleItemImport}
+          />
         </Modal>
       )}
     </div>

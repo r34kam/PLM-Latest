@@ -1,4 +1,4 @@
-import { ImportPanel } from '@/components/data-io/ImportPanel'
+import { ImportPanel, type ColumnDef } from '@/components/data-io/ImportPanel'
 import { Card } from '@/components/primitives/Card'
 import { Chip, phaseChip } from '@/components/primitives/Chip'
 import { Empty } from '@/components/primitives/Empty'
@@ -6,7 +6,7 @@ import { Kpi } from '@/components/primitives/Kpi'
 import { Modal } from '@/components/primitives/Modal'
 import { PAGE_SIZE, Pagination } from '@/components/primitives/Pagination'
 import { useExportData } from '@/data/export'
-import { useAllItems } from '@/data/items'
+import { useAllItems, useCreateItem } from '@/data/items'
 import { ITEM_TEMPLATE } from '@/domain/templates'
 import { T } from '@/theme/tokens'
 import {
@@ -14,6 +14,21 @@ import {
   Clock, Database, Download, Layers, Loader2, Plus, Upload,
 } from 'lucide-react'
 import React, { useMemo, useState } from 'react'
+
+const ITEM_COLUMNS: ColumnDef[] = [
+  { header: 'Item number', field: 'pn', required: true },
+  { header: 'Item name', field: 'name', required: true },
+  { header: 'Category', field: 'cat', required: true },
+  { header: 'Revision', field: 'rev' },
+  { header: 'Lifecycle phase', field: 'phase' },
+  { header: 'Owner', field: 'owner' },
+  { header: 'Unit of measure', field: 'uom' },
+  { header: 'Procurement type', field: 'proc' },
+  { header: 'Plant', field: 'plant' },
+  { header: 'Material status', field: 'status' },
+  { header: 'Material group', field: 'mg' },
+  { header: 'RoHS compliant', field: 'rohs' },
+]
 
 /* ============================== KIT LIST ============================== */
 
@@ -108,6 +123,42 @@ function KitList({ go, renderHeaderActions }: { go: any; renderHeaderActions?: (
 
   const { data: allItems, loading, error } = useAllItems()
   const { runExport, isPending: exporting } = useExportData()
+  const createItem = useCreateItem()
+
+  const existingPns = useMemo(
+    () => new Set((allItems ?? []).map((i: any) => (i.pn ?? '').toLowerCase())),
+    [allItems]
+  )
+
+  async function handleItemImport(rows: Record<string, unknown>[]) {
+    const today = new Date().toLocaleDateString('en-US')
+    for (const row of rows) {
+      await createItem({
+        pn: String(row.pn ?? ''),
+        name: String(row.name ?? ''),
+        cat: String(row.cat ?? ''),
+        rev: String(row.rev ?? 'A'),
+        phase: String(row.phase ?? 'Design'),
+        owner: String(row.owner ?? ''),
+        uom: String(row.uom ?? 'EA'),
+        proc: String(row.proc ?? ''),
+        plant: String(row.plant ?? ''),
+        status: String(row.status ?? '10 – NEW'),
+        mg: String(row.mg ?? ''),
+        rohs: String(row.rohs ?? 'Yes'),
+        bom: 0,
+        div: '',
+        created: today,
+        cost: '0.00',
+        assemblyType: 'Component',
+        primaryFile: '',
+        erpSystem: 'SAP',
+        bomUsage: 'Production',
+        description: '',
+        bomLines: '[]',
+      })
+    }
+  }
 
   // All items from the item object — no category filter, show everything
   const items = useMemo(() => allItems ?? [], [allItems])
@@ -234,17 +285,19 @@ function KitList({ go, renderHeaderActions }: { go: any; renderHeaderActions?: (
 
       {bulk && (
         <Modal
-          title="Bulk upload kits"
+          title="Bulk upload items"
           wide
           onClose={() => setBulk(false)}
-          foot={
-            <>
-              <span className="sub">New items land in Design phase and need a change order before they reach SAP.</span>
-              <button className="btn" style={{ marginLeft: 'auto' }} onClick={() => setBulk(false)}>Close</button>
-            </>
-          }
         >
-          <ImportPanel template={ITEM_TEMPLATE} templateName="topcon-kits-template.csv" entity="kits" />
+          <ImportPanel
+            template={ITEM_TEMPLATE}
+            templateName="topcon-items-template.csv"
+            entity="items"
+            columns={ITEM_COLUMNS}
+            primaryKey="pn"
+            existingKeys={existingPns}
+            onConfirm={handleItemImport}
+          />
         </Modal>
       )}
     </div>
