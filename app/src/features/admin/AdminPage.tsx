@@ -214,9 +214,8 @@ function Admin({
         </div>
       </div>
 
-      {(tab === "Users" || tab === "Users and roles") && (
-        <Card pad={false}>
-          <Toolbar q={uq} setQ={setUq} placeholder="Name, group or email"
+      {(tab === "Users" || tab === "Users and roles") && (<>
+        <Toolbar q={uq} setQ={setUq} placeholder="Name, group or email"
             segs={["All", "Employee", "Partner"]} seg={useg} setSeg={setUseg}
             count={(x: any) => (x === "All" ? backendUsers.length : backendUsers.filter((u: any) => u.type === x).length)}
             right={<>
@@ -224,6 +223,7 @@ function Admin({
               <button className="btn pri" onClick={() => setUserModal({ name: "", email: "", group: GROUPS[0], site: "Livermore", access: "Standard user", type: "Employee", active: true, isNew: true })}>
                 <Plus size={13} />Add user</button>
             </>} />
+        <Card pad={false}>
           <div className="scrollx" style={{ overflowX: "auto", minWidth: 0 }}>
             <table className="tbl">
               <thead><tr><th>Name</th><th>Email</th><th>Group</th><th>Site</th><th>Access level</th><th>Type</th><th>Status</th><th style={{ width: 44, textAlign: "right" }}></th></tr></thead>
@@ -251,13 +251,13 @@ function Admin({
           </div>
           <Pagination total={userRows.length} page={userPage} setPage={setUserPage} />
         </Card>
-      )}
+      </>)}
 
-      {(tab === "Roles" || tab === "Approval roles") && (
-        <Card pad={false}>
-          <Toolbar q={rq} setQ={setRq} placeholder="Search approval roles"
+      {(tab === "Roles" || tab === "Approval roles") && (<>
+        <Toolbar q={rq} setQ={setRq} placeholder="Search approval roles"
             right={<button className="btn pri" data-test-id="new-role-btn" onClick={() => setRoleModal({ name: "", division: "Both", site: "All sites", membersJson: "[]", isNew: true })}>
               <Plus size={13} />New approval role</button>} />
+        <Card pad={false}>
           <div className="scrollx" style={{ overflowX: "auto", minWidth: 0 }}>
             <table className="tbl">
               <thead><tr><th>Approval role</th><th>Division</th><th>Site</th><th>Members</th><th>Used in routings</th><th style={{ width: 44, textAlign: "right" }}></th></tr></thead>
@@ -291,13 +291,13 @@ function Admin({
           </div>
           <Pagination total={roleRows.length} page={rolePage} setPage={setRolePage} />
         </Card>
-      )}
+      </>)}
 
-      {tab === "Routings" && (
-        <Card pad={false}>
-          <Toolbar q={tq} setQ={setTq} placeholder="Search routings"
+      {tab === "Routings" && (<>
+        <Toolbar q={tq} setQ={setTq} placeholder="Search routings"
             right={<button className="btn pri" onClick={() => setRouteModal({ name: "", division: "CO", used: 0, stagesJson: "[]", formId: "form-eco", isNew: true })}>
               <Plus size={13} />New routing</button>} />
+        <Card pad={false}>
           <div className="scrollx" style={{ overflowX: "auto", minWidth: 0 }}>
             <table className="tbl">
               <thead><tr><th>Routing</th><th>Division</th><th>Stage 1 roles</th><th>Stage 2 roles</th><th>Changes routed</th><th style={{ width: 44, textAlign: "right" }}></th></tr></thead>
@@ -325,14 +325,13 @@ function Admin({
           </div>
           <Pagination total={routeRows.length} page={routePage} setPage={setRoutePage} />
         </Card>
-      )}
+      </>)}
 
       {(tab === "Form Builder" || tab === "Change form builder") && (
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }} data-test-id="form-builder-container">
           {/* FLOW 1: If no form is currently opened, display the List of all created forms & Create New Form action */}
-          {!activeFormId ? (
-            <Card pad={false}>
-                <Toolbar
+          {!activeFormId ? (<>
+            <Toolbar
                   q={formSearchQuery}
                   setQ={setFormSearchQuery}
                   placeholder="Search forms by name or type"
@@ -353,7 +352,7 @@ function Admin({
                     </button>
                   }
                 />
-
+            <Card pad={false}>
                 <div className="scrollx" style={{ overflowX: "auto", minWidth: 0 }}>
                   <table className="tbl" data-test-id="forms-list-table">
                     <thead>
@@ -436,7 +435,7 @@ function Admin({
                   setPage={setFormPage}
                 />
             </Card>
-          ) : (
+          </>) : (
             /* FLOW 2: Form Canvas & Live Preview for the selected/active form */
             <>
               {/* Back to all forms navigation banner */}

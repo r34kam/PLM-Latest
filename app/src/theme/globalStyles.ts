@@ -73,7 +73,7 @@ html,body,#root{margin:0;padding:0;background:${T.brand};min-height:100vh}
 .crumb-link:hover{color:#055aaf;text-decoration:underline}
 
 /* ---- surfaces ---- */
-.card{min-width:0;background:#ffffff;border:none;border-radius:10px;box-shadow:0 1px 2px rgba(2,42,66,.05), 0 10px 26px -14px rgba(2,42,66,.18)}
+.card{min-width:0;background:#ffffff;border:none;border-radius:10px;box-shadow:0 1px 2px rgba(2,42,66,.05), 0 10px 26px -14px rgba(2,42,66,.18);overflow:hidden}
 .card>.ch{padding:14px 20px;border:none;display:flex;align-items:center;gap:10px;
   border-radius:10px 10px 0 0}
 .card>.cb{padding:16px 20px}
@@ -112,9 +112,11 @@ html,body,#root{margin:0;padding:0;background:${T.brand};min-height:100vh}
 .c-vio{background:${T.vioBg};border:none;color:${T.vio}}
 
 /* ---- tables ---- */
+/* table — thead blends into the page background (#EEF2F7) so left/right/top edges are "fused";
+   only the white tbody rows sit inside the card's white surface. */
 table.tbl{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
-.tbl th{text-align:left;font-size:11px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:0.04em;text-transform:uppercase;color:#486581;padding:14px 20px;
-  border-bottom:1px solid #E2E8F0;background:#F8FAFC;white-space:nowrap}
+.tbl th{text-align:left;font-size:11px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:0.04em;text-transform:uppercase;color:#7993a8;padding:12px 20px;
+  border-bottom:none;background:#EEF2F7;white-space:nowrap}
 .tbl.inactivate-tbl th{padding:14px 20px}
 .tbl th:first-child{padding-left:20px}
 .tbl th:last-child{padding-right:20px}
@@ -237,21 +239,20 @@ textarea.inp{height:auto;padding:8px 10px;line-height:1.5;resize:vertical}
 .kpi .v{font-size:28px;font-weight:700;letter-spacing:-.03em;line-height:1;color:#0a2233;font-variant-numeric:tabular-nums}
 .kpi .kpi-extra{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600}
 
-/* segmented control / filter pills
-   Inactive: white pill with a border (secondary surface, clearly clickable).
-   Active:   brand colour — consistent with primary buttons so the active filter
-             reads as the same vocabulary as a primary action.
-   Count badges (.n) are hidden — labels alone are sufficient. */
-.seg{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;background:transparent;padding:0}
-.seg button{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:10px;
-  font-size:11px;font-weight:600;color:#486581;background:#ffffff;border:1px solid #d4dee9;white-space:nowrap;cursor:pointer;
-  transition:all .12s ease}
-.seg button:hover{background:#f8fafc;color:#0a2233;border-color:#b6c6d8}
-.seg button.on{background:${T.brand};color:#ffffff;border-color:${T.brand}}
-.seg button.on:hover{background:${T.b700};border-color:${T.b700}}
+/* segmented control / filter pills — matches reference design:
+   Group sits on a soft-gray "track". Active pill is white + shadow (raised).
+   Inactive pills are transparent/borderless — they just live on the track.
+   Count badges hidden. */
+.seg{display:inline-flex;align-items:center;gap:2px;background:#e2e8f0;border-radius:10px;padding:3px}
+.seg button{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 12px;border-radius:8px;
+  font-size:12px;font-weight:600;color:#627d98;background:transparent;border:none;white-space:nowrap;cursor:pointer;
+  transition:all .1s ease}
+.seg button:hover{color:#0a2233}
+.seg button.on{background:#ffffff;color:#0a2233;box-shadow:0 1px 3px rgba(2,42,66,.14)}
 .seg button .n{display:none}
-/* toolbar: left side = filter pills / selects; search + actions always on the right edge */
-.toolbar{display:flex;align-items:center;gap:12px;padding:14px 20px;border:none;min-width:0}
+/* toolbar: floats above the table card on the page background — no card, no white bg.
+   Left: filter pills / selects. Right edge: search + actions. */
+.toolbar{display:flex;align-items:center;gap:12px;padding:0 0 12px;border:none;min-width:0;background:transparent}
 .toolbar-right{display:flex;align-items:center;gap:8px;margin-left:auto;flex-shrink:0}
 .srch{position:relative;display:flex;align-items:center;flex-shrink:0}
 .srch input{padding-left:30px;padding-right:10px;height:32px;border-radius:10px;width:240px;border:1px solid #D4DEE9;outline:none;background:#fff;font:inherit;font-size:13px;color:#0a2233;transition:border-color .12s,box-shadow .12s}

@@ -164,11 +164,26 @@ function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = ''
             </Card>
           </div>
 
-          <Card
-            title="Change orders"
-            pad={false}
-            data-test-id="home-change-orders-card"
-            right={
+          {/* Section header + toolbar above the table card */}
+          <div className="toolbar" data-test-id="home-change-orders-toolbar">
+            <div className="seg" data-test-id="home-stage-filter-pills">
+              {homeStages.map((st) => {
+                const active = selectedHomeStage === st.key;
+                return (
+                  <button
+                    key={st.key}
+                    type="button"
+                    className={active ? "on" : ""}
+                    onClick={() => setSelectedHomeStage(st.key)}
+                    data-test-id={`home-stage-pill-${st.key.toLowerCase().replace(/\s/g, '-')}`}
+                  >
+                    <span>{st.label}</span>
+                    <span className="n">{st.count}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="toolbar-right">
               <button
                 className="btn sm gh"
                 onClick={() => go({ page: "ecos", filter: activeStageObj.key === "Awaiting me" ? "Approval" : activeStageObj.key })}
@@ -176,29 +191,13 @@ function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = ''
               >
                 View in Changes ({activeStageObj.count}) <ArrowRight size={12} />
               </button>
-            }
-          >
-            {/* Smart filter pills */}
-            <div style={{ padding: "12px 20px 8px" }}>
-              <div className="seg" data-test-id="home-stage-filter-pills">
-                {homeStages.map((st) => {
-                  const active = selectedHomeStage === st.key;
-                  return (
-                    <button
-                      key={st.key}
-                      type="button"
-                      className={active ? "on" : ""}
-                      onClick={() => setSelectedHomeStage(st.key)}
-                      data-test-id={`home-stage-pill-${st.key.toLowerCase().replace(/\s/g, '-')}`}
-                    >
-                      <span>{st.label}</span>
-                      <span className="n">{st.count}</span>
-                    </button>
-                  );
-                })}
-              </div>
             </div>
+          </div>
 
+          <Card
+            pad={false}
+            data-test-id="home-change-orders-card"
+          >
             {ordersLoading ? (
               <div style={{ padding: "12px 20px" }} data-test-id="home-orders-table-skeleton">
                 {[1, 2, 3].map((i) => <Skeleton key={i} className="h-10 mb-2" />)}

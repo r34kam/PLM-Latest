@@ -48,9 +48,9 @@ function Suppliers({ railOpen = false, renderHeaderActions }: { railOpen?: boole
         <Kpi label="Invitations pending" value={list.filter((r: any) => r.st === "Invited").length} note="Sent 9 Sep, expires in 11 days" icon={Send} tint={T.warnBg} bd={T.warnBd} tone={T.warn} />
       </div>
 
-      <Card pad={false}>
-        <Toolbar q={q} setQ={setQ} placeholder="Supplier, site or contact" segs={segs} seg={seg} setSeg={setSeg} count={count}
+      <Toolbar q={q} setQ={setQ} placeholder="Supplier, site or contact" segs={segs} seg={seg} setSeg={setSeg} count={count}
           right={<button className="btn"><Download size={13} />Export</button>} />
+      <Card pad={false}>
         <table className="tbl">
           <thead><tr>
             <th>Supplier</th>
