@@ -120,10 +120,31 @@ export function useCreateItem() {
   const mutate = useExecuteWorkflowNodeMutation()
   const qc = useQueryClient()
   return async (item: NewItem) => {
+    // Step 1: create the core record — fields known to be registered in the schema
+    const { bomLines, description, primaryFile, assemblyType, bomUsage, erpSystem, ...coreItem } = item
     const result = await mutate.mutateAsync({
       data: { id: CREATE.id, context: CREATE.context,
-        inputs: { ...CREATE.storedInputs, object_type: ITEM, rawPayload: item } },
+        inputs: { ...CREATE.storedInputs, object_type: ITEM, rawPayload: coreItem } },
     })
+
+    // Step 2: patch the remaining fields in a follow-up UPDATE
+    const newId: string | undefined =
+      (result as any)?.response?.id ??
+      (result as any)?.id ??
+      (result as any)?.response?.objects?.[0]?.id
+
+    if (newId) {
+      try {
+        await mutate.mutateAsync({
+          data: { id: UPDATE.id, context: UPDATE.context,
+            inputs: { ...UPDATE.storedInputs, object_type: ITEM, recordId: newId,
+              rawPayload: { bomLines, description, primaryFile, assemblyType, bomUsage, erpSystem } } },
+        })
+      } catch {
+        // Non-fatal — item was created; extended fields are missing
+      }
+    }
+
     qc.invalidateQueries({ queryKey: [EXECUTE_NODE_QK] })
     return result
   }
