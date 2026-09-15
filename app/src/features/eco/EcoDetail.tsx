@@ -55,8 +55,11 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
         notes: backendCo.notes,
         ecoItems: backendCo.ecoItems ?? [],
         comments: backendCo.comments ?? [],
+        rejectionReason: backendCo.rejectionReason ?? '',
+        rejectionNotes: backendCo.rejectionNotes ?? '',
+        rejectedBy: backendCo.rejectedBy ?? '',
       }
-    : { ...staticEco, ecoItems: [] as any[], comments: [] as any[] };
+    : { ...staticEco, ecoItems: [] as any[], comments: [] as any[], rejectionReason: '', rejectionNotes: '', rejectedBy: '' };
   // Use real persisted approvals from backend when available; fall back to derived for static ECOs.
   // Normalise backend ApprovalEntry shape to the legacy {g, n, req, st, at, cm, others} shape
   // that the Approvals tab rendering already uses — keeping one render path.
@@ -124,7 +127,34 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
   const [approvalDone, setApprovalDone] = useState<'approved' | 'rejected' | null>(null)
   const [rejectModal, setRejectModal] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
+  const [rejectNotes, setRejectNotes] = useState('')
   const [isRejecting, setIsRejecting] = useState(false)
+  // DC reject modal state (modal === "reject")
+  const [dcRejectReason, setDcRejectReason] = useState('')
+  const [dcRejectNotes, setDcRejectNotes] = useState('')
+  const [isDcRejecting, setIsDcRejecting] = useState(false)
+  const handleDcReject = async () => {
+    if (!dcRejectReason.trim()) return
+    setIsDcRejecting(true)
+    try {
+      if (backendCo) {
+        await updateChangeOrder(backendCo.id, {
+          stage: 'Rejected',
+          rejectionReason: dcRejectReason.trim(),
+          rejectionNotes: dcRejectNotes.trim(),
+          rejectedBy: currentUserName || ME.name,
+        } as any)
+      }
+      setModal(null)
+      setDcRejectReason('')
+      setDcRejectNotes('')
+      toast.success('Change order rejected.')
+    } catch {
+      toast.error('Failed to reject — please try again.')
+    } finally {
+      setIsDcRejecting(false)
+    }
+  }
   const canApprove = isApproverRole && eco.stage === 'Approval' && (eco.awaitingMe === true || eco.mine === true)
   const handleApprove = () => { setApprovalDone('approved') }
   const handleReject = async () => {
@@ -132,11 +162,17 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
     setIsRejecting(true)
     try {
       if (backendCo) {
-        await updateChangeOrder(backendCo.id, { stage: 'Rejected' })
+        await updateChangeOrder(backendCo.id, {
+          stage: 'Rejected',
+          rejectionReason: rejectReason.trim(),
+          rejectionNotes: rejectNotes.trim(),
+          rejectedBy: currentUserName || ME.name,
+        } as any)
       }
       setApprovalDone('rejected')
       setRejectModal(false)
       setRejectReason('')
+      setRejectNotes('')
     } catch {
       toast.error('Failed to update status — please try again.')
     } finally {
@@ -298,10 +334,20 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                 <AlertTriangle size={18} color={T.bad} style={{ flexShrink: 0, marginTop: 2 }} />
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 13, color: T.bad }}>
-                    Rejected by Carol Nosworthy (Quality Assurance) on 09/06/2026.
+                    {eco.rejectedBy
+                      ? `Rejected by ${eco.rejectedBy}.`
+                      : 'Rejected by Carol Nosworthy (Quality Assurance) on 09/06/2026.'}
                   </div>
                   <div style={{ marginTop: 3, fontSize: 13, color: "#486581" }}>
-                    “Deviation evidence not attached. Reactivation needs the last inspection report before I can sign.”
+                    {(eco.rejectionReason || eco.rejectionNotes) ? (
+                      <>
+                        {eco.rejectionReason && <strong>{eco.rejectionReason}</strong>}
+                        {eco.rejectionReason && eco.rejectionNotes && ' — '}
+                        {eco.rejectionNotes && `"${eco.rejectionNotes}"`}
+                      </>
+                    ) : (
+                      '“Deviation evidence not attached. Reactivation needs the last inspection report before I can sign.”'
+                    )}
                   </div>
                 </div>
               </div>
@@ -1277,15 +1323,38 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
         </Modal>
       )}
       {modal === "reject" && (
-        <Modal title="Reject this change" onClose={() => setModal(null)}
-          foot={<><button className="btn" onClick={() => setModal(null)}>Cancel</button>
-            <button className="btn dan" style={{ marginLeft: "auto" }} onClick={() => setModal(null)}><X size={13} />Reject and stop routing</button></>}>
+        <Modal title="Reject this change" onClose={() => { setModal(null); setDcRejectReason(''); setDcRejectNotes(''); }}
+          foot={<>
+            <button className="btn" onClick={() => { setModal(null); setDcRejectReason(''); setDcRejectNotes(''); }}>Cancel</button>
+            <button
+              className="btn dan"
+              style={{ marginLeft: "auto" }}
+              disabled={!dcRejectReason.trim() || isDcRejecting}
+              onClick={handleDcReject}
+              data-test-id="dc-reject-confirm-btn"
+            >
+              {isDcRejecting ? <><Loader2 size={13} className="spin" />Rejecting…</> : <><X size={13} />Reject and stop routing</>}
+            </button>
+          </>}>
           <div className="warnbox" style={{ marginBottom: 12 }}>Rejecting stops routing for everyone. Document control will withdraw the change to Open to rework it.</div>
-          <Field label="Reason"><Select options={["Redline does not match the description", "Drawing or file incorrect", "Missing tolerance or evidence",
-            "Wrong supplier selected", "Item should not be on this change", "Other"]} /></Field>
+          <Field label="Reason">
+            <Select
+              value={dcRejectReason}
+              onChange={(e: any) => setDcRejectReason(e.target.value)}
+              options={["", "Redline does not match the description", "Drawing or file incorrect", "Missing tolerance or evidence",
+                "Wrong supplier selected", "Item should not be on this change", "Other"]}
+              data-test-id="dc-reject-reason-select"
+            />
+          </Field>
           <div style={{ height: 12 }} />
           <Field label="Notes for document control" hint="These notes go into the rejection email and sit under Decisions.">
-            <textarea className="inp" rows={4} /></Field>
+            <textarea
+              className="inp"
+              rows={4}
+              value={dcRejectNotes}
+              onChange={(e) => setDcRejectNotes(e.target.value)}
+              data-test-id="dc-reject-notes-input"
+            /></Field>
         </Modal>
       )}
       {modal === "withdraw" && (
@@ -1420,6 +1489,8 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
               className="inp"
               rows={4}
               placeholder="Explain why you are rejecting — what needs to change before you can approve…"
+              value={rejectNotes}
+              onChange={(e) => setRejectNotes(e.target.value)}
               data-test-id="approver-reject-notes-input"
             />
           </Field>

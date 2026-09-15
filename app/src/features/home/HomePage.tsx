@@ -35,8 +35,14 @@ function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = ''
   const subLine = [dateStr, timeStr, groupLabel, siteLabel].filter(Boolean).join(' · ')
   const [selectedHomeStage, setSelectedHomeStage] = useState("Awaiting me");
 
-  // Backend change orders
-  const { data: allOrders, loading: ordersLoading } = useAllChangeOrders();
+  const isApprover = userRole === 'approver'
+
+  // Backend change orders — approvers see only their engaged COs
+  const { data: rawOrders, loading: ordersLoading } = useAllChangeOrders();
+  const allOrders = useMemo(
+    () => isApprover ? rawOrders.filter((o) => o.awaitingMe) : rawOrders,
+    [isApprover, rawOrders]
+  );
   const kpis = useMemo(() => deriveCoKpis(allOrders), [allOrders]);
   const awaiting = useMemo(
     () => allOrders.filter((o) => o.awaitingMe || o.stage === 'Rejected'),

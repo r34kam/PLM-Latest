@@ -54,6 +54,9 @@ export type ChangeOrder = {
   currentStageNum: number     // active approval stage: 0 = not in approval, 1 or 2
   ecoItems: EcoItemRecord[]   // parsed from ecoItemsJson — kits + BOM edits from creation
   comments: EcoComment[]      // parsed from commentsJson — comment trail
+  rejectionReason: string     // reason selected when rejected
+  rejectionNotes: string      // free-text notes entered at rejection
+  rejectedBy: string          // name of person who rejected
 }
 
 /** One kit/assembly added to the ECO during creation, with its BOM edits. */
@@ -141,6 +144,9 @@ function flatten(raw: any): ChangeOrder {
     currentStageNum: typeof p.currentStageNum === 'number' ? p.currentStageNum : Number(p.currentStageNum ?? 0),
     ecoItems: parseJsonSafe<EcoItemRecord[]>(p.ecoItemsJson, []),
     comments: parseJsonSafe<EcoComment[]>(p.commentsJson, []),
+    rejectionReason: p.rejectionReason ?? '',
+    rejectionNotes: p.rejectionNotes ?? '',
+    rejectedBy: p.rejectedBy ?? '',
   }
 }
 

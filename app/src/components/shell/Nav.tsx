@@ -240,11 +240,11 @@ function Nav({
           </div>
         )}
 
-        {/* Insight & setup — DC only */}
+        {/* Insight & setup — Reports visible to all, Admin DC-only */}
+        <div className="sidelbl">Insight &amp; setup</div>
+        <Item {...NAV[3]} active={page === "reports"} />
         {role !== 'approver' && (
           <>
-            <div className="sidelbl">Insight &amp; setup</div>
-            <Item {...NAV[3]} active={page === "reports"} />
             <Item {...NAV[4]} active={page === "admin"} hasChevron={true} chevronOpen={adminMenuOpen || page === "admin"} />
             {(adminMenuOpen || page === "admin") && !mini && (
               <div className="sidesubmenu" data-test-id="admin-subnav">

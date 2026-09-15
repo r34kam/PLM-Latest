@@ -449,6 +449,9 @@ function EcoNew({
         completedDate: "",
         approvals: initialApprovals,
         currentStageNum: 1,
+        rejectionReason: '',
+        rejectionNotes: '',
+        rejectedBy: '',
       });
       toast.success(`${coId} submitted to ${routing} approval flow`);
       go({ page: "ecos" });
