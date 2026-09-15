@@ -37,6 +37,57 @@ async function downloadFromUrl(url: string, filename: string): Promise<void> {
   setTimeout(() => URL.revokeObjectURL(objectUrl), 5000)
 }
 
+// ─── ECO Excel Generation ────────────────────────────────────────────────────
+// Automation 6aa93fa10460866c811d6922 — takes an ECO number, returns a file URL.
+
+const ECO_EXCEL_AUTOMATION_ID = '6aa93fa10460866c811d6922'
+const ECO_EXCEL_DATA_SOURCE_ID = 'e_6aa943ef1a51130ddf91beec'
+const ECO_EXCEL_RESOURCE_VERSION = 66
+
+export function useExportEcoExcel() {
+  const { mutateAsync, isPending, error, reset } = useExecuteWorkflowNodeMutation()
+
+  async function runExport(ecoNumber: string): Promise<void> {
+    const result = await mutateAsync({
+      data: {
+        context: {
+          appName: 'callables',
+          resourceName: 'callables_call_automation',
+          resourceVersion: ECO_EXCEL_RESOURCE_VERSION,
+        },
+        id: ECO_EXCEL_DATA_SOURCE_ID,
+        inputs: {
+          automationId: ECO_EXCEL_AUTOMATION_ID,
+          version: '-1',
+          runtimeConnections: {},
+          parameters: {
+            __internals__: { m: 'BUILDER', s: PAGE_SLUG, c: 'PLATFORM', p: 'browser' },
+            eco_number: ecoNumber,
+          },
+          synchronous: true,
+        },
+        options: {},
+      },
+    })
+
+    const fileUrl = (result?.response as { result?: string } | undefined)?.result
+    if (!fileUrl) throw new Error('No file URL returned from the automation.')
+    const filename = (() => {
+      try {
+        const pathname = new URL(fileUrl).pathname
+        const last = pathname.split('/').pop()
+        if (last && last.includes('.')) return decodeURIComponent(last)
+      } catch { /* ignore */ }
+      return `${ecoNumber}.xlsx`
+    })()
+    await downloadFromUrl(fileUrl, filename)
+  }
+
+  return { runExport, isPending, error, reset }
+}
+
+// ─── Generic data export ─────────────────────────────────────────────────────
+
 export function useExportData() {
   const { mutateAsync, isPending, error, reset } = useExecuteWorkflowNodeMutation()
 

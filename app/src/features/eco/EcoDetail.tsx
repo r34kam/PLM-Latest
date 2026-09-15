@@ -15,6 +15,7 @@ import { ROUTINGS, deriveApprovalState, notificationRecipientsFor } from '@/doma
 import { ME } from '@/domain/session'
 import { suppliersFor } from '@/domain/suppliers'
 import { useAllChangeOrders, useUpdateChangeOrder, type EcoComment } from '@/data/changeOrders'
+import { useExportEcoExcel } from '@/data/export'
 import { useSendReminder } from '@/data/reminder'
 import { downloadFile } from '@/lib/download'
 import { toast } from 'sonner'
@@ -101,6 +102,22 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
   const [activeRedlineItem, setActiveRedlineItem] = useState<any>(null);
   const [modPage, setModPage] = useState(1);
   const [selectedPns, setSelectedPns] = useState<any[]>([]);
+
+  /* ---- ECO Excel export ---- */
+  const { runExport: runEcoExcelExport, isPending: isExporting } = useExportEcoExcel()
+
+  const handleExportExcel = async () => {
+    setActions(false)
+    try {
+      toast.loading('Generating Excel…', { id: 'eco-export' })
+      await runEcoExcelExport(eco.id)
+      toast.dismiss('eco-export')
+      toast.success('Excel downloaded.')
+    } catch (err) {
+      toast.dismiss('eco-export')
+      toast.error('Export failed — please try again.')
+    }
+  }
 
   /* ---- Approve / Reject for Approver role ---- */
   const updateChangeOrder = useUpdateChangeOrder()
@@ -220,11 +237,12 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                 {actions && (<>
                   <div style={{ position: "fixed", inset: 0, zIndex: 40 }} onClick={() => setActions(false)} />
                   <div className="menu">
-                    <button onClick={() => {
-                      setActions(false);
-                      downloadFile(`${eco.id}.csv`, `Change,Title,Stage,Routing,Creator\n${eco.id},${eco.title},${eco.stage},${eco.routing},${eco.creator}`);
-                    }}>
-                      <Download size={14} />Export to Excel
+                    <button
+                      onClick={handleExportExcel}
+                      disabled={isExporting}
+                      data-test-id="actions-export-excel-btn"
+                    >
+                      {isExporting ? <><Loader2 size={14} className="spin" />Generating…</> : <><Download size={14} />Export to Excel</>}
                     </button>
                     <button onClick={() => { setActions(false); setCommentDrawerOpen(true); }}>
                       <FileText size={14} />Add a comment
