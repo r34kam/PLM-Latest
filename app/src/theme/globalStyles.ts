@@ -288,6 +288,34 @@ textarea.inp{height:auto;padding:8px 10px;line-height:1.5;resize:vertical}
 .drop:focus,.drop:focus-within{border-color:#0A4F8F;outline:2px solid #0A4F8F;outline-offset:0px}
 
 /* ---- overlays ---- */
+/* ── wizard modal ────────────────────────────────────────────────────
+   Two-panel creation journey: left = numbered step list, right = form.
+   Matches the reference (wide, 88 vh tall, left panel 240px fixed).     */
+.modal-wizard{background:#ffffff;border-radius:14px;width:100%;max-width:960px;height:88vh;max-height:840px;
+  overflow:hidden;display:flex;flex-direction:column;box-shadow:0 4px 32px rgba(2,42,66,.22)}
+.modal-wizard-body{display:flex;flex:1;min-height:0}
+.modal-wizard-steps{width:240px;min-width:240px;border-right:1px solid #e2e8f0;padding:28px 16px;
+  display:flex;flex-direction:column;gap:4px;background:#fafbfc}
+.modal-wizard-step{display:flex;align-items:flex-start;gap:12px;padding:12px 10px;border-radius:10px;
+  cursor:pointer;border:none;background:transparent;text-align:left;width:100%;transition:background .1s}
+.modal-wizard-step:hover{background:#f0f4f8}
+.modal-wizard-step.active{background:#EEF4FF}
+.modal-wizard-step .mws-num{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;
+  font-size:12px;font-weight:700;flex-shrink:0;margin-top:1px;
+  background:#e2e8f0;color:#627d98;transition:all .12s}
+.modal-wizard-step.active .mws-num{background:#0A4F8F;color:#ffffff}
+.modal-wizard-step.done .mws-num{background:#35A65B;color:#ffffff}
+.modal-wizard-step .mws-label{font-size:13px;font-weight:600;color:#486581;line-height:1.2;margin-bottom:2px}
+.modal-wizard-step.active .mws-label{color:#0a2233}
+.modal-wizard-step.done .mws-label{color:#0a2233}
+.modal-wizard-step .mws-sub{font-size:11px;color:#7993a8;line-height:1.3}
+.modal-wizard-content{flex:1;min-width:0;overflow-y:auto;padding:32px 36px}
+.modal-wizard-head{display:flex;align-items:center;justify-content:space-between;padding:18px 24px;
+  border-bottom:1px solid #e2e8f0;flex-shrink:0}
+.modal-wizard-head h2{margin:0;font-size:16px;font-weight:700;color:#0a2233}
+.modal-wizard-foot{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;
+  background:#f8fafc;border-top:1px solid #e2e8f0;flex-shrink:0;border-radius:0 0 14px 14px}
+
 .modalbg{position:fixed;inset:0;background:rgba(2,42,66,.45);z-index:80;display:grid;place-items:center;padding:24px;
   backdrop-filter:blur(2px)}
 .modal{background:#ffffff;border-radius:12px;width:100%;max-width:640px;max-height:86vh;overflow:hidden;display:flex;flex-direction:column;

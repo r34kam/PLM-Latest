@@ -10,8 +10,14 @@ import { useUppy } from '@unifyapps/app-builder-sdk/hooks/upload'
 import { Check, ChevronRight, Layers, Plus, Search, Trash2, Upload, X } from 'lucide-react'
 import React, { useState } from 'react'
 import { toast } from 'sonner'
+import { WizardModal } from '@/components/primitives/WizardModal'
 
-function ItemNew({ go, renderHeaderActions }: { go: any; renderHeaderActions?: () => React.ReactNode }) {
+function ItemNew({ go, renderHeaderActions, isModal = false, onClose }: {
+  go: any;
+  renderHeaderActions?: () => React.ReactNode;
+  isModal?: boolean;
+  onClose?: () => void;
+}) {
   const [section, setSection] = useState(0);
   const [showErrors, setShowErrors] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -122,36 +128,64 @@ function ItemNew({ go, renderHeaderActions }: { go: any; renderHeaderActions?: (
     }
   };
 
-  return (
-    <div className="stack" data-test-id="item-new-page">
-      <div>
-        <div className="crumb"><a onClick={() => go({ page: "items" })}>Items</a><ChevronRight size={11} strokeWidth={2} />New</div>
-        <div className="bet">
-          <div>
-            <h1>Create item</h1>
-            <div className="sub" style={{ marginTop: 4 }}>Define a new part number — it will be created in Design phase until promoted by a change order</div>
-          </div>
-          <div className="row">{renderHeaderActions?.()}</div>
-        </div>
-      </div>
+  const ITEM_WIZARD_STEPS = sections.map((s: string) => ({ label: s }));
 
-      {/* Horizontal Stepper for Subsections */}
-      <div className="steps" data-test-id="item-new-stepper" style={{ cursor: "pointer", userSelect: "none" }}>
-        {sections.map((s: any, k: any) => (
-          <React.Fragment key={s}>
-            {k > 0 && <div className="stpline" />}
-            <div
-              className={`stp ${k === section ? "on" : k < section ? "dn" : ""}`}
-              onClick={() => setSection(k)}
-              data-test-id={`item-new-step-${k}`}
-              title={`Switch to ${s}`}
-            >
-              <span className="n">{k < section ? <Check size={11} strokeWidth={3} color="#fff" /> : k + 1}</span>
-              <span>{s}</span>
-            </div>
-          </React.Fragment>
-        ))}
+  const itemModalFoot = (
+    <div className="row" style={{ width: "100%", justifyContent: "space-between" }}>
+      <button className="btn" type="button" onClick={() => {
+        if (section > 0) setSection(section - 1);
+        else (onClose ?? (() => go({ page: "items" })))();
+      }} data-test-id="item-wizard-back-btn">
+        {section > 0 ? "Back" : "Cancel"}
+      </button>
+      <div className="row">
+        <button className="btn" type="button" onClick={() => (onClose ?? (() => go({ page: "items" })))()}>Save as draft</button>
+        {section < sections.length - 1 ? (
+          <button className="btn pri" type="button" data-test-id="item-new-next-btn"
+            onClick={() => {
+              if (section === 0 && !isIdentityValid) { setShowErrors(true); return; }
+              setShowErrors(false);
+              setSection(section + 1);
+            }}>
+            Next: {sections[section + 1]}
+          </button>
+        ) : (
+          <button className="btn pri" type="button" disabled={saving} data-test-id="item-new-submit-btn" onClick={handleCreate}>
+            {saving ? "Creating…" : "Create item"}
+          </button>
+        )}
       </div>
+    </div>
+  );
+
+  const itemContent = (
+    <div className="stack" data-test-id="item-new-page">
+      {!isModal && (
+        <>
+          <div>
+            <div className="crumb"><a onClick={() => go({ page: "items" })}>Items</a><ChevronRight size={11} strokeWidth={2} />New</div>
+            <div className="bet">
+              <div>
+                <h1>Create item</h1>
+                <div className="sub" style={{ marginTop: 4 }}>Define a new part number — it will be created in Design phase until promoted by a change order</div>
+              </div>
+              <div className="row">{renderHeaderActions?.()}</div>
+            </div>
+          </div>
+          <div className="steps" data-test-id="item-new-stepper" style={{ cursor: "pointer", userSelect: "none" }}>
+            {sections.map((s: any, k: any) => (
+              <React.Fragment key={s}>
+                {k > 0 && <div className="stpline" />}
+                <div className={`stp ${k === section ? "on" : k < section ? "dn" : ""}`}
+                  onClick={() => setSection(k)} data-test-id={`item-new-step-${k}`} title={`Switch to ${s}`}>
+                  <span className="n">{k < section ? <Check size={11} strokeWidth={3} color="#fff" /> : k + 1}</span>
+                  <span>{s}</span>
+                </div>
+              </React.Fragment>
+            ))}
+          </div>
+        </>
+      )}
 
       {/* Subsection 1: Identity */}
       {section === 0 && (
@@ -514,46 +548,53 @@ function ItemNew({ go, renderHeaderActions }: { go: any; renderHeaderActions?: (
         </div>
       )}
 
-      {/* Stepper Navigation Buttons */}
-      <div className="bet" style={{ paddingTop: 4 }}>
-        <button
-          className="btn"
-          type="button"
-          onClick={() => {
+      {!isModal && (
+        <div className="bet" style={{ paddingTop: 4 }}>
+          <button className="btn" type="button" onClick={() => {
             if (section > 0) setSection(section - 1);
             else go({ page: "items" });
-          }}
-        >
-          {section > 0 ? "Previous step" : "Cancel"}
-        </button>
-
-        <div className="row">
-          <button className="btn" type="button" onClick={() => go({ page: "items" })}>Save as draft</button>
-          {section < sections.length - 1 ? (
-            <button
-              className="btn pri"
-              type="button"
-              data-test-id="item-new-next-btn"
-              onClick={() => {
-                if (section === 0 && !isIdentityValid) {
-                  setShowErrors(true);
-                  return;
-                }
-                setShowErrors(false);
-                setSection(section + 1);
-              }}
-            >
-              {`Next: ${sections[section + 1]}`}
-            </button>
-          ) : (
-            <button className="btn pri" type="button" disabled={saving} data-test-id="item-new-submit-btn" onClick={handleCreate}>
-              {saving ? "Creating…" : "Create item"}
-            </button>
-          )}
+          }}>
+            {section > 0 ? "Previous step" : "Cancel"}
+          </button>
+          <div className="row">
+            <button className="btn" type="button" onClick={() => go({ page: "items" })}>Save as draft</button>
+            {section < sections.length - 1 ? (
+              <button className="btn pri" type="button" data-test-id="item-new-next-btn"
+                onClick={() => {
+                  if (section === 0 && !isIdentityValid) { setShowErrors(true); return; }
+                  setShowErrors(false);
+                  setSection(section + 1);
+                }}>
+                {`Next: ${sections[section + 1]}`}
+              </button>
+            ) : (
+              <button className="btn pri" type="button" disabled={saving} data-test-id="item-new-submit-btn" onClick={handleCreate}>
+                {saving ? "Creating…" : "Create item"}
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
+
+  if (isModal) {
+    return (
+      <WizardModal
+        title="Create item"
+        steps={ITEM_WIZARD_STEPS}
+        currentStep={section}
+        onStepClick={(idx) => { if (idx < section) setSection(idx); }}
+        onClose={onClose ?? (() => go({ page: "items" }))}
+        foot={itemModalFoot}
+        data-test-id="item-new-modal"
+      >
+        {itemContent}
+      </WizardModal>
+    );
+  }
+
+  return itemContent;
 }
 
 export { ItemNew }

@@ -127,10 +127,10 @@ function TopconPLM({
     case "home": body = <HomePage go={go} renderHeaderActions={renderHeaderActions} userRole={role} userName={userName} aiInsights={userAiInsights} currentUser={currentUser} />; break;
     case "ecos": body = <EcoList go={go} initialFilter={isApprover ? "Needs me" : (v.filter ?? undefined)} onInspect={handleInspectEco} inspectedId={inspectedEcoId} railOpen={false} renderHeaderActions={renderHeaderActions} role={role} currentUserName={userName} />; break;
     case "eco": body = <EcoDetail id={v.id} go={go} initialTab={v.tab} renderHeaderActions={renderHeaderActions} role={role} currentUserName={userName} />; break;
-    case "eco-new": body = !isApprover ? <EcoNew go={go} startStep={v.step !== undefined ? v.step : 0} initialApprovalMode={initialApprovalMode} initialManualItems={initialManualItems} renderHeaderActions={renderHeaderActions} /> : <HomePage go={go} renderHeaderActions={renderHeaderActions} />; break;
+    case "eco-new": body = !isApprover ? <EcoList go={go} initialFilter={undefined} onInspect={handleInspectEco} inspectedId={inspectedEcoId} railOpen={false} renderHeaderActions={renderHeaderActions} role={role} currentUserName={userName} /> : <HomePage go={go} renderHeaderActions={renderHeaderActions} />; break;
     case "items": body = <ItemList go={go} railOpen={false} renderHeaderActions={renderHeaderActions} />; break;
     case "item": body = <ItemDetail id={v.id} go={go} initialTab={v.tab} renderHeaderActions={renderHeaderActions} />; break;
-    case "item-new": body = !isApprover ? <ItemNew go={go} renderHeaderActions={renderHeaderActions} /> : <ItemList go={go} railOpen={false} renderHeaderActions={renderHeaderActions} />; break;
+    case "item-new": body = !isApprover ? <ItemList go={go} railOpen={false} renderHeaderActions={renderHeaderActions} /> : <ItemList go={go} railOpen={false} renderHeaderActions={renderHeaderActions} />; break;
     case "inactivate": body = !isApprover ? <Inactivate go={go} id={v.id} renderHeaderActions={renderHeaderActions} /> : <HomePage go={go} renderHeaderActions={renderHeaderActions} />; break;
     case "admin": body = !isApprover ? <Admin initialTab={v.tab || "Users"} go={go} renderHeaderActions={renderHeaderActions} /> : <HomePage go={go} renderHeaderActions={renderHeaderActions} />; break;
     case "reports": body = !isApprover ? <Reports renderHeaderActions={renderHeaderActions} /> : <HomePage go={go} renderHeaderActions={renderHeaderActions} />; break;
@@ -168,6 +168,27 @@ function TopconPLM({
           </main>
         </div>
       </div>
+
+      {/* ── Creation modals — overlay the current page ───────────────── */}
+      <Suspense fallback={null}>
+        {v.page === "eco-new" && !isApprover && (
+          <EcoNew
+            go={go}
+            startStep={v.step !== undefined ? v.step : 0}
+            initialApprovalMode={initialApprovalMode}
+            initialManualItems={initialManualItems}
+            isModal
+            onClose={() => go({ page: "ecos" })}
+          />
+        )}
+        {v.page === "item-new" && !isApprover && (
+          <ItemNew
+            go={go}
+            isModal
+            onClose={() => go({ page: "items" })}
+          />
+        )}
+      </Suspense>
 
       {/* Floating Ask AI Button — hidden on Reports page since the full copilot is there */}
       {v.page !== "reports" && <button

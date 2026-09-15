@@ -6,6 +6,7 @@ import { Chip, phaseChip } from '@/components/primitives/Chip'
 import { Empty } from '@/components/primitives/Empty'
 import { Field, Input, Select } from '@/components/primitives/Field'
 import { Modal } from '@/components/primitives/Modal'
+import { WizardModal } from '@/components/primitives/WizardModal'
 import { Stepper } from '@/components/primitives/Stepper'
 import { useRoutings } from '@/data/admin'
 import { useAllItems } from '@/data/items'
@@ -53,13 +54,17 @@ function EcoNew({
   startStep = 0,
   initialApprovalMode = null,
   initialManualItems = null,
-  renderHeaderActions
+  renderHeaderActions,
+  isModal = false,
+  onClose,
 }: {
   go: any;
   startStep?: number;
   initialApprovalMode?: "ai" | "routing" | "manual" | null;
   initialManualItems?: any[] | null;
   renderHeaderActions?: () => React.ReactNode;
+  isModal?: boolean;
+  onClose?: () => void;
 }) {
   const STEPS = ["Basic Details", "Approvals", "Summary"];
   // Map incoming startStep: legacy 4 or 1 -> step 1 (Approvals); legacy 5 or 2 -> step 2 (Summary); 0 -> step 0 (Basic Details)
@@ -316,20 +321,68 @@ function EcoNew({
     }
   };
 
-  return (
-    <div className="stack" data-test-id="eco-new-page">
-      <div className="bet">
-        <div>
-          <div className="crumb"><button type="button" className="crumb-link" onClick={() => go({ page: "home" })} data-test-id="eco-new-breadcrumb-home">Changes</button> › New</div>
-          <h1>Create change order</h1>
-          <div className="sub" style={{ marginTop: 4 }}>Start a new change request — fill in the details, add affected items, and route for approval</div>
-        </div>
-        <div className="row">
-          <button className="btn gh" onClick={() => go({ page: "ecos" })}><X size={14} strokeWidth={2} />Cancel</button>
-          {renderHeaderActions?.()}
-        </div>
+  // ECO STEPS metadata for the wizard sidebar
+  const ECO_WIZARD_STEPS = [
+    { label: "Basic Details", sub: "Title, type, priority & items" },
+    { label: "Approvals", sub: "Routing & approval method" },
+    { label: "Summary", sub: "Review & submit" },
+  ];
+
+  const modalFoot = (
+    <div className="row" style={{ width: "100%", justifyContent: "space-between" }}>
+      <button className="btn" onClick={i === 0 ? onClose ?? (() => go({ page: "ecos" })) : back} disabled={isSubmitting} data-test-id="eco-wizard-back-btn">
+        {i === 0 ? "Cancel" : "Back"}
+      </button>
+      <div className="row">
+        {i === 0 && (
+          <span className="mini" style={{ marginRight: 6 }}>
+            {!isGeneralFilled ? "Change Details incomplete — fill required fields"
+              : !isDescFilled ? "Description & Effectivity incomplete"
+              : ecoItems.length === 0 ? "Add at least 1 item to continue"
+              : "Ready to proceed"}
+          </span>
+        )}
+        {i === 1 && !mode && (
+          <span className="mini" style={{ marginRight: 6 }}>Select an approval method to proceed</span>
+        )}
+        {i === 2 && (
+          <span className="sub" style={{ marginRight: 6 }}>Created in Open — stays editable until submitted.</span>
+        )}
+        <button className="btn gh" onClick={() => toast.info("Draft saved")} data-test-id="eco-wizard-save-draft-btn">Save draft</button>
+        {i < 2 && (
+          <button className="btn pri" onClick={next}
+            disabled={(i === 0 && (!isGeneralFilled || !isDescFilled || ecoItems.length === 0)) || (i === 1 && !mode)}
+            data-test-id="eco-wizard-continue-btn">
+            Continue
+          </button>
+        )}
+        {i === 2 && (
+          <button className="btn pri" onClick={handleCreate} disabled={isSubmitting} data-test-id="eco-create-submit-btn">
+            {isSubmitting ? "Creating…" : "Create & submit to routing"}
+          </button>
+        )}
       </div>
-      <Stepper steps={STEPS} i={i} />
+    </div>
+  );
+
+  const content = (
+    <div className="stack" data-test-id="eco-new-page">
+      {!isModal && (
+        <>
+          <div className="bet">
+            <div>
+              <div className="crumb"><button type="button" className="crumb-link" onClick={() => go({ page: "home" })} data-test-id="eco-new-breadcrumb-home">Changes</button> › New</div>
+              <h1>Create change order</h1>
+              <div className="sub" style={{ marginTop: 4 }}>Start a new change request — fill in the details, add affected items, and route for approval</div>
+            </div>
+            <div className="row">
+              <button className="btn gh" onClick={() => go({ page: "ecos" })}><X size={14} strokeWidth={2} />Cancel</button>
+              {renderHeaderActions?.()}
+            </div>
+          </div>
+          <Stepper steps={STEPS} i={i} />
+        </>
+      )}
 
       {/* STEP 0: Basic Details with Left Sub-sections & Key-Value Forms */}
       {i === 0 && (
@@ -1749,7 +1802,8 @@ function EcoNew({
         </div>
       )}
 
-      {/* ── Bottom action bar — visible on ALL steps ── */}
+      {/* ── Bottom action bar — visible on ALL steps (suppressed in modal mode) ── */}
+      {!isModal && (
       <div className="bet" data-test-id="eco-wizard-footer">
         <button className="btn" onClick={back} disabled={isSubmitting} data-test-id="eco-wizard-back-btn">
           <ChevronLeft size={13} />{i === 0 ? "Cancel" : "Back"}
@@ -1805,8 +1859,27 @@ function EcoNew({
           )}
         </div>
       </div>
+      )}
     </div>
   );
+
+  if (isModal) {
+    return (
+      <WizardModal
+        title="New change order"
+        steps={ECO_WIZARD_STEPS}
+        currentStep={i}
+        onStepClick={(idx) => { if (idx < i) setI(idx); }}
+        onClose={onClose ?? (() => go({ page: "ecos" }))}
+        foot={modalFoot}
+        data-test-id="eco-new-modal"
+      >
+        {content}
+      </WizardModal>
+    );
+  }
+
+  return content;
 }
 
 export { EcoNew }
