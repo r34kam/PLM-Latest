@@ -12,7 +12,7 @@ import { useAllItems } from '@/data/items'
 import { useCreateChangeOrder } from '@/data/changeOrders'
 import { ITEMS, ASSEMBLIES } from '@/domain/catalog'
 import { bomFor } from '@/domain/boms'
-import { AI_SUGGEST } from '@/domain/ecos'
+import { useEcoApprovalFlow, type AiSuggestion } from '@/data/ecoApprovalFlow'
 import { ROUTINGS, ROUTING_NAMES, approvalsFor } from '@/domain/routings'
 import { ME } from '@/domain/session'
 import { ECO_TEMPLATE } from '@/domain/templates'
@@ -115,6 +115,41 @@ function EcoNew({
     setCollapsedStages((prev: any) => ({ ...prev, [key]: !prev[key] }));
   };
   const [picked, setPicked] = useState<string[]>([]);
+
+  // AI Approval Flow automation state
+  const { run: runFlow, isPending: aiLoading, error: aiError, reset: aiReset } = useEcoApprovalFlow()
+  const [aiState, setAiState] = useState<'idle' | 'loading' | 'error' | 'done'>('idle')
+  const [aiSuggestions, setAiSuggestions] = useState<AiSuggestion[]>([])
+
+  async function runAiSuggest() {
+    setAiState('loading')
+    aiReset()
+    try {
+      const result = await runFlow({
+        coId: coId ?? '',
+        type: coTypePrefix,
+        cat: form.cat,
+        routing,
+        div: form.div.split('–')[0].trim(),
+        site: form.site,
+        title: form.title,
+        desc: form.desc,
+        redline: '',
+        pnsJson: JSON.stringify(ecoItems.map((it: any) => it.pn)),
+        itemCount: ecoItems.length,
+        modCount: ecoItems.length,
+        priority: 'Medium',
+        creator: ME.name,
+        submitter: ME.name,
+      })
+      setAiSuggestions(result)
+      // Pre-check all roles the AI recommends (those without drop:true)
+      setPicked(result.filter((r) => !r.drop).map((r) => r.g))
+      setAiState('done')
+    } catch {
+      setAiState('error')
+    }
+  }
   const { data: allBackendItems } = useAllItems();
   const [form, setForm] = useState({
     cat: "ECO: Engineering Change Order", title: "",
@@ -1081,7 +1116,7 @@ function EcoNew({
                 <button
                   type="button"
                   className="approval-choice-card"
-                  onClick={() => setMode("ai")}
+                  onClick={() => { setMode("ai"); setAiState("idle"); setAiSuggestions([]); aiReset(); }}
                   data-test-id="approval-choice-ai"
                 >
                   <div className="approval-choice-icon-wrap" style={{ background: "#FAF7FD", color: "#6B46C1" }}>
@@ -1169,43 +1204,134 @@ function EcoNew({
               </div>
 
               {mode === "ai" && (
-                <div className="stack">
-                  <div className="aibox">
-                    <div className="row" style={{ marginBottom: 8 }}>
-                      <Sparkles size={15} color={T.vio} />
-                      <b>Suggested approvers for ECO-011421</b>
-                      <Chip k="vio">Suggestion only — you decide</Chip>
+                <div className="stack" data-test-id="ai-approval-section">
+
+                  {/* ── IDLE: prompt to run ── */}
+                  {aiState === "idle" && (
+                    <div className="aibox" style={{ textAlign: "center", padding: "28px 20px" }} data-test-id="ai-approval-idle">
+                      <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
+                        <Sparkles size={22} color={T.vio} />
+                      </div>
+                      <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 6 }}>AI Approval Flow Generator</div>
+                      <div className="sub" style={{ marginBottom: 16, maxWidth: 420, margin: "0 auto 16px" }}>
+                        Analyses your change — division, category, part history, redlines — and suggests the right approvers with confidence scores and reasoning.
+                      </div>
+                      <button
+                        className="btn pri"
+                        onClick={runAiSuggest}
+                        data-test-id="ai-approval-run-btn"
+                      >
+                        <Sparkles size={13} />
+                        Generate approval flow
+                      </button>
                     </div>
-                    <div className="sub">
-                      Based on SOP-DC-004 (change routing), the division and category of the items on this change, and the approver
-                      pattern on the last 14 changes to 1003140-01 and its siblings.
+                  )}
+
+                  {/* ── LOADING ── */}
+                  {aiState === "loading" && (
+                    <div className="aibox" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, padding: "32px 20px" }} data-test-id="ai-approval-loading">
+                      <Loader2 size={22} color={T.vio} className="animate-spin" />
+                      <div style={{ fontWeight: 600, fontSize: 14 }}>Analysing your change…</div>
+                      <div className="sub">Reading part history, division rules, and SOP-DC-004</div>
+                      <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+                        {[90, 75, 60, 80, 50].map((w, idx) => (
+                          <div key={idx} style={{ height: 32, background: T.g100, borderRadius: 6, overflow: "hidden", position: "relative" }} data-test-id={`ai-loading-skeleton-${idx}`}>
+                            <div style={{ position: "absolute", inset: 0, background: `linear-gradient(90deg, ${T.g100}, ${T.g200}, ${T.g100})`, animation: "shimmer 1.4s infinite", backgroundSize: "200% 100%" }} />
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                  <table className="tbl">
-                    <thead><tr><th style={{ width: 30 }}></th><th>Approval role</th><th>People</th><th style={{ width: 150 }}>Confidence</th><th>Why</th></tr></thead>
-                    <tbody>
-                      {AI_SUGGEST.map((a2: any) => {
-                        const on = picked.includes(a2.g);
-                        return (
-                          <tr key={a2.g} className={on ? "sel" : ""}>
-                            <td><input type="checkbox" checked={on} onChange={() =>
-                              setPicked(on ? picked.filter((x: any) => x !== a2.g) : [...picked, a2.g])} /></td>
-                            <td style={{ fontWeight: 600 }}>{a2.g}</td>
-                            <td className="sub">{a2.who}</td>
-                            <td>
-                              <div className="row" style={{ gap: 7 }}>
-                                <div style={{ flex: 1, height: 6, background: T.g200, borderRadius: 3, overflow: "hidden" }}>
-                                  <div style={{ width: `${a2.conf}%`, height: "100%", background: a2.conf > 80 ? T.ok : a2.conf > 60 ? T.warn : T.g400 }} />
-                                </div>
-                                <b style={{ fontSize: 11 }}>{a2.conf}%</b>
-                              </div>
-                            </td>
-                            <td className="sub" style={{ maxWidth: 360 }}>{a2.why}</td>
+                  )}
+
+                  {/* ── ERROR ── */}
+                  {aiState === "error" && (
+                    <div className="aibox" style={{ borderColor: T.bad, textAlign: "center", padding: "28px 20px" }} data-test-id="ai-approval-error">
+                      <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
+                        <AlertCircle size={22} color={T.bad} />
+                      </div>
+                      <div style={{ fontWeight: 600, fontSize: 14, color: T.bad, marginBottom: 6 }}>Couldn't generate suggestions</div>
+                      <div className="sub" style={{ marginBottom: 16 }}>
+                        The AI service returned an error. Your change details are intact — try again and it will re-analyse.
+                      </div>
+                      <button
+                        className="btn pri"
+                        onClick={runAiSuggest}
+                        disabled={aiLoading}
+                        data-test-id="ai-approval-retry-btn"
+                      >
+                        {aiLoading ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
+                        Try again
+                      </button>
+                    </div>
+                  )}
+
+                  {/* ── DONE: results table ── */}
+                  {aiState === "done" && (
+                    <>
+                      <div className="aibox" data-test-id="ai-approval-result-header">
+                        <div className="row" style={{ marginBottom: 8, justifyContent: "space-between" }}>
+                          <div className="row">
+                            <Sparkles size={15} color={T.vio} />
+                            <b>Suggested approvers for {coId}</b>
+                            <Chip k="vio">Suggestion only — you decide</Chip>
+                          </div>
+                          <button
+                            type="button"
+                            className="btn sm gh"
+                            onClick={runAiSuggest}
+                            disabled={aiLoading}
+                            title="Re-generate suggestions"
+                            data-test-id="ai-approval-rerun-btn"
+                          >
+                            {aiLoading ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                            Regenerate
+                          </button>
+                        </div>
+                        <div className="sub">
+                          Based on SOP-DC-004, the division and category of the items on this change, and approver patterns from prior ECOs.
+                        </div>
+                      </div>
+                      <table className="tbl" data-test-id="ai-suggestions-table">
+                        <thead>
+                          <tr>
+                            <th style={{ width: 30 }}></th>
+                            <th>Approval role</th>
+                            <th>People</th>
+                            <th style={{ width: 150 }}>Confidence</th>
+                            <th>Why</th>
                           </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                        </thead>
+                        <tbody>
+                          {aiSuggestions.map((a2) => {
+                            const on = picked.includes(a2.g);
+                            return (
+                              <tr key={a2.g} className={on ? "sel" : ""} data-test-id={`ai-suggestion-row-${a2.g}`}>
+                                <td>
+                                  <input
+                                    type="checkbox"
+                                    checked={on}
+                                    onChange={() => setPicked(on ? picked.filter((x) => x !== a2.g) : [...picked, a2.g])}
+                                    aria-label={`Include ${a2.g}`}
+                                  />
+                                </td>
+                                <td style={{ fontWeight: 600 }}>{a2.g}</td>
+                                <td className="sub">{a2.who}</td>
+                                <td>
+                                  <div className="row" style={{ gap: 7 }}>
+                                    <div style={{ flex: 1, height: 6, background: T.g200, borderRadius: 3, overflow: "hidden" }}>
+                                      <div style={{ width: `${a2.conf}%`, height: "100%", background: a2.conf > 80 ? T.ok : a2.conf > 60 ? T.warn : T.g400 }} />
+                                    </div>
+                                    <b style={{ fontSize: 11 }}>{a2.conf}%</b>
+                                  </div>
+                                </td>
+                                <td className="sub" style={{ maxWidth: 360 }}>{a2.why}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </>
+                  )}
 
                 </div>
               )}

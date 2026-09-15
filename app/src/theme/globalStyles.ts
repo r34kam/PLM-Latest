@@ -446,6 +446,7 @@ textarea.inp{height:auto;padding:8px 10px;line-height:1.5;resize:vertical}
 @media(max-width:1150px){.fb{grid-template-columns:1fr !important}}
 @keyframes spin{to{transform:rotate(360deg)}}
 .spin{animation:spin 0.8s linear infinite}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
 
 /* Remove the blue focus ring / background that the copilot SDK adds to its composer */
 [data-test-id="ask-panel"] textarea:focus,
