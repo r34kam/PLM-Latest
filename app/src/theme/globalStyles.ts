@@ -446,16 +446,16 @@ textarea.inp{height:auto;padding:8px 10px;line-height:1.5;resize:vertical}
 @media(max-width:900px){.approval-choices-grid{grid-template-columns:1fr}}
 /* Approval method cards — radio-style, subtle, matching reference */
 .approval-choice-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
-.approval-choice-card{position:relative;display:flex;flex-direction:column;padding:16px;background:#ffffff;border:1px solid #94a3b8;border-radius:10px;cursor:pointer;transition:border-color .14s,box-shadow .14s;outline:none;width:100%;text-align:left}
-.approval-choice-card:hover{border-color:#94a3b8;box-shadow:0 2px 8px rgba(2,42,66,.06)}
-.approval-choice-card.selected{border-color:#0A4F8F;box-shadow:0 0 0 2px rgba(10,79,143,.12)}
-.approval-choice-radio{position:absolute;top:14px;right:14px;width:18px;height:18px;border-radius:50%;border:1.5px solid #cbd5e1;background:#fff;display:grid;place-items:center;flex-shrink:0;transition:border-color .12s}
+.approval-choice-card{position:relative;display:flex;flex-direction:column;padding:22px 20px 20px;background:#ffffff;border:1px solid #e2e6ef;border-radius:16px;cursor:pointer;transition:border-color .18s,box-shadow .18s;outline:none;width:100%;text-align:left;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.approval-choice-card:hover{border-color:#cbd5e1;box-shadow:0 4px 16px rgba(0,0,0,.10)}
+.approval-choice-card.selected{border-color:#3b6ea8;box-shadow:0 0 0 2px rgba(59,110,168,.15)}
+.approval-choice-radio{position:absolute;top:16px;right:16px;width:22px;height:22px;border-radius:50%;border:1.5px solid #d1d5db;background:#fff;display:grid;place-items:center;flex-shrink:0;transition:border-color .12s}
 .approval-choice-card.selected .approval-choice-radio{border-color:#0A4F8F}
 .approval-choice-radio-dot{width:9px;height:9px;border-radius:50%;background:#0A4F8F;opacity:0;transition:opacity .12s}
 .approval-choice-card.selected .approval-choice-radio-dot{opacity:1}
 .approval-choice-icon-wrap{display:none}
-.approval-choice-title{font-size:13.5px;font-weight:700;color:#0a2233;margin-bottom:8px;line-height:1.25;padding-right:28px}
-.approval-choice-desc{font-size:12px;color:#627d98;line-height:1.5;flex:1}
+.approval-choice-title{font-size:15px;font-weight:700;color:#1e2d3d;margin-bottom:10px;line-height:1.25;padding-right:32px}
+.approval-choice-desc{font-size:13px;color:#64748b;line-height:1.55;flex:1}
 .approval-choice-badge{display:none}
 .approval-choice-badge.badge-ai{display:none}
 .approval-choice-badge.badge-routing{display:none}
@@ -502,8 +502,8 @@ textarea.inp{height:auto;padding:8px 10px;line-height:1.5;resize:vertical}
 @media(max-width:1150px){.fb{grid-template-columns:1fr !important}}
 @keyframes spin{to{transform:rotate(360deg)}}
 .choice-centered-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;min-height:320px;padding:40px 0;text-align:center}
-.item-choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;width:100%;max-width:560px}
-.item-choice-card{min-height:110px}
+.item-choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px;width:100%}
+.item-choice-card{min-height:130px}
 .item-choice-card:disabled{opacity:.5;cursor:not-allowed;pointer-events:none}
 /* ── Flat stacked form (Basic Details) ─── */
 .eco-flat-form{display:flex;flex-direction:column;gap:20px}

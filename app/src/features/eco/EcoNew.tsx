@@ -895,8 +895,8 @@ function EcoNew({
           {/* ── Item mode selection (shown when no mode chosen yet) ── */}
           {!itemMode && (
             <div className="choice-centered-wrap" data-test-id="item-method-selection">
-              <div style={{ fontWeight: 700, fontSize: 16, color: '#0a2233', marginBottom: 6, textAlign: 'center' }}>How would you like to add items?</div>
-              <div className="sub" style={{ fontSize: 13, marginBottom: 24, textAlign: 'center' }}>Choose how to populate the affected kits and assemblies for this change order</div>
+              <div style={{ fontWeight: 700, fontSize: 24, color: '#1e2d3d', marginBottom: 8, textAlign: 'center' }}>How would you like to add items?</div>
+              <div className="sub" style={{ fontSize: 14, color: '#64748b', marginBottom: 32, textAlign: 'center' }}>Choose how to populate the affected kits and assemblies for this change order</div>
               <div className="item-choice-grid" data-test-id="item-choices-grid">
                 <button
                   type="button"
