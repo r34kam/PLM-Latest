@@ -46,9 +46,11 @@ function AskAiFab({ onClick }: { onClick: () => void }) {
         minWidth: 52,
         borderRadius: 999,
         background: hovered ? "#005fa8" : "#0A4F8F",
+
         boxShadow: hovered
           ? "0 4px 20px rgba(0,95,168,0.5), 0 2px 8px rgba(0,0,0,0.18)"
           : "0 2px 12px rgba(10,79,143,0.4), 0 1px 4px rgba(0,0,0,0.14)",
+
         display: "flex",
         alignItems: "center",
         border: "none",
@@ -58,6 +60,7 @@ function AskAiFab({ onClick }: { onClick: () => void }) {
         outline: "none",
         overflow: "hidden",
         transition: "width .22s cubic-bezier(0.16,1,0.3,1), background .15s ease, box-shadow .15s ease",
+        gap: "8px"
       }}
     >
       {/* Icon circle */}
@@ -93,7 +96,7 @@ function AskAiFab({ onClick }: { onClick: () => void }) {
         Ask AI
       </span>
     </button>
-  )
+  );
 }
 
 /* =============================== APP ================================ */
