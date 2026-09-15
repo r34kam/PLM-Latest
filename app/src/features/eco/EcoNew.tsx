@@ -922,7 +922,11 @@ function EcoNew({
                   onClick={pickFromInstructions}
                   disabled={!form.desc}
                   data-test-id="item-choice-instructions"
-                >
+                  style={{
+                    borderWidth: "1px",
+                    borderStyle: "solid",
+                    borderColor: "#d1d5db"
+                  }}>
                   <span className="approval-choice-radio" aria-hidden="true"><span className="approval-choice-radio-dot" /></span>
                   <div className="approval-choice-title">Pick from instructions</div>
                   <div className="approval-choice-desc">
