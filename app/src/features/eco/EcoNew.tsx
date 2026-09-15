@@ -66,7 +66,7 @@ function EcoNew({
   isModal?: boolean;
   onClose?: () => void;
 }) {
-  const STEPS = ["Basic Details", "Approvals", "Summary"];
+  const STEPS = ["Basic Details", "Add Items", "Approvals", "Summary"];
   // Map incoming startStep: legacy 4 or 1 -> step 1 (Approvals); legacy 5 or 2 -> step 2 (Summary); 0 -> step 0 (Basic Details)
   const initialStep = startStep === 4 || startStep === 1 ? 1 : startStep === 5 || startStep === 2 ? 2 : 0;
   const initialSubNav = "general";
@@ -255,7 +255,7 @@ function EcoNew({
   const BOM_EDIT_LABELS: Record<BomEditType, string> = {
     ADD: "Add", DELETE: "Delete", UPDATE_DESC: "Update description", UPDATE_QTY: "Update qty",
   };
-  const next = () => setI(Math.min(i + 1, 2));
+  const next = () => setI(Math.min(i + 1, 3));
   const back = () => (i === 0 ? go({ page: "ecos" }) : setI(i - 1));
 
   // Derive the change order type prefix from the cat string (e.g. "ECO: ..." → "ECO")
@@ -323,7 +323,8 @@ function EcoNew({
 
   // ECO STEPS metadata for the wizard sidebar
   const ECO_WIZARD_STEPS = [
-    { label: "Basic Details", sub: "Title, type, priority & items" },
+    { label: "Basic Details", sub: "Title, type & priority" },
+    { label: "Add Items", sub: "Kits & assemblies to change" },
     { label: "Approvals", sub: "Routing & approval method" },
     { label: "Summary", sub: "Review & submit" },
   ];
@@ -337,26 +338,30 @@ function EcoNew({
         {i === 0 && (
           <span className="mini" style={{ marginRight: 6 }}>
             {!isGeneralFilled ? "Change Details incomplete — fill required fields"
-              : !isDescFilled ? "Description & Effectivity incomplete"
-              : ecoItems.length === 0 ? "Add at least 1 item to continue"
+              : !isDescFilled ? "Effectivity incomplete"
               : "Ready to proceed"}
           </span>
         )}
-        {i === 1 && !mode && (
+        {i === 1 && (
+          <span className="mini" style={{ marginRight: 6 }}>
+            {ecoItems.length === 0 ? "Add at least 1 item to continue" : `${ecoItems.length} item${ecoItems.length === 1 ? "" : "s"} added`}
+          </span>
+        )}
+        {i === 2 && !mode && (
           <span className="mini" style={{ marginRight: 6 }}>Select an approval method to proceed</span>
         )}
-        {i === 2 && (
+        {i === 3 && (
           <span className="sub" style={{ marginRight: 6 }}>Created in Open — stays editable until submitted.</span>
         )}
         <button className="btn gh" onClick={() => toast.info("Draft saved")} data-test-id="eco-wizard-save-draft-btn">Save draft</button>
-        {i < 2 && (
+        {i < 3 && (
           <button className="btn pri" onClick={next}
-            disabled={(i === 0 && (!isGeneralFilled || !isDescFilled || ecoItems.length === 0)) || (i === 1 && !mode)}
+            disabled={(i === 0 && (!isGeneralFilled || !isDescFilled)) || (i === 1 && ecoItems.length === 0) || (i === 2 && !mode)}
             data-test-id="eco-wizard-continue-btn">
             Continue
           </button>
         )}
-        {i === 2 && (
+        {i === 3 && (
           <button className="btn pri" onClick={handleCreate} disabled={isSubmitting} data-test-id="eco-create-submit-btn">
             {isSubmitting ? "Creating…" : "Create & submit to routing"}
           </button>
@@ -365,6 +370,7 @@ function EcoNew({
     </div>
   );
 
+  
   const content = (
     <div className="stack" data-test-id="eco-new-page">
       {!isModal && (
@@ -385,9 +391,10 @@ function EcoNew({
       )}
 
       {/* STEP 0: Basic Details with Left Sub-sections & Key-Value Forms */}
-      {i === 0 && (
+      {(i === 0 || i === 1) && (
         <div className="eco-wizard-layout" data-test-id="eco-basic-details-layout">
-          {/* Left sub-navigation sidebar */}
+          {/* Left sub-navigation tabs — only visible on Basic Details step */}
+          {i === 0 && (
           <div className="eco-subnav" data-test-id="eco-subnav-pane">
             <button
               type="button"
@@ -395,7 +402,6 @@ function EcoNew({
               onClick={() => setSubSection("general")}
               data-test-id="eco-subnav-general"
             >
-              <FileText size={15} />
               <span>Change Details</span>
               {isGeneralFilled ? (
                 <span className="sub-check" title="Completed"><Check size={11} strokeWidth={2.8} /></span>
@@ -409,8 +415,7 @@ function EcoNew({
               onClick={() => setSubSection("desc")}
               data-test-id="eco-subnav-desc"
             >
-              <FileSpreadsheet size={15} />
-              <span>Description & Effectivity</span>
+              <span>Effectivity</span>
               {isDescFilled ? (
                 <span className="sub-check" title="Completed"><Check size={11} strokeWidth={2.8} /></span>
               ) : (
@@ -423,7 +428,6 @@ function EcoNew({
               onClick={() => setSubSection("files")}
               data-test-id="eco-subnav-files"
             >
-              <Upload size={15} />
               <span>Associated Files</span>
               {isFilesFilled ? (
                 <span className="sub-check" title="Completed"><Check size={11} strokeWidth={2.8} /></span>
@@ -437,7 +441,6 @@ function EcoNew({
               onClick={() => setSubSection("confirmations")}
               data-test-id="eco-subnav-confirmations"
             >
-              <ShieldCheck size={15} />
               <span>Confirmations & Processing</span>
               {isConfirmationsFilled ? (
                 <span className="sub-check" title="Completed"><Check size={11} strokeWidth={2.8} /></span>
@@ -445,21 +448,9 @@ function EcoNew({
                 <span className="sub-pending" title="Incomplete required fields"><AlertCircle size={11} strokeWidth={2.4} /></span>
               )}
             </button>
-            <button
-              type="button"
-              className={`eco-subnav-btn ${subSection === "items" ? "on" : ""}`}
-              onClick={() => setSubSection("items")}
-              data-test-id="eco-subnav-items"
-            >
-              <Boxes size={15} />
-              <span>Add Items</span>
-              {ecoItems.length > 0 ? (
-                <span className="sub-check" title={`${ecoItems.length} items added`}><Check size={11} strokeWidth={2.8} /></span>
-              ) : (
-                <span className="sub-pending" title="No items added yet"><AlertCircle size={11} strokeWidth={2.4} /></span>
-              )}
-            </button>
+
           </div>
+          )}
 
           {/* Right Content Area for Step 0 */}
           <div style={{ minWidth: 0 }}>
@@ -733,7 +724,7 @@ function EcoNew({
               </Card>
             )}
 
-            {subSection === "items" && (
+            {(subSection === "items" || i === 1) && (
               <div className="stack" data-test-id="eco-items-section">
                 {/* Step 1: Select kits/assemblies to add to this change */}
                 <Card
@@ -1142,8 +1133,8 @@ function EcoNew({
         </div>
       )}
 
-      {/* STEP 1: Approvals */}
-      {i === 1 && (
+      {/* STEP 2: Approvals */}
+      {i === 2 && (
         <div className="stack" data-test-id="eco-new-approvals-step">
           {!mode ? (
             <Card
@@ -1573,7 +1564,7 @@ function EcoNew({
       )}
 
       {/* STEP 2: Summary */}
-      {i === 2 && (
+      {i === 3 && (
         <div className="stack" data-test-id="eco-new-summary-step">
           {/* Unified Single Summary Card with Sub-Sections */}
           <div className="eco-summary-unified-card" data-test-id="eco-summary-exec-card">
@@ -1694,7 +1685,7 @@ function EcoNew({
                     {legacyItems.length > 0 && ` · ${legacyItems.length} individual items`}
                   </div>
                 </div>
-                <button className="btn sm" onClick={() => { setI(0); setSubSection("items"); }}><Pencil size={12} />Edit items</button>
+                <button className="btn sm" onClick={() => setI(1)}><Pencil size={12} />Edit items</button>
               </div>
               {ecoItems.length === 0 ? (
                 <div style={{ padding: "20px 0 24px" }}>
@@ -1760,7 +1751,7 @@ function EcoNew({
                       : mode === "routing" ? `Routing: ${routing}` : "Built manually"}
                   </div>
                 </div>
-                <button className="btn sm" onClick={() => setI(1)}><Pencil size={12} />Change</button>
+                <button className="btn sm" onClick={() => setI(2)}><Pencil size={12} />Change</button>
               </div>
               <div style={{ background: "#F8FAFC", borderRadius: 8, padding: "8px 14px", border: "1px solid #E2E8F0" }}>
                 {mode === "manual" ? manStages.map((st: any, k: any) => (
@@ -1833,20 +1824,20 @@ function EcoNew({
             Save draft
           </button>
 
-          {/* Steps 0 and 1: Continue advances the wizard */}
-          {i < 2 && (
+          {/* Steps 0–2: Continue advances the wizard */}
+          {i < 3 && (
             <button
               className="btn pri"
               onClick={next}
-              disabled={(i === 0 && (!isGeneralFilled || !isDescFilled || ecoItems.length === 0)) || (i === 1 && !mode)}
+              disabled={(i === 0 && (!isGeneralFilled || !isDescFilled)) || (i === 1 && ecoItems.length === 0) || (i === 2 && !mode)}
               data-test-id="eco-wizard-continue-btn"
             >
               Continue <ChevronRight size={13} />
             </button>
           )}
 
-          {/* Step 2: single create action — ECOs go directly into the approval flow */}
-          {i === 2 && (
+          {/* Step 3: single create action — ECOs go directly into the approval flow */}
+          {i === 3 && (
             <button
               className="btn pri"
               onClick={handleCreate}
