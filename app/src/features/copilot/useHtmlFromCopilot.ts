@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { findHtmlCodeBlock, findHtmlLinks } from './htmlDetection'
+import { cardIndexForClick } from './artifactCards'
+import { type CaseArtifact, fetchArtifactHtml, fetchConversationArtifacts } from './caseArtifact'
+import { findHtmlCodeBlock } from './htmlDetection'
 
-/** How long the chat DOM must be quiet before we treat a reply as finished.
+/** How long the chat DOM must be quiet before we re-read it for a fenced block.
  *
- * `useCopilotStatus()` would tell us this directly, but it only works inside
- * `<CopilotProvider>` and this hook runs in the page ABOVE the provider — the page owns
- * the split layout, so it has to know about the preview before the copilot mounts.
- * Quiet-time is the honest substitute: a stream mutates the DOM continuously, so a gap
- * this long means it has stopped. */
+ * This only paces the INLINE path (a ```html fence in a reply, which streams in token by
+ * token). The artifact path is driven by copilot status and by clicks, not by watching the
+ * DOM settle. */
 const SETTLE_MS = 450
 
 export type CopilotHtml = {
@@ -17,122 +17,246 @@ export type CopilotHtml = {
   source: 'code-block' | 'file'
   /** the file's URL, when there is one; lets the UI offer "open in a new tab" */
   url?: string
+  /** the agent's own name for the file, for the panel title */
+  fileName?: string
 }
 
 export type CopilotHtmlFailure = {
-  url: string
+  url?: string
   reason: string
 }
 
+/** What the copilot reports about itself. Mirrors `useCopilotStatus()`, which cannot be
+ * called here because this hook runs in the page ABOVE `<CopilotProvider>` — the page owns
+ * the split layout, so it must know about the conversation before the copilot mounts. The
+ * copilot passes these values out instead; see `StatusBridge` in `components/copilot.tsx`. */
+export type CopilotStatus = {
+  isGenerating: boolean
+  chatId?: string
+}
+
 type Result = {
-  /** attach to the element that wraps `<CopilotChat>` */
+  /** attach to the element that wraps `<CopilotChat>` — powers clicks and the inline fallback */
   attachRef: (el: HTMLElement | null) => void
+  /** hand to `<Copilot onStatusChange={…}>` — this is what drives the artifact path */
+  onStatusChange: (status: CopilotStatus) => void
   preview: CopilotHtml | null
-  /** a file we found but could not read — surfaced rather than swallowed */
   failure: CopilotHtmlFailure | null
+  /** true while an artifact is being fetched */
+  loading: boolean
+  /** every HTML file in the conversation, oldest first */
+  artifacts: CaseArtifact[]
+  /** which one the panel is showing, or -1 */
+  activeIndex: number
+  /** show a particular artifact — backs both the card clicks and the panel's own switcher */
+  open: (index: number) => void
   dismiss: () => void
 }
 
-/** Watches the copilot conversation for HTML the agent produced, and hands it back so the
- * page can render it in its own iframe.
+/** Surfaces the HTML the agent produced so the page can render it in its own iframe.
  *
- * Two shapes arrive from the SDK and both are handled:
- *   1. a fenced ```html block inside a reply
- *   2. an attached `.html` file, rendered as a download link
+ * The agent's output is a FILE, not markup in the reply, so the primary path is: copilot
+ * reports a conversation → list its artifacts → fetch one → hand the markup to an iframe as
+ * `srcDoc`. See `caseArtifact.ts` for why it must be fetched rather than framed.
  *
- * We render it ourselves rather than relying on the SDK's own preview because that one is
- * an iframe nested inside the platform's already-sandboxed preview frame, where it cannot
- * be granted the permissions it asks for.
+ * Every artifact in the conversation is listed, not just the latest, so clicking an older
+ * file card opens that file. Clicks are matched to artifacts by order — see
+ * `artifactCards.ts` for why identity is not available.
  *
- * Failures are reported, never swallowed. A file artifact usually lives on a different
- * origin to the app, so a plain `fetch` can be refused by CORS — and when that happens
- * silently, the symptom is "the copilot renders no HTML files at all" with nothing in the
- * console to explain it. */
-export function useHtmlFromCopilot(): Result {
+ * The list refreshes on TWO triggers, and the second is the one that is easy to forget:
+ *
+ *   1. a reply finishes (`isGenerating` goes true → false), so a new file appears as soon
+ *      as the agent is done; and
+ *   2. a conversation becomes current at all — mount, reload, or picking an older chat out
+ *      of the history list.
+ *
+ * Without (2) the preview is invisible on every page load and every conversation opened
+ * from history, because those never transition out of generating. That is the normal way
+ * the screen is used, so gating on (1) alone reads as "the preview never works".
+ */
+export function useHtmlFromCopilot(aiAgentId: string): Result {
   const [preview, setPreview] = useState<CopilotHtml | null>(null)
   const [failure, setFailure] = useState<CopilotHtmlFailure | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [artifacts, setArtifacts] = useState<CaseArtifact[]>([])
+  const [activeIndex, setActiveIndex] = useState(-1)
 
   const containerRef = useRef<HTMLElement | null>(null)
   const observerRef = useRef<MutationObserver | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  /** URLs already fetched successfully. Failures are deliberately NOT recorded here, so a
-   * transient network error can be retried when the observer next fires. */
-  const fetchedRef = useRef<Set<string>>(new Set())
+  const clickHandlerRef = useRef<((e: Event) => void) | null>(null)
   /** the exact document last committed, so an unchanged rescan does not remount the iframe */
   const lastHtmlRef = useRef<string | null>(null)
   /** set false on unmount so an in-flight fetch cannot set state afterwards */
   const aliveRef = useRef(true)
 
-  const commit = useCallback((next: CopilotHtml) => {
-    if (!aliveRef.current) return
-    if (lastHtmlRef.current === next.html) return
-    lastHtmlRef.current = next.html
+  const artifactsRef = useRef<CaseArtifact[]>([])
+  /** mirrors `activeIndex` so callbacks can read it without listing it as a dependency */
+  const activeIndexRef = useRef(-1)
+  const chatIdRef = useRef<string | undefined>(undefined)
+  const wasGeneratingRef = useRef(false)
+  /** the user closed the panel; don't reopen it behind their back on a routine refresh */
+  const dismissedRef = useRef(false)
+  /** aborts the in-flight document fetch when a newer one starts */
+  const fetchAbortRef = useRef<AbortController | null>(null)
+  /** aborts the in-flight artifact listing */
+  const listAbortRef = useRef<AbortController | null>(null)
+
+  /** Fetch one artifact's markup and show it. */
+  const show = useCallback(async (index: number, list: CaseArtifact[]) => {
+    const artifact = list[index]
+    if (!artifact) return
+
+    fetchAbortRef.current?.abort()
+    const controller = new AbortController()
+    fetchAbortRef.current = controller
+
+    dismissedRef.current = false
+    activeIndexRef.current = index
+    setActiveIndex(index)
     setFailure(null)
-    setPreview(next)
+    setLoading(true)
+    try {
+      const html = await fetchArtifactHtml(artifact.url, controller.signal)
+      if (controller.signal.aborted || !aliveRef.current) return
+      lastHtmlRef.current = html
+      setPreview({ html, source: 'file', url: artifact.url, fileName: artifact.fileName })
+    } catch (err) {
+      if (controller.signal.aborted || !aliveRef.current) return
+      // A file exists and could not be read. That IS worth the panel — it is actionable,
+      // and the URL gives the user a way to open it themselves.
+      setPreview(null)
+      setFailure({
+        url: artifact.url,
+        reason:
+          err instanceof TypeError
+            ? 'The browser blocked the request to the artifact.'
+            : err instanceof Error
+              ? err.message
+              : String(err),
+      })
+    } finally {
+      if (aliveRef.current && fetchAbortRef.current === controller) setLoading(false)
+    }
   }, [])
 
-  const scan = useCallback(async () => {
-    const container = containerRef.current
-    if (!container) return
+  /** Re-read the conversation's artifact list. `autoOpen` shows the newest one. */
+  const refresh = useCallback(
+    async (chatId: string, autoOpen: boolean) => {
+      listAbortRef.current?.abort()
+      const controller = new AbortController()
+      listAbortRef.current = controller
 
-    // A fenced block is already in the page — no network, nothing to fail.
-    const inline = findHtmlCodeBlock(container)
-    if (inline) commit({ html: inline, source: 'code-block' })
-
-    // Attached files are fetched newest first, so the freshest artifact wins the panel.
-    const links = findHtmlLinks(container).reverse()
-    for (const url of links) {
-      if (fetchedRef.current.has(url)) continue
+      let list: CaseArtifact[]
       try {
-        // `credentials: 'include'` because platform file URLs are session-authenticated;
-        // without it the request is answered with a login page or a 403, and the panel
-        // would show that instead of the document.
-        const res = await fetch(url, { credentials: 'include' })
-        if (!res.ok) {
-          setFailure({ url, reason: `The server answered ${res.status} ${res.statusText}.` })
-          continue
-        }
-        const text = await res.text()
-        if (!text.trim()) {
-          setFailure({ url, reason: 'The file came back empty.' })
-          continue
-        }
-        fetchedRef.current.add(url)
-        commit({ html: text, source: 'file', url })
-        return
+        list = await fetchConversationArtifacts(chatId, aiAgentId, controller.signal)
       } catch (err) {
-        // Nearly always CORS: the artifact is served from the platform's file host, which
-        // is a different origin to this app. Say so instead of returning a blank panel.
-        setFailure({
-          url,
-          reason:
-            err instanceof TypeError
-              ? 'The browser blocked the request, usually because the file is served from another origin.'
-              : String(err),
-        })
+        // The listing runs for EVERY conversation, including ones that never produced a
+        // file, so a failure here must not put an error banner on screen. Console only.
+        if (!controller.signal.aborted) console.warn('[copilot] artifact listing failed', err)
+        return
       }
-    }
-  }, [commit])
+      if (controller.signal.aborted || !aliveRef.current) return
+
+      const previous = artifactsRef.current
+      artifactsRef.current = list
+      setArtifacts(list)
+
+      // Nothing in this conversation — leave the panel shut.
+      if (!list.length) return
+
+      // Open the newest only when it is genuinely new, so a routine refresh cannot yank
+      // the panel off an older file the user deliberately opened.
+      const isNew = list.length > previous.length
+      if (autoOpen && !dismissedRef.current && (isNew || activeIndexRef.current === -1)) {
+        void show(list.length - 1, list)
+      }
+    },
+    [aiAgentId, show],
+  )
+
+  const open = useCallback(
+    (index: number) => {
+      void show(index, artifactsRef.current)
+    },
+    [show],
+  )
+
+  const onStatusChange = useCallback(
+    ({ isGenerating, chatId }: CopilotStatus) => {
+      const previousChatId = chatIdRef.current
+      const justFinished = wasGeneratingRef.current && !isGenerating
+      wasGeneratingRef.current = isGenerating
+      chatIdRef.current = chatId
+
+      if (!chatId) return
+
+      if (chatId !== previousChatId) {
+        // A different conversation is on screen: drop the previous one entirely so the
+        // panel cannot show the old file beside the new chat.
+        lastHtmlRef.current = null
+        artifactsRef.current = []
+        dismissedRef.current = false
+        activeIndexRef.current = -1
+        setArtifacts([])
+        setActiveIndex(-1)
+        setPreview(null)
+        setFailure(null)
+        setLoading(false)
+        void refresh(chatId, true)
+        return
+      }
+
+      if (justFinished) void refresh(chatId, true)
+    },
+    [refresh],
+  )
+
+  /** Fallback only: a reply that inlines a fenced ```html block. No network involved. */
+  const scanInline = useCallback(() => {
+    const container = containerRef.current
+    if (!container || dismissedRef.current) return
+    const inline = findHtmlCodeBlock(container)
+    if (!inline || lastHtmlRef.current === inline) return
+    lastHtmlRef.current = inline
+    setFailure(null)
+    setPreview({ html: inline, source: 'code-block' })
+  }, [])
 
   const attachRef = useCallback(
     (el: HTMLElement | null) => {
-      containerRef.current = el
+      const previous = containerRef.current
+      if (previous && clickHandlerRef.current) {
+        previous.removeEventListener('click', clickHandlerRef.current)
+      }
       observerRef.current?.disconnect()
       observerRef.current = null
+      clickHandlerRef.current = null
+      containerRef.current = el
       if (!el) return
 
-      // One observer for the life of the element. The previous version created it in an
-      // effect with no dependency array, so it was torn down and rebuilt on every render
-      // of the page — including the renders its own `setState` caused.
+      // Clicking a file card opens that file. The card carries no URL, so the click is
+      // matched to an artifact by position — see `artifactCards.ts`.
+      const onClick = (event: Event) => {
+        const index = cardIndexForClick(el, event.target as Element | null)
+        if (index < 0) return
+        const list = artifactsRef.current
+        if (index >= list.length) return
+        open(index)
+      }
+      el.addEventListener('click', onClick)
+      clickHandlerRef.current = onClick
+
+      // One observer for the life of the element, not one per render.
       const observer = new MutationObserver(() => {
         if (timerRef.current) clearTimeout(timerRef.current)
-        timerRef.current = setTimeout(() => void scan(), SETTLE_MS)
+        timerRef.current = setTimeout(scanInline, SETTLE_MS)
       })
       observer.observe(el, { childList: true, subtree: true, characterData: true })
       observerRef.current = observer
-      void scan()
+      scanInline()
     },
-    [scan],
+    [open, scanInline],
   )
 
   useEffect(() => {
@@ -141,15 +265,24 @@ export function useHtmlFromCopilot(): Result {
       aliveRef.current = false
       if (timerRef.current) clearTimeout(timerRef.current)
       observerRef.current?.disconnect()
+      fetchAbortRef.current?.abort()
+      listAbortRef.current?.abort()
+      const container = containerRef.current
+      if (container && clickHandlerRef.current) {
+        container.removeEventListener('click', clickHandlerRef.current)
+      }
     }
   }, [])
 
   const dismiss = useCallback(() => {
+    dismissedRef.current = true
     setPreview(null)
     setFailure(null)
+    setLoading(false)
+    setActiveIndex(-1)
     // `lastHtmlRef` is left alone on purpose: after dismissing, the same document should
-    // stay dismissed. A genuinely new reply has different text and reopens the panel.
+    // stay dismissed. Clicking a card reopens it explicitly.
   }, [])
 
-  return { attachRef, preview, failure, dismiss }
+  return { attachRef, onStatusChange, preview, failure, loading, artifacts, activeIndex, open, dismiss }
 }
