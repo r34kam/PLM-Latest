@@ -92,8 +92,11 @@ function flattenRole(raw: any): PlmRole {
   }
 }
 
-function parseJson<T>(raw: string | undefined, fallback: T): T {
-  if (!raw) return fallback
+function parseJson<T>(raw: string | T | undefined | null, fallback: T): T {
+  if (raw == null) return fallback
+  // Already parsed by the platform (e.g. the field came back as an object/array)
+  if (typeof raw !== 'string') return raw as T
+  if (raw.trim() === '') return fallback
   try { return JSON.parse(raw) as T } catch { return fallback }
 }
 
