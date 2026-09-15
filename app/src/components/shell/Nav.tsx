@@ -83,21 +83,15 @@ function Nav({
     { id: 'Form Builder', label: 'Form Builder' },
   ] as const;
 
-  const openAdminFlyout = useCallback(() => {
+  const handleAdminGroupEnter = useCallback(() => {
     if (adminFlyoutTimer.current) clearTimeout(adminFlyoutTimer.current);
     const rect = adminBtnRef.current?.getBoundingClientRect();
-    if (rect) {
-      setAdminFlyoutPos({ top: rect.top, left: rect.right + 8 });
-    }
+    if (rect) setAdminFlyoutPos({ top: rect.top, left: rect.right });
     setAdminFlyoutOpen(true);
   }, []);
 
-  const closeAdminFlyout = useCallback(() => {
-    adminFlyoutTimer.current = setTimeout(() => setAdminFlyoutOpen(false), 120);
-  }, []);
-
-  const keepAdminFlyout = useCallback(() => {
-    if (adminFlyoutTimer.current) clearTimeout(adminFlyoutTimer.current);
+  const handleAdminGroupLeave = useCallback(() => {
+    adminFlyoutTimer.current = setTimeout(() => setAdminFlyoutOpen(false), 200);
   }, []);
 
   function handleLogout() {
@@ -301,13 +295,19 @@ function Nav({
         {role !== 'approver' && (
           <>
             {mini ? (
+              <div
+                onMouseEnter={handleAdminGroupEnter}
+                onMouseLeave={handleAdminGroupLeave}
+                style={{ position: 'relative' }}
+                data-test-id="admin-flyout-group"
+              >
               <AdminNavBtn
                 btnRef={adminBtnRef}
                 active={page === "admin"}
-                onMouseEnter={openAdminFlyout}
-                onMouseLeave={closeAdminFlyout}
+                onMouseEnter={handleAdminGroupEnter}
+                onMouseLeave={handleAdminGroupLeave}
                 onClick={() => { go({ page: "admin", tab: adminTab || "Users" }); try { navigate("/admin"); } catch (e) {} }}
-              />
+              /></div>
             ) : (
               <Item {...NAV[4]} active={page === "admin"} hasChevron={true} chevronOpen={adminMenuOpen || page === "admin"} />
             )}
@@ -338,74 +338,67 @@ function Nav({
 
       {/* Admin hover flyout — collapsed sidebar only */}
       {mini && adminFlyoutOpen && (
-        <>
-          <div
-            aria-hidden="true"
-            style={{ position: 'fixed', inset: 0, zIndex: 9990 }}
-            onClick={() => setAdminFlyoutOpen(false)}
-          />
-          <div
-            role="menu"
-            data-test-id="admin-flyout"
-            onMouseEnter={keepAdminFlyout}
-            onMouseLeave={closeAdminFlyout}
-            style={{
-              position: 'fixed',
-              top: adminFlyoutPos.top,
-              left: adminFlyoutPos.left,
-              zIndex: 9991,
-              background: '#ffffff',
-              borderRadius: 14,
-              border: '1px solid rgba(0,0,0,.07)',
-              boxShadow: '0 4px 6px -1px rgba(0,0,0,.06), 0 16px 32px -4px rgba(0,0,0,.14)',
-              minWidth: 224,
-              padding: '16px 0 12px',
-            }}
-          >
-            <div style={{
-              fontSize: 11,
-              fontWeight: 700,
-              letterSpacing: '0.08em',
-              color: '#94a3b8',
-              textTransform: 'uppercase',
-              padding: '0 18px 12px',
-            }}>
-              Admin
-            </div>
-            {ADMIN_SUB_ITEMS.map((sub) => {
-              const isSubActive = !!adminTab && adminTab === sub.id;
-              return (
-                <button
-                  key={sub.id}
-                  role="menuitem"
-                  data-test-id={`admin-flyout-${sub.id.toLowerCase().replace(/\s+/g, "-")}`}
-                  onClick={() => {
-                    setAdminFlyoutOpen(false);
-                    go({ page: "admin", tab: sub.id });
-                    try { navigate("/admin"); } catch (e) {}
-                  }}
-                  style={{
-                    display: 'block',
-                    width: '100%',
-                    padding: '10px 18px',
-                    background: isSubActive ? '#f1f5f9' : 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontSize: 15,
-                    fontWeight: isSubActive ? 600 : 400,
-                    color: isSubActive ? '#0f172a' : '#1e293b',
-                    textAlign: 'left',
-                    transition: 'background .1s',
-                  }}
-                  onMouseEnter={(e) => { if (!isSubActive) e.currentTarget.style.background = '#f8fafc'; }}
-                  onMouseLeave={(e) => { if (!isSubActive) e.currentTarget.style.background = 'none'; }}
-                >
-                  {sub.label}
-                </button>
-              );
-            })}
+        <div
+          role="menu"
+          data-test-id="admin-flyout"
+          onMouseEnter={handleAdminGroupEnter}
+          onMouseLeave={handleAdminGroupLeave}
+          style={{
+            position: 'fixed',
+            top: adminFlyoutPos.top,
+            left: adminFlyoutPos.left,
+            zIndex: 9991,
+            background: '#ffffff',
+            borderRadius: 8,
+            border: '1px solid rgba(0,0,0,.08)',
+            boxShadow: '0 2px 8px rgba(0,0,0,.1), 0 8px 20px -4px rgba(0,0,0,.12)',
+            minWidth: 160,
+            padding: '4px 0',
+          }}
+        >
+          <div style={{
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: '0.07em',
+            color: '#94a3b8',
+            textTransform: 'uppercase',
+            padding: '6px 12px 4px',
+          }}>
+            Admin
           </div>
-        </>
+          {ADMIN_SUB_ITEMS.map((sub) => {
+            const isSubActive = !!adminTab && adminTab === sub.id;
+            return (
+              <button
+                key={sub.id}
+                role="menuitem"
+                data-test-id={`admin-flyout-${sub.id.toLowerCase().replace(/\s+/g, "-")}`}
+                onClick={() => {
+                  setAdminFlyoutOpen(false);
+                  go({ page: "admin", tab: sub.id });
+                  try { navigate("/admin"); } catch (e) {}
+                }}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  padding: '6px 12px',
+                  background: isSubActive ? '#f1f5f9' : 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: 13,
+                  fontWeight: isSubActive ? 600 : 400,
+                  color: isSubActive ? '#0f172a' : '#1e293b',
+                  textAlign: 'left',
+                  transition: 'background .1s',
+                }}
+                onMouseEnter={(e) => { if (!isSubActive) e.currentTarget.style.background = '#f8fafc'; }}
+                onMouseLeave={(e) => { if (!isSubActive) e.currentTarget.style.background = 'none'; }}
+              >
+                {sub.label}
+              </button>
+            );
+          })}
+        </div>
       )}
 
       <div className="sidefoot">
