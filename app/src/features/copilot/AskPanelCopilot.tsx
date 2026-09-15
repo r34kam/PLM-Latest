@@ -1,9 +1,9 @@
 /**
  * AskPanelCopilot — chrome for the third-pane "Ask AI" overlay ONLY.
  *
- * Two full-panel views toggled by the clock icon:
- *   CHAT: header with agent info + CopilotChat filling the rest
- *   HISTORY: "← Conversations" header + full-width CopilotHistory list
+ * CopilotChat is ALWAYS mounted (SDK requirement — it owns the store state).
+ * History slides in as an absolute overlay OVER the chat area so the chat
+ * never unmounts. Selecting a conversation auto-dismisses the overlay.
  *
  * DO NOT import from the Reports page — that uses its own Copilot component.
  */
@@ -86,22 +86,37 @@ function NewChatBtn({ 'data-test-id': testId }: { 'data-test-id'?: string }) {
   )
 }
 
-/* ---- history view — full panel, auto-returns when row selected ----- */
+/* ---- history overlay (absolute, sits on top of CopilotChat) -------- */
 
-function HistoryView({ onBack, onClose }: { onBack: () => void; onClose: () => void }) {
+function HistoryOverlay({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { chatId } = useCopilotStatus()
   const prevChatId = useRef(chatId)
 
-  // auto-return to chat when the user selects a conversation
+  // auto-dismiss when a conversation is selected (chatId changes)
   useEffect(() => {
     if (prevChatId.current !== chatId) {
       prevChatId.current = chatId
-      onBack()
+      if (visible) onClose()
     }
   })
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }} data-test-id="ask-history-view">
+    <div
+      data-test-id="ask-history-overlay"
+      style={{
+        position: 'absolute',
+        inset: 0,
+        background: '#ffffff',
+        display: 'flex',
+        flexDirection: 'column',
+        zIndex: 10,
+        // slide in/out vertically
+        transform: visible ? 'translateY(0)' : 'translateY(100%)',
+        transition: 'transform .22s cubic-bezier(0.16,1,0.3,1)',
+        pointerEvents: visible ? 'auto' : 'none',
+      }}
+    >
+      {/* History header */}
       <header
         style={{
           display: 'flex',
@@ -113,7 +128,7 @@ function HistoryView({ onBack, onClose }: { onBack: () => void; onClose: () => v
         }}
         data-test-id="ask-history-header"
       >
-        <IconBtn onClick={onBack} label="Back to chat" data-test-id="ask-history-back-btn">
+        <IconBtn onClick={onClose} label="Back to chat" data-test-id="ask-history-back-btn">
           <ArrowLeft size={16} strokeWidth={1.8} />
         </IconBtn>
 
@@ -123,11 +138,12 @@ function HistoryView({ onBack, onClose }: { onBack: () => void; onClose: () => v
 
         <NewChatBtn data-test-id="ask-history-new-btn" />
 
-        <IconBtn onClick={onClose} label="Close" data-test-id="ask-history-close-btn">
+        <IconBtn onClick={onClose} label="Close history" data-test-id="ask-history-close-btn">
           <X size={16} strokeWidth={1.8} />
         </IconBtn>
       </header>
 
+      {/* Full-width conversation list */}
       <CopilotHistory className="min-h-0 flex-1" />
     </div>
   )
@@ -166,7 +182,7 @@ type Props = {
 }
 
 export function AskPanelCopilot({ agentId, onClose, className }: Props) {
-  const [showHistory, setShowHistory] = useState(false)
+  const [historyVisible, setHistoryVisible] = useState(false)
 
   return (
     <CopilotProvider
@@ -183,50 +199,60 @@ export function AskPanelCopilot({ agentId, onClose, className }: Props) {
         },
       }}
     >
-      {showHistory ? (
-        <HistoryView onBack={() => setShowHistory(false)} onClose={onClose} />
-      ) : (
-        <>
-          {/* Chat header */}
-          <header
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              padding: '12px 14px',
-              borderBottom: '1px solid #e2e8f0',
-              flexShrink: 0,
-            }}
-            data-test-id="ask-panel-header"
-          >
-            <AgentAvatar size={40} />
+      {/* Chat header — always visible */}
+      <header
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          padding: '12px 14px',
+          borderBottom: '1px solid #e2e8f0',
+          flexShrink: 0,
+          zIndex: 1,
+          position: 'relative',
+          background: '#ffffff',
+        }}
+        data-test-id="ask-panel-header"
+      >
+        <AgentAvatar size={40} />
 
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: '#0a2233', lineHeight: 1.2 }}>
-                {AGENT_NAME}
-              </div>
-              <div style={{ fontSize: 12, color: '#7993a8', marginTop: 2, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {AGENT_SUBTITLE}
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
-              <IconBtn onClick={() => setShowHistory(true)} label="Conversation history" data-test-id="ask-history-btn">
-                <Clock size={16} strokeWidth={1.8} />
-              </IconBtn>
-              <NewChatBtn />
-              <IconBtn onClick={onClose} label="Close" data-test-id="ask-close-btn">
-                <X size={16} strokeWidth={1.8} />
-              </IconBtn>
-            </div>
-          </header>
-
-          {/* Chat area */}
-          <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }} data-test-id="ask-chat-area">
-            <CopilotChat />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: '#0a2233', lineHeight: 1.2 }}>
+            {AGENT_NAME}
           </div>
-        </>
-      )}
+          <div style={{ fontSize: 12, color: '#7993a8', marginTop: 2, lineHeight: 1.3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {AGENT_SUBTITLE}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
+          <IconBtn
+            onClick={() => setHistoryVisible(true)}
+            label="Conversation history"
+            data-test-id="ask-history-btn"
+          >
+            <Clock size={16} strokeWidth={1.8} />
+          </IconBtn>
+          <NewChatBtn />
+          <IconBtn onClick={onClose} label="Close" data-test-id="ask-close-btn">
+            <X size={16} strokeWidth={1.8} />
+          </IconBtn>
+        </div>
+      </header>
+
+      {/* Body: CopilotChat always mounted + history overlay on top */}
+      <div style={{ flex: 1, minHeight: 0, position: 'relative', display: 'flex', flexDirection: 'column' }} data-test-id="ask-panel-body">
+        {/* Chat — always in the tree */}
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }} data-test-id="ask-chat-area">
+          <CopilotChat />
+        </div>
+
+        {/* History overlay — slides up over the chat, never unmounts CopilotChat */}
+        <HistoryOverlay
+          visible={historyVisible}
+          onClose={() => setHistoryVisible(false)}
+        />
+      </div>
     </CopilotProvider>
   )
 }

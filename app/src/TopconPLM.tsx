@@ -161,11 +161,21 @@ function TopconPLM({
 
   const unreadNotifCount = userNotifications.filter((n) => !readNotifIds.has(n.id)).length;
 
+  // Separate modal open state — keeps the background page unchanged
+  const [ecoNewOpen, setEcoNewOpen] = useState(false);
+  const [itemNewOpen, setItemNewOpen] = useState(false);
+
   // Pages Approvers are allowed to navigate to
   const APPROVER_ALLOWED_PAGES = new Set(['home', 'ecos', 'eco', 'items', 'item'])
   const go = (next: any) => {
     // Approvers can only navigate to their allowed pages
     if (isApprover && next?.page && !APPROVER_ALLOWED_PAGES.has(next.page)) return
+    // Creation modals open as overlays — don't change the background page
+    if (next?.page === 'eco-new') { setEcoNewOpen(true); return; }
+    if (next?.page === 'item-new') { setItemNewOpen(true); return; }
+    // Close modals when navigating elsewhere (e.g. after successful creation)
+    setEcoNewOpen(false);
+    setItemNewOpen(false);
     setV(next)
     window.scrollTo?.(0, 0)
   };
@@ -201,10 +211,8 @@ function TopconPLM({
     case "home": body = <HomePage go={go} renderHeaderActions={renderHeaderActions} userRole={role} userName={userName} aiInsights={userAiInsights} currentUser={currentUser} />; break;
     case "ecos": body = <EcoList go={go} initialFilter={isApprover ? "Needs me" : (v.filter ?? undefined)} onInspect={handleInspectEco} inspectedId={inspectedEcoId} railOpen={false} renderHeaderActions={renderHeaderActions} role={role} currentUserName={userName} />; break;
     case "eco": body = <EcoDetail id={v.id} go={go} initialTab={v.tab} renderHeaderActions={renderHeaderActions} role={role} currentUserName={userName} />; break;
-    case "eco-new": body = !isApprover ? <EcoList go={go} initialFilter={undefined} onInspect={handleInspectEco} inspectedId={inspectedEcoId} railOpen={false} renderHeaderActions={renderHeaderActions} role={role} currentUserName={userName} /> : <HomePage go={go} renderHeaderActions={renderHeaderActions} />; break;
     case "items": body = <ItemList go={go} railOpen={false} renderHeaderActions={renderHeaderActions} />; break;
     case "item": body = <ItemDetail id={v.id} go={go} initialTab={v.tab} renderHeaderActions={renderHeaderActions} />; break;
-    case "item-new": body = !isApprover ? <ItemList go={go} railOpen={false} renderHeaderActions={renderHeaderActions} /> : <ItemList go={go} railOpen={false} renderHeaderActions={renderHeaderActions} />; break;
     case "inactivate": body = !isApprover ? <Inactivate go={go} id={v.id} renderHeaderActions={renderHeaderActions} /> : <HomePage go={go} renderHeaderActions={renderHeaderActions} />; break;
     case "admin": body = !isApprover ? <Admin initialTab={v.tab || "Users"} go={go} renderHeaderActions={renderHeaderActions} /> : <HomePage go={go} renderHeaderActions={renderHeaderActions} />; break;
     case "reports": body = !isApprover ? <Reports renderHeaderActions={renderHeaderActions} /> : <HomePage go={go} renderHeaderActions={renderHeaderActions} />; break;
@@ -212,8 +220,8 @@ function TopconPLM({
     default: body = <HomePage go={go} renderHeaderActions={renderHeaderActions} />;
   }
 
-  const navPage = ["eco", "eco-new"].includes(v.page) ? "ecos"
-    : ["item", "item-new", "inactivate"].includes(v.page) ? "items" : v.page;
+  const navPage = ["eco"].includes(v.page) ? "ecos"
+    : ["item", "inactivate"].includes(v.page) ? "items" : v.page;
 
   return (
     <div className="tp" data-test-id="topcon-plm-app">
@@ -245,21 +253,21 @@ function TopconPLM({
 
       {/* ── Creation modals — overlay the current page ───────────────── */}
       <Suspense fallback={null}>
-        {v.page === "eco-new" && !isApprover && (
+        {ecoNewOpen && !isApprover && (
           <EcoNew
             go={go}
             startStep={v.step !== undefined ? v.step : 0}
             initialApprovalMode={initialApprovalMode}
             initialManualItems={initialManualItems}
             isModal
-            onClose={() => go({ page: "ecos" })}
+            onClose={() => setEcoNewOpen(false)}
           />
         )}
-        {v.page === "item-new" && !isApprover && (
+        {itemNewOpen && !isApprover && (
           <ItemNew
             go={go}
             isModal
-            onClose={() => go({ page: "items" })}
+            onClose={() => setItemNewOpen(false)}
           />
         )}
       </Suspense>
