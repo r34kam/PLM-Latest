@@ -205,11 +205,11 @@ export function useDeleteUser() {
 
 // ─── Routings ────────────────────────────────────────────────────────────────
 
-// Finds the plm_user record whose name matches the logged-in user and returns
-// their ECO-scoped aiInsights and notifications for personalised home/notif views.
-export function useCurrentUserRecord(userName: string) {
+// Finds the plm_user record whose email matches the logged-in user's identity
+// and returns their ECO-scoped aiInsights and notifications.
+export function useCurrentUserRecord(userEmail: string) {
   const { users, loading, error } = useUsers()
-  const user = users.find((u) => u.name === userName) ?? null
+  const user = users.find((u) => u.email.toLowerCase() === userEmail.toLowerCase()) ?? null
   return { user, loading, error }
 }
 

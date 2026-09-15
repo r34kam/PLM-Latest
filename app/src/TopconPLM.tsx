@@ -3,7 +3,7 @@ import { InspectRail } from '@/components/shell/InspectRail'
 import { Nav } from '@/components/shell/Nav'
 import { NotificationsOverlay } from '@/components/shell/NotificationsOverlay'
 import { TopBar } from '@/components/shell/TopBar'
-import { NOTIFS } from '@/domain/notifications'
+import { useCurrentUserRecord } from '@/data/admin'
 import { HomePage } from '@/features/home/HomePage'
 import { useAppRole, ROLE_DC, ROLE_APPROVER } from '@/lib/useAppRole'
 import { CSS } from '@/theme/globalStyles'
@@ -56,6 +56,11 @@ function TopconPLM({
   const isApprover = role === 'approver'
   const isDC = role === 'dc'
 
+  /* ---- Personalised user data — looked up by email from the plm_user object ---- */
+  const { user: currentUser } = useCurrentUserRecord(userEmail ?? '')
+  const userAiInsights = currentUser?.aiInsights ?? []
+  const userNotifications = currentUser?.notifications ?? []
+
   const [v, setV] = useState<any>({ page: initialPage || "home", tab: initialTab, id: initialId, step: startStep, filter: initialFilter });
   const prevPageRef = React.useRef(initialPage);
   React.useEffect(() => {
@@ -80,7 +85,7 @@ function TopconPLM({
   const [inspectedEcoId, setInspectedEcoId] = useState<string>(initialInspectedEcoId || "ECO-011420");
   const [readNotifIds, setReadNotifIds] = useState<Set<string>>(new Set());
 
-  const unreadNotifCount = NOTIFS.filter((n: any) => !readNotifIds.has(n.id)).length;
+  const unreadNotifCount = userNotifications.filter((n) => !readNotifIds.has(n.id)).length;
 
   // Pages Approvers are allowed to navigate to
   const APPROVER_ALLOWED_PAGES = new Set(['home', 'ecos', 'eco', 'items', 'item'])
@@ -119,7 +124,7 @@ function TopconPLM({
   const effectivePage = isApprover && !APPROVER_ALLOWED_PAGES.has(currentPage) ? 'home' : currentPage
 
   switch (effectivePage) {
-    case "home": body = <HomePage go={go} renderHeaderActions={renderHeaderActions} userRole={role} userName={userName} />; break;
+    case "home": body = <HomePage go={go} renderHeaderActions={renderHeaderActions} userRole={role} userName={userName} aiInsights={userAiInsights} />; break;
     case "ecos": body = <EcoList go={go} initialFilter={isApprover ? "Needs me" : (v.filter ?? undefined)} onInspect={handleInspectEco} inspectedId={inspectedEcoId} railOpen={false} renderHeaderActions={renderHeaderActions} role={role} currentUserName={userName} />; break;
     case "eco": body = <EcoDetail id={v.id} go={go} initialTab={v.tab} renderHeaderActions={renderHeaderActions} role={role} currentUserName={userName} />; break;
     case "eco-new": body = !isApprover ? <EcoNew go={go} startStep={v.step !== undefined ? v.step : 0} initialApprovalMode={initialApprovalMode} initialManualItems={initialManualItems} renderHeaderActions={renderHeaderActions} /> : <HomePage go={go} renderHeaderActions={renderHeaderActions} />; break;
@@ -264,9 +269,10 @@ function TopconPLM({
           open={notifOpen}
           onClose={() => setNotifOpen(false)}
           go={go}
+          notifications={userNotifications}
           readIds={readNotifIds}
-          onMarkRead={(id: any) => setReadNotifIds((prev: any) => new Set([...prev, id]))}
-          onMarkAllRead={() => setReadNotifIds(new Set(NOTIFS.map((n: any) => n.id)))}
+          onMarkRead={(id: string) => setReadNotifIds((prev) => new Set([...prev, id]))}
+          onMarkAllRead={() => setReadNotifIds(new Set(userNotifications.map((n) => n.id)))}
         />
       )}
     </div>

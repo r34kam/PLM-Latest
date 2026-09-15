@@ -1,4 +1,4 @@
-import { NOTIFS } from '@/domain/notifications'
+import type { PlmNotification } from '@/data/admin'
 import { T } from '@/theme/tokens'
 import { Bell, X } from 'lucide-react'
 import React from 'react'
@@ -7,6 +7,7 @@ function NotificationsOverlay({
   open,
   onClose,
   go,
+  notifications,
   readIds,
   onMarkRead,
   onMarkAllRead,
@@ -14,6 +15,7 @@ function NotificationsOverlay({
   open: boolean;
   onClose: () => void;
   go: (v: any) => void;
+  notifications: PlmNotification[];
   readIds: Set<string>;
   onMarkRead: (id: string) => void;
   onMarkAllRead: () => void;
@@ -29,7 +31,7 @@ function NotificationsOverlay({
 
   if (!open) return null;
 
-  const unreadCount = NOTIFS.filter((n: any) => !readIds.has(n.id)).length;
+  const unreadCount = notifications.filter((n) => !readIds.has(n.id)).length;
 
   return (
     <>
@@ -100,8 +102,13 @@ function NotificationsOverlay({
         </div>
 
         <div style={{ flex: 1, overflowY: "auto" }} data-test-id="notifications-list">
-          {["Today", "Earlier"].map((groupName: any) => {
-            const groupItems = NOTIFS.filter((n: any) => (n.group || (n.meta.includes("day") ? "Earlier" : "Today")) === groupName);
+          {notifications.length === 0 && (
+            <div style={{ padding: "32px 16px", textAlign: "center", color: T.g500, fontSize: 13 }} data-test-id="notif-empty">
+              No notifications for your account.
+            </div>
+          )}
+          {["Today", "Earlier"].map((groupName) => {
+            const groupItems = notifications.filter((n) => n.group === groupName);
             if (!groupItems.length) return null;
             return (
               <div key={groupName}>
@@ -119,9 +126,8 @@ function NotificationsOverlay({
                 >
                   {groupName}
                 </div>
-                {groupItems.map((n: any) => {
+                {groupItems.map((n) => {
                   const isUnread = !readIds.has(n.id);
-                  const timeDisplay = n.timestamp || (n.meta.includes("14 minutes") ? "14 minutes ago" : n.meta.includes("2 hours") ? "2 hours ago" : n.meta.includes("3 hours") ? "3 hours ago" : "1 day ago");
                   return (
                     <div
                       key={n.id}
@@ -137,12 +143,12 @@ function NotificationsOverlay({
                       }}
                       onClick={() => {
                         onMarkRead(n.id);
-                        go(n.go);
+                        go({ page: "eco", id: n.ecoId });
                         onClose();
                       }}
                       data-test-id={`notif-row-${n.id}`}
                     >
-                      {/* Unread dot left */}
+                      {/* Unread dot */}
                       <div style={{ paddingTop: 6, flex: "none" }}>
                         <span
                           style={{
@@ -156,22 +162,20 @@ function NotificationsOverlay({
                         />
                       </div>
 
-                      {/* Content in center */}
+                      {/* Content */}
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap" }}>
-                          <span className="pn" style={{ fontSize: 13, fontWeight: 600 }}>{n.id}</span>
+                          <span className="pn" style={{ fontSize: 13, fontWeight: 600 }}>{n.ecoId}</span>
                           <span style={{ fontSize: 13, color: T.g900, fontWeight: isUnread ? 600 : 500 }}>
                             {n.title}
                           </span>
                         </div>
-                        <div style={{ fontSize: 11, color: T.g600, marginTop: 2 }}>
-                          {n.detail || n.meta.split(" · ")[0]}
-                        </div>
+                        <div style={{ fontSize: 11, color: T.g600, marginTop: 2 }}>{n.detail}</div>
                       </div>
 
-                      {/* Timestamp right */}
+                      {/* Timestamp */}
                       <div style={{ flex: "none", fontSize: 11, color: T.g500, whiteSpace: "nowrap", paddingTop: 2 }}>
-                        {timeDisplay}
+                        {n.timestamp}
                       </div>
                     </div>
                   );
