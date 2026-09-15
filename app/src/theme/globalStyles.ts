@@ -206,6 +206,9 @@ textarea.inp{height:auto;padding:8px 10px;line-height:1.5;resize:vertical}
 /* ---- eco wizard 2-column layout & sub-navigation ---- */
 /* eco-wizard-layout: now single-column — subnav flows horizontally above content */
 .eco-wizard-layout{display:flex;flex-direction:column;gap:16px}
+/* Inline kit picker — expands in the right pane */
+.eco-kit-inline-picker{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:8px;animation:fadeIn .15s ease}
+.eco-kit-inline-results{max-height:280px;overflow:auto;border:1px solid #e2e8f0;border-radius:6px;background:#fff}
 .eco-subnav{display:flex;flex-direction:row;align-items:center;gap:2px;border-bottom:1px solid ${T.g200};padding-bottom:0;background:transparent;box-shadow:none;border-radius:0;padding:0}
 .eco-subnav-btn{display:flex;align-items:center;gap:7px;padding:9px 14px;border-radius:0;font-size:13px;font-weight:500;color:${T.g600};background:transparent;border:none;border-bottom:2px solid transparent;text-align:left;cursor:pointer;transition:color .12s ease,border-color .12s ease;white-space:nowrap;flex-shrink:0}
 .eco-subnav-btn:hover{color:${T.g900};border-bottom-color:${T.g300}}
@@ -434,16 +437,21 @@ textarea.inp{height:auto;padding:8px 10px;line-height:1.5;resize:vertical}
 .eco-summary-kv-value{font-size:13.5px;font-weight:600;color:#0A2233;word-break:break-word}
 .approval-choices-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:14px}
 @media(max-width:900px){.approval-choices-grid{grid-template-columns:1fr}}
-.approval-choice-card{display:flex;flex-direction:column;align-items:center;text-align:center;padding:18px 16px 16px;background:#F0F4F8;border:1px solid #D9E2EC;border-radius:10px;box-shadow:0 1px 2px rgba(2,42,66,.04);cursor:pointer;transition:all .14s ease;outline:none;width:100%}
-.approval-choice-card:hover{border-color:#0A4F8F;background:#E2E8F0;box-shadow:0 4px 14px rgba(2,42,66,.08);transform:translateY(-1px)}
-.approval-choice-card.selected{border-color:#005fa8;background:#EEF5FB;box-shadow:0 0 0 2px #005fa8}
-.approval-choice-icon-wrap{width:40px;height:40px;border-radius:10px;background:#FFFFFF;border:1px solid #D9E2EC;display:grid;place-items:center;margin-bottom:10px;color:#334E68;transition:all .12s ease;box-shadow:0 1px 2px rgba(2,42,66,.04)}
-.approval-choice-card:hover .approval-choice-icon-wrap{background:#E6F2FB;border-color:#BAE3F8;color:#005fa8}
-.approval-choice-title{font-size:14px;font-weight:700;color:#0a2233;margin-bottom:6px;line-height:1.25}
-.approval-choice-desc{font-size:11.5px;color:#486581;line-height:1.45;margin-bottom:12px;max-width:240px;flex:1}
-.approval-choice-badge{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:600;padding:3px 10px;border-radius:999px;border:1px solid #CBD5E1;background:#FFFFFF;color:#486581}
-.approval-choice-badge.badge-ai{background:#FAF7FD;border-color:#E9D8FD;color:#6B46C1}
-.approval-choice-badge.badge-routing{background:#F0F7FD;border-color:#BAE3F8;color:#005FA8}
+/* Approval method cards — radio-style, subtle, matching reference */
+.approval-choice-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.approval-choice-card{position:relative;display:flex;flex-direction:column;padding:16px;background:#ffffff;border:1.5px solid #e2e8f0;border-radius:10px;cursor:pointer;transition:border-color .14s,box-shadow .14s;outline:none;width:100%;text-align:left}
+.approval-choice-card:hover{border-color:#94a3b8;box-shadow:0 2px 8px rgba(2,42,66,.06)}
+.approval-choice-card.selected{border-color:#0A4F8F;box-shadow:0 0 0 2px rgba(10,79,143,.12)}
+.approval-choice-radio{position:absolute;top:14px;right:14px;width:18px;height:18px;border-radius:50%;border:1.5px solid #cbd5e1;background:#fff;display:grid;place-items:center;flex-shrink:0;transition:border-color .12s}
+.approval-choice-card.selected .approval-choice-radio{border-color:#0A4F8F}
+.approval-choice-radio-dot{width:9px;height:9px;border-radius:50%;background:#0A4F8F;opacity:0;transition:opacity .12s}
+.approval-choice-card.selected .approval-choice-radio-dot{opacity:1}
+.approval-choice-icon-wrap{display:none}
+.approval-choice-title{font-size:13.5px;font-weight:700;color:#0a2233;margin-bottom:8px;line-height:1.25;padding-right:28px}
+.approval-choice-desc{font-size:12px;color:#627d98;line-height:1.5;flex:1}
+.approval-choice-badge{display:none}
+.approval-choice-badge.badge-ai{display:none}
+.approval-choice-badge.badge-routing{display:none}
 .approval-tip-card{padding:10px 14px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;box-shadow:0 1px 2px rgba(2,42,66,.02)}
 .routeline{display:flex;align-items:center;gap:12px;padding:11px 0;border:none}
 .routeline:last-child{border:none}

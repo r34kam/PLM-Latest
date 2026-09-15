@@ -213,7 +213,7 @@ function EcoNew({
       bomEdits: [], bomFile: null, editMode: "inline",
     }]);
     setExpandedKits((prev) => ({ ...prev, [it.pn]: true }));
-    setKitPickOpen(false); setKitPickQ("");
+    setKitPickQ(""); // picker stays open — user clicks "Done adding" to close
   };
   const removeKit = (pn: string) => setKits((prev) => prev.filter((k) => k.pn !== pn));
   const updateKit = (pn: string, patch: Partial<KitItem>) =>
@@ -409,19 +409,7 @@ function EcoNew({
                 <span className="sub-pending" title="Incomplete required fields"><AlertCircle size={11} strokeWidth={2.4} /></span>
               )}
             </button>
-            <button
-              type="button"
-              className={`eco-subnav-btn ${subSection === "desc" ? "on" : ""}`}
-              onClick={() => setSubSection("desc")}
-              data-test-id="eco-subnav-desc"
-            >
-              <span>Effectivity</span>
-              {isDescFilled ? (
-                <span className="sub-check" title="Completed"><Check size={11} strokeWidth={2.8} /></span>
-              ) : (
-                <span className="sub-pending" title="Incomplete required fields"><AlertCircle size={11} strokeWidth={2.4} /></span>
-              )}
-            </button>
+
             <button
               type="button"
               className={`eco-subnav-btn ${subSection === "files" ? "on" : ""}`}
@@ -727,15 +715,57 @@ function EcoNew({
             {(subSection === "items" || i === 1) && (
               <div className="stack" data-test-id="eco-items-section">
                 {/* Step 1: Select kits/assemblies to add to this change */}
-                <Card
-                  title="Add kits & assemblies"
-                  sub="Select the kit or assembly whose BOM is changing. Then specify each edit inline or upload a redline file."
-                  right={
-                    <button className="btn" onClick={() => setKitPickOpen(true)} data-test-id="eco-add-kit-btn">
-                      <Plus size={13} />Add kit
-                    </button>
-                  }
-                >
+                {/* Section header — no nested Card, content fills the right pane */}
+                <div className="bet" style={{ marginBottom: 4 }} data-test-id="eco-items-header">
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 15, color: '#0a2233' }}>Add kits &amp; assemblies</div>
+                    <div className="sub" style={{ fontSize: 12, marginTop: 2 }}>Select the kit or assembly whose BOM is changing. Specify each edit inline or upload a redline file.</div>
+                  </div>
+                  <button
+                    className={`btn${kitPickOpen ? ' pri' : ''}`}
+                    onClick={() => { setKitPickOpen((v) => !v); setKitPickQ(''); }}
+                    data-test-id="eco-add-kit-btn"
+                  >
+                    <Plus size={13} />{kitPickOpen ? 'Done adding' : 'Add kit'}
+                  </button>
+                </div>
+
+                {/* Inline kit picker — expands in place when "Add kit" is clicked */}
+                {kitPickOpen && (
+                  <div className="eco-kit-inline-picker" data-test-id="eco-kit-inline-picker">
+                    <div style={{ position: 'relative', marginBottom: 8 }}>
+                      <Search size={13} color="#94a3b8" style={{ position: 'absolute', left: 9, top: 9 }} />
+                      <input
+                        className="inp" style={{ paddingLeft: 28 }} autoFocus value={kitPickQ}
+                        onChange={(e: any) => setKitPickQ(e.target.value)}
+                        placeholder="Search kits and assemblies by number or name"
+                        data-test-id="eco-kit-pick-search"
+                      />
+                    </div>
+                    <div className="eco-kit-inline-results" data-test-id="eco-kit-pick-results">
+                      <table className="tbl">
+                        <thead><tr><th>Item number</th><th>Rev</th><th>Item name</th><th>Category</th><th>Phase</th><th></th></tr></thead>
+                        <tbody>
+                          {(allBackendItems ?? ASSEMBLIES as any[])
+                            .filter((it: any) => ["KIT", "ASSEMBLY", "PCB"].includes((it.cat || "").toUpperCase()) &&
+                              !kits.some((k) => k.pn === it.pn) &&
+                              (it.pn + it.name + it.cat).toLowerCase().includes(kitPickQ.toLowerCase()))
+                            .map((it: any) => (
+                              <tr key={it.pn} style={{ cursor: 'pointer' }} onClick={() => addKit(it)} data-test-id={`eco-kit-pick-row-${it.pn}`}>
+                                <td className="pn" style={{ fontFamily: 'ui-monospace,"SF Mono",Menlo,Consolas,monospace', fontSize: 12 }}>{it.pn}</td>
+                                <td>{it.rev}</td>
+                                <td style={{ fontWeight: 500 }}>{it.name}</td>
+                                <td className="sub">{it.cat}</td>
+                                <td>{phaseChip(it.phase)}</td>
+                                <td><button className="btn sm pri" onClick={(e) => { e.stopPropagation(); addKit(it); }} data-test-id={`eco-kit-pick-add-${it.pn}`}><Plus size={12} />Add</button></td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="mini" style={{ marginTop: 6 }}>Click a row or press Add to include a kit. Click "Done adding" when finished.</div>
+                  </div>
+                )}
                   {kits.length === 0 ? (
                     <Empty icon={Boxes} title="No kits added" body="Search for and add the kit or assembly whose BOM you are changing." />
                   ) : (
@@ -1011,44 +1041,7 @@ function EcoNew({
                       })}
                     </div>
                   )}
-                </Card>
-
-                {/* Kit picker modal */}
-                {kitPickOpen && (
-                  <Modal title="Select kit or assembly" wide onClose={() => { setKitPickOpen(false); setKitPickQ(""); }} data-test-id="eco-kit-pick-modal">
-                    <div style={{ position: "relative", marginBottom: 12 }}>
-                      <Search size={13} color={T.g500} style={{ position: "absolute", left: 9, top: 10 }} />
-                      <input
-                        className="inp" style={{ paddingLeft: 28 }} autoFocus value={kitPickQ}
-                        onChange={(e: any) => setKitPickQ(e.target.value)}
-                        placeholder="Search kits and assemblies by number or name"
-                        data-test-id="eco-kit-pick-search"
-                      />
-                    </div>
-                    <div style={{ maxHeight: 360, overflow: "auto", border: `1px solid ${T.g200}`, borderRadius: 6 }}>
-                      <table className="tbl">
-                        <thead><tr><th>Item number</th><th>Rev</th><th>Item name</th><th>Category</th><th>Phase</th><th></th></tr></thead>
-                        <tbody>
-                          {(allBackendItems ?? ASSEMBLIES as any[])
-                            .filter((it: any) => ["KIT", "ASSEMBLY", "PCB"].includes((it.cat || "").toUpperCase()) &&
-                              !kits.some((k) => k.pn === it.pn) &&
-                              (it.pn + it.name + it.cat).toLowerCase().includes(kitPickQ.toLowerCase()))
-                            .map((it: any) => (
-                              <tr key={it.pn} style={{ cursor: "pointer" }} onClick={() => addKit(it)} data-test-id={`eco-kit-pick-row-${it.pn}`}>
-                                <td className="pn" style={{ fontFamily: 'ui-monospace,"SF Mono",Menlo,Consolas,monospace', fontSize: 12 }}>{it.pn}</td>
-                                <td>{it.rev}</td>
-                                <td style={{ fontWeight: 500 }}>{it.name}</td>
-                                <td className="sub">{it.cat}</td>
-                                <td>{phaseChip(it.phase)}</td>
-                                <td><button className="btn sm pri" onClick={(e) => { e.stopPropagation(); addKit(it); }}><Plus size={12} />Add</button></td>
-                              </tr>
-                            ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    <div className="mini" style={{ marginTop: 10 }}>Showing kits and assemblies. Select to add to this change.</div>
-                  </Modal>
-                )}
+       
 
                 {/* Kit child BOM picker for inline edits */}
                 {kitChildPickOpen && (
@@ -1137,28 +1130,21 @@ function EcoNew({
       {i === 2 && (
         <div className="stack" data-test-id="eco-new-approvals-step">
           {!mode ? (
-            <Card
-              title="Select Approval Method"
-              sub="Choose how reviewer stages should be determined for this change order"
-            >
-              <div className="approval-choices-grid" data-test-id="approval-choices-grid">
+            <div data-test-id="approval-method-selection">
+              <div style={{ fontWeight: 700, fontSize: 15, color: '#0a2233', marginBottom: 4 }}>Select Approval Method</div>
+              <div className="sub" style={{ fontSize: 12, marginBottom: 20 }}>Choose how reviewer stages should be determined for this change order</div>
+              <div className="approval-choice-grid" data-test-id="approval-choices-grid">
                 <button
                   type="button"
                   className="approval-choice-card"
                   onClick={() => setMode("routing")}
                   data-test-id="approval-choice-routing"
                 >
-                  <div className="approval-choice-icon-wrap">
-                    <Layers size={20} strokeWidth={1.8} />
-                  </div>
+                  <span className="approval-choice-radio" aria-hidden="true"><span className="approval-choice-radio-dot" /></span>
                   <div className="approval-choice-title">Predefined routing</div>
                   <div className="approval-choice-desc">
                     Apply standard pre-configured routing templates from Workspace Admin with cross-functional roles.
                   </div>
-                  <span className="approval-choice-badge badge-routing">
-                    <Layers size={11} strokeWidth={2} />
-                    Standard template
-                  </span>
                 </button>
 
                 <button
@@ -1167,17 +1153,11 @@ function EcoNew({
                   onClick={() => { setMode("ai"); setAiState("idle"); setAiSuggestions([]); aiReset(); }}
                   data-test-id="approval-choice-ai"
                 >
-                  <div className="approval-choice-icon-wrap" style={{ background: "#FAF7FD", color: "#6B46C1" }}>
-                    <Sparkles size={20} strokeWidth={1.8} />
-                  </div>
+                  <span className="approval-choice-radio" aria-hidden="true"><span className="approval-choice-radio-dot" /></span>
                   <div className="approval-choice-title">Assistant suggestion</div>
                   <div className="approval-choice-desc">
                     AI evaluates part category, division, site, and previous changes to recommend required reviewers.
                   </div>
-                  <span className="approval-choice-badge badge-ai">
-                    <Sparkles size={11} strokeWidth={2} />
-                    ✨ AI Powered
-                  </span>
                 </button>
 
                 <button
@@ -1186,17 +1166,11 @@ function EcoNew({
                   onClick={() => setMode("manual")}
                   data-test-id="approval-choice-manual"
                 >
-                  <div className="approval-choice-icon-wrap">
-                    <Users size={20} strokeWidth={1.8} />
-                  </div>
+                  <span className="approval-choice-radio" aria-hidden="true"><span className="approval-choice-radio-dot" /></span>
                   <div className="approval-choice-title">Build manually</div>
                   <div className="approval-choice-desc">
                     Construct custom sequential stages from scratch and assign specific team members for this change.
                   </div>
-                  <span className="approval-choice-badge">
-                    <Users size={11} strokeWidth={2} />
-                    Manual entry
-                  </span>
                 </button>
               </div>
 
@@ -1206,7 +1180,7 @@ function EcoNew({
                   Standard routings automatically apply company SOPs and required cross-functional department sign-offs. You can customize stages and add members in any mode.
                 </div>
               </div>
-            </Card>
+            </div>
           ) : (
             <Card
               title="Approvals"
