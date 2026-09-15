@@ -97,13 +97,11 @@ export type CoHistoryEntry = {
 
 export type NewChangeOrder = Omit<ChangeOrder, 'id'>
 
-// Payload shape sent to the backend — complex fields serialised to JSON strings.
-// ecoItemsJson and commentsJson are sent separately in a follow-up UPDATE because
-// the workflow CREATE node rejects unregistered schema fields in rawPayload.
+// Payload shape sent to the backend CREATE node — only schema-registered fields.
+// historyJson, extraNotifyJson, ecoItemsJson and commentsJson are sent in a follow-up
+// UPDATE because the workflow CREATE node rejects unregistered schema fields in rawPayload.
 type CoPayload = Omit<NewChangeOrder, 'approvals' | 'ecoItems' | 'comments' | 'history' | 'extraNotifyNames'> & {
   approvalsJson: string
-  historyJson: string
-  extraNotifyJson: string
 }
 
 
@@ -222,14 +220,12 @@ export function useChangeOrdersAwaitingMe() {
 
 // ─── Writes ──────────────────────────────────────────────────────────────────
 
-// Create payload — omits ecoItemsJson/commentsJson which the workflow CREATE node rejects
+// Create payload — only schema-registered fields; blob arrays are patched in step 2
 function toPayload(co: NewChangeOrder): CoPayload {
-  const { approvals, ecoItems: _ecoItems, comments: _comments, history, extraNotifyNames, ...rest } = co
+  const { approvals, ecoItems: _ecoItems, comments: _comments, history: _history, extraNotifyNames: _extraNotifyNames, ...rest } = co
   return {
     ...rest,
     approvalsJson: JSON.stringify(approvals ?? []),
-    historyJson: JSON.stringify(history ?? []),
-    extraNotifyJson: JSON.stringify(extraNotifyNames ?? []),
   }
 }
 
@@ -248,13 +244,14 @@ export function useCreateChangeOrder() {
       },
     })
 
-    // Step 2: extract the new record's id and patch in the JSON-blob fields
+    // Step 2: patch all blob fields that the CREATE node rejects (unregistered schema fields)
+    // This always runs so historyJson, extraNotifyJson, ecoItemsJson and commentsJson are saved.
     const newId: string | undefined =
       (createResult as any)?.response?.id ??
       (createResult as any)?.id ??
       (createResult as any)?.response?.objects?.[0]?.id
 
-    if (newId && (co.ecoItems?.length || co.comments?.length)) {
+    if (newId) {
       try {
         await mutation.mutateAsync({
           data: {
@@ -267,12 +264,14 @@ export function useCreateChangeOrder() {
               rawPayload: {
                 ecoItemsJson: JSON.stringify(co.ecoItems ?? []),
                 commentsJson: JSON.stringify(co.comments ?? []),
+                historyJson: JSON.stringify(co.history ?? []),
+                extraNotifyJson: JSON.stringify(co.extraNotifyNames ?? []),
               },
             },
           },
         })
       } catch {
-        // Non-fatal — the ECO was created; only BOM items are missing
+        // Non-fatal — the ECO was created; only blob fields are missing
       }
     }
 

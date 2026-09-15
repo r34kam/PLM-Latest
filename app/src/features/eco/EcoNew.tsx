@@ -11,7 +11,7 @@ import { Stepper } from '@/components/primitives/Stepper'
 import { useRoutings } from '@/data/admin'
 import { useAllItems } from '@/data/items'
 import { useKitExtractor } from '@/data/kitExtractor'
-import { useCreateChangeOrder, type CoHistoryEntry } from '@/data/changeOrders'
+import { useCreateChangeOrder, type ApprovalEntry, type CoHistoryEntry } from '@/data/changeOrders'
 import { ITEMS, ASSEMBLIES } from '@/domain/catalog'
 import { bomFor } from '@/domain/boms'
 import { useEcoApprovalFlow, type AiSuggestion } from '@/data/ecoApprovalFlow'
@@ -386,19 +386,55 @@ function EcoNew({
 
   const handleCreate = async () => {
     setIsSubmitting(true);
-    // Build initial pending approvals from the SELECTED routing stages.
-    // selectedStages already reflects the backend routing (or the domain fallback) for the
-    // routing name the user chose — use it directly so the saved approvals match what is shown.
-    const initialApprovals = selectedStages.map((r: any) => ({
-      role: r.g,
-      approver: r.members?.[0] ?? r.n ?? 'Unassigned',
-      req: r.req,
-      stage: r.stage ?? 1,
-      status: 'pending',
-      signedAt: '',
-      comment: '',
-      others: (r.members ?? []).slice(1),
-    }));
+
+    // Build initial pending approvals from the correct source for the chosen mode:
+    //   ai      → AI suggestions filtered to the roles the user kept (picked)
+    //   manual  → the manually-configured stages (manStages)
+    //   routing → the backend/domain routing stages (selectedStages)
+    let initialApprovals: ApprovalEntry[];
+
+    if (mode === 'ai') {
+      initialApprovals = aiSuggestions
+        .filter((s) => picked.includes(s.g))
+        .map((s) => {
+          const members = s.who.split(',').map((n) => n.trim()).filter(Boolean);
+          return {
+            role: s.g,
+            approver: members[0] ?? 'Unassigned',
+            req: s.req,
+            stage: s.stage ?? 1,
+            status: 'pending' as const,
+            signedAt: '',
+            comment: '',
+            others: members.slice(1),
+          };
+        });
+    } else if (mode === 'manual') {
+      initialApprovals = manStages.flatMap((st: any, idx: number) =>
+        (st.people ?? []).map((person: string) => ({
+          role: st.name || `Stage ${idx + 1}`,
+          approver: person,
+          req: st.req || 'One or more',
+          stage: idx + 1,
+          status: 'pending' as const,
+          signedAt: '',
+          comment: '',
+          others: [],
+        }))
+      );
+    } else {
+      // routing mode — use the selected backend or domain routing stages
+      initialApprovals = selectedStages.map((r: any) => ({
+        role: r.g,
+        approver: r.members?.[0] ?? r.n ?? 'Unassigned',
+        req: r.req,
+        stage: r.stage ?? 1,
+        status: 'pending' as const,
+        signedAt: '',
+        comment: '',
+        others: (r.members ?? []).slice(1),
+      }));
+    }
     try {
       await createChangeOrder({
         coId,
