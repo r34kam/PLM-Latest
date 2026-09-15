@@ -258,6 +258,8 @@ function EcoNew({
         awaitingMe: false,
         effectiveDate: form.eff === "Effective on date" ? form.effDate : "",
         completedDate: "",
+        approvals: [],
+        currentStageNum: 0,
       });
       toast.success(`${coId} created${submitToRouting ? " and submitted to routing" : ""}`);
       go({ page: "ecos" });

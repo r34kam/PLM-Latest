@@ -13,34 +13,51 @@ const EXECUTE_NODE_QK = '/api/workflow/execute/node'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+// One entry per role in the routing — persisted on the record, updated as decisions land
+export type ApprovalEntry = {
+  role: string          // e.g. "Construction Engineering – Livermore"
+  approver: string      // primary approver name
+  req: string           // "One or more" | "All members" | "Optional" | "Comments only"
+  stage: number         // 1 or 2
+  status: string        // "pending" | "approved" | "rejected" | "comments"
+  signedAt: string      // "MM/DD/YYYY HH:MM AM" or ""
+  comment: string       // approver's note or ""
+  others: string[]      // other members of this role group
+}
+
 export type ChangeOrder = {
-  id: string          // backend record id
-  coId: string        // change order number, e.g. ECO-011420
+  id: string            // backend record id
+  coId: string          // change order number, e.g. ECO-011420
   title: string
-  type: string        // ECO | DCO | TPCO | RFD
-  cat: string         // full category label
-  stage: string       // Open | Submit | Approval | Effective | Complete | Rejected
-  div: string         // CO | AG
+  type: string          // ECO | DCO | TPCO | RFD
+  cat: string           // full category label
+  stage: string         // Open | Submit | Approval | Effective | Complete | Rejected
+  div: string           // CO | AG
   site: string
   routing: string
   creator: string
   submitter: string
-  dc: string          // document control owner
+  dc: string            // document control owner
   created: string
   submitted: string
   itemCount: number
   modCount: number
-  pnsJson: string     // JSON array of affected part numbers
+  pnsJson: string       // JSON array of affected part numbers
   desc: string
   redline: string
   notes: string
-  priority: string    // Low | Medium | High | Critical
+  priority: string      // Low | Medium | High | Critical
   awaitingMe: boolean
   effectiveDate: string
   completedDate: string
+  approvals: ApprovalEntry[]  // parsed from approvalsJson — real per-role decisions
+  currentStageNum: number     // active approval stage: 0 = not in approval, 1 or 2
 }
 
 export type NewChangeOrder = Omit<ChangeOrder, 'id'>
+
+// Payload shape sent to the backend — approvals serialised to JSON string
+type CoPayload = Omit<NewChangeOrder, 'approvals'> & { approvalsJson: string }
 
 export const CO_STAGES = ['Open', 'Submit', 'Approval', 'Effective', 'Complete', 'Rejected'] as const
 export type CoStage = (typeof CO_STAGES)[number]
@@ -51,6 +68,11 @@ export type CoType = (typeof CO_TYPES)[number]
 export const CO_PRIORITIES = ['Low', 'Medium', 'High', 'Critical'] as const
 
 // ─── Flatten ─────────────────────────────────────────────────────────────────
+
+function parseJsonSafe<T>(raw: string | undefined, fallback: T): T {
+  if (!raw) return fallback
+  try { return JSON.parse(raw) as T } catch { return fallback }
+}
 
 function flatten(raw: any): ChangeOrder {
   const p = raw?.properties ?? raw ?? {}
@@ -79,6 +101,8 @@ function flatten(raw: any): ChangeOrder {
     awaitingMe: p.awaitingMe === true,
     effectiveDate: p.effectiveDate ?? '',
     completedDate: p.completedDate ?? '',
+    approvals: parseJsonSafe<ApprovalEntry[]>(p.approvalsJson, []),
+    currentStageNum: typeof p.currentStageNum === 'number' ? p.currentStageNum : Number(p.currentStageNum ?? 0),
   }
 }
 
@@ -142,6 +166,11 @@ export function useChangeOrdersAwaitingMe() {
 
 // ─── Writes ──────────────────────────────────────────────────────────────────
 
+function toPayload(co: NewChangeOrder): CoPayload {
+  const { approvals, ...rest } = co
+  return { ...rest, approvalsJson: JSON.stringify(approvals ?? []) }
+}
+
 export function useCreateChangeOrder() {
   const mutation = useExecuteWorkflowNodeMutation()
   const qc = useQueryClient()
@@ -150,7 +179,7 @@ export function useCreateChangeOrder() {
       data: {
         id: CREATE.id,
         context: CREATE.context,
-        inputs: { ...CREATE.storedInputs, object_type: CO, rawPayload: co },
+        inputs: { ...CREATE.storedInputs, object_type: CO, rawPayload: toPayload(co) },
       },
     })
     qc.invalidateQueries({ queryKey: [EXECUTE_NODE_QK] })
@@ -162,11 +191,12 @@ export function useUpdateChangeOrder() {
   const mutation = useExecuteWorkflowNodeMutation()
   const qc = useQueryClient()
   return async (recordId: string, co: Partial<NewChangeOrder>) => {
+    const payload = co.approvals !== undefined ? toPayload(co as NewChangeOrder) : co
     await mutation.mutateAsync({
       data: {
         id: UPDATE.id,
         context: UPDATE.context,
-        inputs: { ...UPDATE.storedInputs, object_type: CO, recordId, rawPayload: co },
+        inputs: { ...UPDATE.storedInputs, object_type: CO, recordId, rawPayload: payload },
       },
     })
     qc.invalidateQueries({ queryKey: [EXECUTE_NODE_QK] })

@@ -51,7 +51,29 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
         notes: backendCo.notes,
       }
     : staticEco;
-  const approvalState = deriveApprovalState(eco);
+  // Use real persisted approvals from backend when available; fall back to derived for static ECOs.
+  // Normalise backend ApprovalEntry shape to the legacy {g, n, req, st, at, cm, others} shape
+  // that the Approvals tab rendering already uses — keeping one render path.
+  const backendApprovals = backendCo?.approvals ?? []
+  const approvalState = backendApprovals.length > 0
+    ? (() => {
+        const roles = backendApprovals.map((a) => ({
+          g: a.role,
+          n: a.approver,
+          req: a.req,
+          stage: a.stage,
+          st: a.status,
+          at: a.signedAt,
+          cm: a.comment,
+          others: a.others ?? [],
+        }))
+        const required = roles.filter((r) => r.req !== 'Comments only')
+        const decided = required.filter((r) => r.st !== 'pending')
+        const open = required.filter((r) => r.st === 'pending')
+        const commentsOnly = roles.filter((r) => r.req === 'Comments only')
+        return { roles, required, decided, open, commentsOnly, totalCount: roles.length, requiredCount: required.length, decidedCount: decided.length, openCount: open.length }
+      })()
+    : deriveApprovalState(eco)
   const APPROVALS = approvalState.roles;
   const HISTORY = historyFor(eco);
   const rejected = eco.stage === "Rejected";
