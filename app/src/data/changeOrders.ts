@@ -98,9 +98,15 @@ export type CoHistoryEntry = {
 export type NewChangeOrder = Omit<ChangeOrder, 'id'>
 
 // Payload shape sent to the backend CREATE node — only schema-registered fields.
-// historyJson, extraNotifyJson, ecoItemsJson and commentsJson are sent in a follow-up
-// UPDATE because the workflow CREATE node rejects unregistered schema fields in rawPayload.
-type CoPayload = Omit<NewChangeOrder, 'approvals' | 'ecoItems' | 'comments' | 'history' | 'extraNotifyNames'> & {
+// Fields added after the original object was provisioned are sent in a follow-up UPDATE
+// because the CREATE node rejects unregistered schema fields with additionalProperties errors.
+// Step-2-only fields: ecoItemsJson, commentsJson, historyJson, extraNotifyJson,
+//                     rejectionReason, rejectionNotes, rejectedBy, currentStageNum
+type CoPayload = Omit<
+  NewChangeOrder,
+  | 'approvals' | 'ecoItems' | 'comments' | 'history' | 'extraNotifyNames'
+  | 'rejectionReason' | 'rejectionNotes' | 'rejectedBy' | 'currentStageNum'
+> & {
   approvalsJson: string
 }
 
@@ -220,9 +226,20 @@ export function useChangeOrdersAwaitingMe() {
 
 // ─── Writes ──────────────────────────────────────────────────────────────────
 
-// Create payload — only schema-registered fields; blob arrays are patched in step 2
+// Create payload — only fields registered in the original schema; everything else goes to step 2
 function toPayload(co: NewChangeOrder): CoPayload {
-  const { approvals, ecoItems: _ecoItems, comments: _comments, history: _history, extraNotifyNames: _extraNotifyNames, ...rest } = co
+  const {
+    approvals,
+    ecoItems: _ecoItems,
+    comments: _comments,
+    history: _history,
+    extraNotifyNames: _extra,
+    rejectionReason: _rr,
+    rejectionNotes: _rn,
+    rejectedBy: _rb,
+    currentStageNum: _csn,
+    ...rest
+  } = co
   return {
     ...rest,
     approvalsJson: JSON.stringify(approvals ?? []),
@@ -266,6 +283,10 @@ export function useCreateChangeOrder() {
                 commentsJson: JSON.stringify(co.comments ?? []),
                 historyJson: JSON.stringify(co.history ?? []),
                 extraNotifyJson: JSON.stringify(co.extraNotifyNames ?? []),
+                currentStageNum: co.currentStageNum ?? 0,
+                rejectionReason: co.rejectionReason ?? '',
+                rejectionNotes: co.rejectionNotes ?? '',
+                rejectedBy: co.rejectedBy ?? '',
               },
             },
           },
