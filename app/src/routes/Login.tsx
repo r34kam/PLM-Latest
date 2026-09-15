@@ -7,6 +7,11 @@ import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 
+// ── Demo credentials available for autofill ─────────────────────────────────
+const DEMO_USERS = [
+  { label: "Document Control Lead", username: "hannerose.santiago@topcon.com", password: "TopconPLM2024!" },
+] as const;
+
 // Login route — a template translation of the UnifyApps "login" interface page.
 //
 // It fetches the identity providers configured for ONE interface and renders the
@@ -59,18 +64,151 @@ function ErrorAlert({ message }: { message?: string }) {
   );
 }
 
-function AuthCard({ children }: { children: React.ReactNode }) {
+// ── Left decorative panel ────────────────────────────────────────────────────
+function HeroPanelSvg() {
+  // SVG chart curve with milestone dots matching the reference image
   return (
-    <div className="flex w-[416px] max-w-[calc(100vw-2rem)] flex-col rounded-2xl border border-border bg-background px-8 py-10 shadow-sm">
-      {children}
+    <svg
+      viewBox="0 0 740 800"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0.9 }}
+      aria-hidden="true"
+      preserveAspectRatio="xMidYMid slice"
+    >
+      {/* Grid lines horizontal */}
+      {[200, 300, 400, 500, 600].map((y) => (
+        <line key={y} x1="0" y1={y} x2="740" y2={y} stroke="#1e3a52" strokeWidth="1" strokeDasharray="4 6" />
+      ))}
+      {/* Grid lines vertical */}
+      {[150, 300, 450, 600].map((x) => (
+        <line key={x} x1={x} y1="0" x2={x} y2="800" stroke="#1e3a52" strokeWidth="1" strokeDasharray="4 6" />
+      ))}
+      {/* Main curve */}
+      <path
+        d="M -20 600 C 80 590, 160 560, 230 510 C 310 450, 360 400, 440 310 C 510 230, 580 150, 760 40"
+        stroke="#4a9fd4"
+        strokeWidth="2.5"
+        fill="none"
+      />
+      {/* Milestone dots */}
+      <circle cx="160" cy="548" r="5" fill="#4a9fd4" />
+      <circle cx="232" cy="500" r="5" fill="#4a9fd4" />
+      {/* Current milestone — larger, with ring */}
+      <circle cx="440" cy="310" r="14" stroke="#4a9fd4" strokeWidth="2" fill="#0d2137" />
+      <circle cx="440" cy="310" r="6" fill="#4a9fd4" />
+      {/* Vertical dashed drop line from current dot */}
+      <line x1="440" y1="324" x2="440" y2="800" stroke="#4a9fd4" strokeWidth="1" strokeDasharray="4 6" opacity="0.5" />
+      {/* Data labels */}
+      <text x="200" y="378" fill="#a0c4e0" fontSize="12" fontFamily="monospace" letterSpacing="1">REV A</text>
+      <text x="456" y="258" fill="#ffffff" fontSize="11" fontFamily="monospace" letterSpacing="1">● REV C // CCB APPROVED</text>
+      <text x="540" y="190" fill="#a0c4e0" fontSize="11" fontFamily="monospace" letterSpacing="1">PROD SYNC</text>
+    </svg>
+  );
+}
+
+function HeroPanel() {
+  return (
+    <div
+      style={{
+        flex: "0 0 49%",
+        background: "linear-gradient(160deg, #0d2137 0%, #0a1929 60%, #061220 100%)",
+        position: "relative",
+        overflow: "hidden",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+        padding: "28px 32px 40px",
+        minHeight: "100vh",
+      }}
+      data-test-id="login-hero-panel"
+    >
+      <HeroPanelSvg />
+
+      {/* Logo */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, position: "relative", zIndex: 1 }}>
+        <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+          <div style={{ width: 10, height: 10, borderRadius: "50%", background: "#4a9fd4", border: "2px solid #4a9fd4" }} />
+          <div style={{ width: 10, height: 10, borderRadius: "50%", border: "2px solid #4a9fd4", background: "transparent" }} />
+        </div>
+        <span style={{ color: "#ffffff", fontSize: 16, fontWeight: 600, letterSpacing: "0.02em" }}>Topcon PLM</span>
+      </div>
+
+      {/* System data top-right */}
+      <div style={{ position: "absolute", top: 28, right: 32, zIndex: 1 }}>
+        <span style={{ color: "#4a9fd4", fontSize: 11, fontFamily: "monospace", letterSpacing: "0.08em" }}>
+          SYS: LIV-HQ / TOL: ±0.01MM
+        </span>
+      </div>
+
+      {/* Bottom copy */}
+      <div style={{ position: "relative", zIndex: 1 }}>
+        <h2 style={{
+          color: "#ffffff",
+          fontSize: "clamp(28px, 4vw, 42px)",
+          fontWeight: 400,
+          lineHeight: 1.2,
+          letterSpacing: "-0.01em",
+          marginBottom: 16,
+          fontFamily: "Georgia, 'Times New Roman', serif",
+          textWrap: "balance",
+        }}>
+          Nobody notices the bill of materials until the line stops.
+        </h2>
+        <p style={{
+          color: "#7aafcf",
+          fontSize: 14,
+          lineHeight: 1.65,
+          maxWidth: 480,
+        }}>
+          So Topcon PLM traces every engineering change, CAD revision, and supplier sign-off back to the rule, the spec and the deal that produced it — before anyone has to come and ask.
+        </p>
+      </div>
     </div>
   );
 }
 
+// ── Right panel shell ────────────────────────────────────────────────────────
+function AuthPanel({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        flex: "0 0 51%",
+        background: "#f4f6f8",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "100vh",
+        padding: "48px 32px",
+      }}
+      data-test-id="login-auth-panel"
+    >
+      <div style={{ width: "100%", maxWidth: 420 }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function AuthCard({ children }: { children: React.ReactNode }) {
+  return <div style={{ width: "100%" }}>{children}</div>;
+}
+
 function CardHeading() {
   return (
-    <h1 className="mb-8 text-center font-serif text-2xl font-medium text-foreground">
-      Log in to your account
+    <h1
+      style={{
+        fontSize: 32,
+        fontWeight: 400,
+        color: "#0a1929",
+        marginBottom: 32,
+        fontFamily: "Georgia, 'Times New Roman', serif",
+        letterSpacing: "-0.02em",
+      }}
+      data-test-id="login-heading"
+    >
+      Sign in
     </h1>
   );
 }
@@ -133,65 +271,67 @@ export default function Login() {
 
   if (isLoading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-muted/30">
-        <LoaderCircle className="size-6 animate-spin text-muted-foreground" />
+      <main style={{ display: "flex", minHeight: "100vh" }}>
+        <HeroPanel />
+        <AuthPanel>
+          <LoaderCircle className="size-6 animate-spin text-muted-foreground" />
+        </AuthPanel>
       </main>
     );
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
-      {mode === "sso" && (
-        <SsoView
-          idps={ssoIdps}
-          hasUsernameLogin={Boolean(passwordIdp || otpIdp)}
-          error={errorMessage}
-          pending={login.isPending}
-          onSelect={(idp) => submitLogin(idp.id!, {})}
-          onUsernameLogin={() => setMode(passwordIdp ? "password" : "otp")}
-        />
-      )}
+    <main style={{ display: "flex", minHeight: "100vh" }} data-test-id="login-page">
+      <HeroPanel />
+      <AuthPanel>
+        {mode === "sso" && (
+          <SsoView
+            idps={ssoIdps}
+            hasUsernameLogin={Boolean(passwordIdp || otpIdp)}
+            error={errorMessage}
+            pending={login.isPending}
+            onSelect={(idp) => submitLogin(idp.id!, {})}
+            onUsernameLogin={() => setMode(passwordIdp ? "password" : "otp")}
+          />
+        )}
 
-      {mode === "password" && passwordIdp && (
-        <PasswordView
-          idp={passwordIdp}
-          error={errorMessage}
-          pending={login.isPending}
-          showBack={ssoIdps.length > 0}
-          onBack={() => setMode("sso")}
-          onSubmit={(username, password) =>
-            submitLogin(passwordIdp.id!, {
-              username,
-              password,
-              rememberMe: true,
-            })
-          }
-        />
-      )}
-
-      {mode === "otp" && otpIdp && (
-        <OtpView
-          error={errorMessage}
-          pending={login.isPending}
-          showBack={ssoIdps.length > 0}
-          onBack={() => setMode("sso")}
-          onSubmit={(username) =>
-            submitLogin(otpIdp.id!, { username, rememberMe: true })
-          }
-        />
-      )}
-
-      {mode === null && (
-        <AuthCard>
-          <CardHeading />
-          <ErrorAlert
-            message={
-              errorMessage ??
-              "No sign-in methods are configured for this application."
+        {mode === "password" && passwordIdp && (
+          <PasswordView
+            idp={passwordIdp}
+            error={errorMessage}
+            pending={login.isPending}
+            showBack={ssoIdps.length > 0}
+            onBack={() => setMode("sso")}
+            onSubmit={(username, password) =>
+              submitLogin(passwordIdp.id!, { username, password, rememberMe: true })
             }
           />
-        </AuthCard>
-      )}
+        )}
+
+        {mode === "otp" && otpIdp && (
+          <OtpView
+            error={errorMessage}
+            pending={login.isPending}
+            showBack={ssoIdps.length > 0}
+            onBack={() => setMode("sso")}
+            onSubmit={(username) =>
+              submitLogin(otpIdp.id!, { username, rememberMe: true })
+            }
+          />
+        )}
+
+        {mode === null && (
+          <AuthCard>
+            <CardHeading />
+            <ErrorAlert
+              message={
+                errorMessage ??
+                "No sign-in methods are configured for this application."
+              }
+            />
+          </AuthCard>
+        )}
+      </AuthPanel>
     </main>
   );
 }
@@ -256,6 +396,26 @@ function SsoView({
   );
 }
 
+const FIELD_LABEL: React.CSSProperties = {
+  fontSize: 13,
+  fontWeight: 500,
+  color: "#374151",
+  marginBottom: 6,
+  display: "block",
+};
+
+const FIELD_INPUT: React.CSSProperties = {
+  width: "100%",
+  padding: "10px 14px",
+  border: "1px solid #d1d5db",
+  borderRadius: 6,
+  fontSize: 14,
+  background: "#ffffff",
+  color: "#111827",
+  outline: "none",
+  boxSizing: "border-box",
+};
+
 function PasswordView({
   idp,
   error,
@@ -273,22 +433,27 @@ function PasswordView({
 }) {
   const [username, setUsername] = React.useState("");
   const [password, setPassword] = React.useState("");
+  const usernameLabel = (idp.uiConfig?.form?.usernameLabel as string | undefined) ?? "Username";
+
+  function handleAutofill(u: string, p: string) {
+    setUsername(u);
+    setPassword(p);
+  }
 
   return (
     <AuthCard>
       <CardHeading />
       <form
-        className="flex flex-col gap-5"
+        style={{ display: "flex", flexDirection: "column", gap: 20 }}
         onSubmit={(e) => {
           e.preventDefault();
           onSubmit(username, password);
         }}
+        data-test-id="login-form"
       >
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="username">
-            {(idp.uiConfig?.form?.usernameLabel as string | undefined) ??
-              "Username"}
-          </Label>
+        {/* Username */}
+        <div>
+          <label htmlFor="username" style={FIELD_LABEL}>{usernameLabel}</label>
           <Input
             id="username"
             autoFocus
@@ -297,10 +462,14 @@ function PasswordView({
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
+            style={FIELD_INPUT}
+            data-test-id="login-username-input"
           />
         </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="password">Password</Label>
+
+        {/* Password */}
+        <div>
+          <label htmlFor="password" style={FIELD_LABEL}>Password</label>
           <PasswordInput
             id="password"
             autoComplete="current-password"
@@ -308,30 +477,73 @@ function PasswordView({
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            style={FIELD_INPUT}
+            data-test-id="login-password-input"
           />
-        </div>
-
-        <div className="-mt-2 flex justify-end">
-          <Link
-            to="/forgot-password"
-            className="text-sm font-semibold text-primary hover:underline"
-          >
-            Forgot password?
-          </Link>
+          {/* Forgot password — right-aligned, below the field */}
+          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+            <Link
+              to="/forgot-password"
+              style={{ fontSize: 13, color: "#1e3a8a", fontWeight: 500, textDecoration: "none" }}
+              data-test-id="login-forgot-password-link"
+            >
+              Forgot password?
+            </Link>
+          </div>
         </div>
 
         <ErrorAlert message={error} />
 
-        <Button
+        {/* Sign in button */}
+        <button
           type="submit"
-          size="lg"
-          className="h-11 w-full"
           disabled={pending}
+          data-test-id="login-submit-btn"
+          style={{
+            width: "100%",
+            padding: "13px 0",
+            background: pending ? "#3b6ea8" : "#1d4ed8",
+            color: "#ffffff",
+            border: "none",
+            borderRadius: 6,
+            fontSize: 15,
+            fontWeight: 600,
+            cursor: pending ? "wait" : "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            transition: "background .15s",
+          }}
         >
           {pending && <LoaderCircle className="size-4 animate-spin" />}
-          Continue
-        </Button>
+          Sign in
+        </button>
       </form>
+
+      {/* Demo user autofill */}
+      <div style={{ marginTop: 32, borderTop: "1px solid #e5e7eb", paddingTop: 20 }}>
+        {DEMO_USERS.map((u) => (
+          <div
+            key={u.username}
+            style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
+          >
+            <span style={{ fontSize: 12, color: "#6b7280" }}>Demo user: {u.label}</span>
+            <button
+              type="button"
+              onClick={() => handleAutofill(u.username, u.password)}
+              data-test-id="login-autofill-btn"
+              style={{
+                fontSize: 12, fontWeight: 600, color: "#1d4ed8",
+                background: "none", border: "none", cursor: "pointer",
+                textDecoration: "underline", padding: 0,
+              }}
+            >
+              Autofill
+            </button>
+          </div>
+        ))}
+      </div>
 
       {showBack && <BackToLogin onBack={onBack} />}
     </AuthCard>
