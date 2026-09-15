@@ -48,11 +48,11 @@ export function useKitExtractor() {
       },
     })
 
-    const response = result?.response as { kitNumber?: string; items?: ExtractedItem[] } | undefined
-    return {
-      kitNumber: response?.kitNumber ?? '',
-      items: response?.items ?? [],
-    }
+    // The automation returns its output directly on result.response
+    const raw = result?.response as Record<string, unknown> | undefined
+    const kitNumber = typeof raw?.kitNumber === 'string' ? raw.kitNumber : ''
+    const items = Array.isArray(raw?.items) ? (raw.items as ExtractedItem[]) : []
+    return { kitNumber, items }
   }
 
   return { extract, isPending, error }

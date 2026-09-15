@@ -10,6 +10,7 @@ import { WizardModal } from '@/components/primitives/WizardModal'
 import { Stepper } from '@/components/primitives/Stepper'
 import { useRoutings } from '@/data/admin'
 import { useAllItems } from '@/data/items'
+import { useKitExtractor } from '@/data/kitExtractor'
 import { useCreateChangeOrder } from '@/data/changeOrders'
 import { ITEMS, ASSEMBLIES } from '@/domain/catalog'
 import { bomFor } from '@/domain/boms'
@@ -159,6 +160,7 @@ function EcoNew({
     }
   }
   const { data: allBackendItems } = useAllItems();
+  const { extract: extractFromInstructions } = useKitExtractor();
   const [form, setForm] = useState({
     cat: "ECO: Engineering Change Order", title: "",
     div: "CO \u2013 Construction", site: "1210 \u2013 TPS Livermore", eccn: "N/A \u2014 not used", notes: "", dc: "",
@@ -218,31 +220,54 @@ function EcoNew({
     setExpandedKits((prev) => ({ ...prev, [it.pn]: true }));
     setKitPickQ(""); // picker stays open — user clicks "Done adding" to close
   };
-  // Parse redline instructions to find matching catalog items and auto-add them
-  const pickFromInstructions = () => {
+  // Use the Kit BOM Change Extractor automation to parse redline instructions
+  const pickFromInstructions = async () => {
+    const text = form.desc ?? '';
+    if (!text.trim()) return;
     setItemMode('instructions');
     setInstructionsParsing(true);
-    // Defer the heavy work so React renders the spinner first
-    setTimeout(() => {
-      const text = form.desc ?? '';
-      // Extract tokens that look like part numbers: patterns like 1003140-01 or 6+ digit numerics
-      const pnPattern = /\b([A-Z0-9]{4,}-[0-9]{2,}|[0-9]{6,})\b/gi;
-      const found = Array.from(new Set(Array.from(text.matchAll(pnPattern), (m) => m[1].toUpperCase())));
+    try {
+      const result = await extractFromInstructions(text);
       const catalog: any[] = allBackendItems ?? [...ITEMS, ...ASSEMBLIES];
-      const matched = catalog.filter((it: any) => found.includes((it.pn ?? '').toUpperCase()));
-      // Fuzzy word match on item names present in instructions
-      const words = text.toLowerCase().split(/\W+/).filter((w) => w.length > 4);
-      const nameMatched = catalog.filter((it: any) =>
-        !matched.includes(it) &&
-        words.some((w) => (it.name ?? '').toLowerCase().includes(w))
-      );
-      const toAdd = [...matched, ...nameMatched].slice(0, 10);
-      toAdd.forEach((it) => addKit(it));
-      setTimeout(() => {
-        setInstructionsParsing(false);
-        setItemMode('manual');
-      }, 600);
-    }, 50);
+
+      // Find the kit in the catalogue by kitNumber
+      const kitRecord = catalog.find(
+        (it: any) => (it.pn ?? '').toUpperCase() === (result.kitNumber ?? '').toUpperCase()
+      ) ?? {
+        pn: result.kitNumber,
+        name: result.kitNumber,
+        rev: 'A',
+        cat: 'KIT',
+        phase: 'In Production',
+      };
+
+      if (result.kitNumber) {
+        addKit(kitRecord);
+        // Add each extracted item as a BOM edit on the kit
+        result.items.forEach((item) => {
+          const rawType = (item.type ?? 'add').toLowerCase();
+          const editType: BomEditType =
+            rawType === 'remove' || rawType === 'delete' ? 'DELETE'
+            : rawType === 'modify' || rawType === 'update' || rawType === 'update_qty' ? 'UPDATE_QTY'
+            : rawType === 'update_desc' ? 'UPDATE_DESC'
+            : 'ADD';
+          const bomEdit: BomEdit = {
+            id: `${result.kitNumber}-${Date.now()}-${Math.random()}`,
+            type: editType,
+            pn: item.pn ?? '',
+            name: item.name ?? '',
+            qty: item.qty ?? '',
+            newValue: item.newValue ?? '',
+          };
+          addBomEdit(kitRecord.pn, bomEdit);
+        });
+      }
+    } catch {
+      toast.error('Failed to extract from instructions — check your redline text and try again.');
+    } finally {
+      setInstructionsParsing(false);
+      setItemMode('manual');
+    }
   };
 
   const removeKit = (pn: string) => setKits((prev) => prev.filter((k) => k.pn !== pn));
