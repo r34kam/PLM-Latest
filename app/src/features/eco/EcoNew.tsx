@@ -1551,36 +1551,50 @@ function EcoNew({
                             </div>
 
                             {!isCollapsed && (
-                              <div className="eco-stage-body" data-test-id={`ai-stage-table-${st}`}>
-                                {rows.map((a2) => {
-                                  const on = picked.includes(a2.g);
-                                  return (
-                                    <div key={a2.g} className="eco-role-row" data-test-id={`ai-suggestion-row-${a2.g}`}>
-                                      <input
-                                        type="checkbox"
-                                        checked={on}
-                                        onChange={() => setPicked(on ? picked.filter((x) => x !== a2.g) : [...picked, a2.g])}
-                                        aria-label={`Include ${a2.g}`}
-                                        style={{ flexShrink: 0, marginRight: 12 }}
-                                      />
-                                      <span style={{ fontWeight: 600, fontSize: 13, flex: '0 0 220px' }}>{a2.g}</span>
-                                      <span className="sub" style={{ flex: '0 0 160px', fontSize: 13 }}>{a2.who}</span>
-                                      <span style={{ flex: '0 0 110px' }}>
-                                        <Chip k={a2.req === "One or more" ? "blue" : a2.req === "Optional" ? "gray" : a2.req === "Comments only" ? "gray" : "vio"}>
-                                          {a2.req}
-                                        </Chip>
-                                      </span>
-                                      <span
-                                        style={{ fontSize: 13, fontWeight: 700, color: a2.conf > 80 ? T.ok : a2.conf > 60 ? T.warn : T.g400, cursor: 'help' }}
-                                        title={a2.why}
-                                        aria-label={`Confidence ${a2.conf}% — ${a2.why}`}
-                                      >
-                                        {a2.conf}%
-                                      </span>
-                                    </div>
-                                  );
-                                })}
-                              </div>
+                              <table className="tbl" data-test-id={`ai-stage-table-${st}`}>
+                                <thead>
+                                  <tr>
+                                    <th style={{ width: 32 }}></th>
+                                    <th>Approval role</th>
+                                    <th>People</th>
+                                    <th style={{ width: 120 }}>Requirement</th>
+                                    <th style={{ width: 80 }}>Confidence</th>
+                                    <th>Why</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {rows.map((a2) => {
+                                    const on = picked.includes(a2.g);
+                                    return (
+                                      <tr key={a2.g} data-test-id={`ai-suggestion-row-${a2.g}`}>
+                                        <td>
+                                          <input
+                                            type="checkbox"
+                                            checked={on}
+                                            onChange={() => setPicked(on ? picked.filter((x) => x !== a2.g) : [...picked, a2.g])}
+                                            aria-label={`Include ${a2.g}`}
+                                          />
+                                        </td>
+                                        <td style={{ fontWeight: 600, fontSize: 13 }}>{a2.g}</td>
+                                        <td className="sub" style={{ fontSize: 13 }}>{a2.who}</td>
+                                        <td>
+                                          <Chip k={a2.req === "One or more" ? "blue" : a2.req === "Optional" ? "gray" : a2.req === "Comments only" ? "gray" : "vio"}>
+                                            {a2.req}
+                                          </Chip>
+                                        </td>
+                                        <td>
+                                          <span
+                                            style={{ fontSize: 13, fontWeight: 700, color: a2.conf > 80 ? T.ok : a2.conf > 60 ? T.warn : T.g400 }}
+                                          >
+                                            {a2.conf}%
+                                          </span>
+                                        </td>
+                                        <td className="sub" style={{ fontSize: 12, maxWidth: 280 }}>{a2.why}</td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
                             )}
                           </div>
                         );
