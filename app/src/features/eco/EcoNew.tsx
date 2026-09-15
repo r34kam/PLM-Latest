@@ -152,6 +152,7 @@ function EcoNew({
   const [expandedKits, setExpandedKits] = useState<Record<string, boolean>>({});
   const [editingBomEdit, setEditingBomEdit] = useState<{ kitPn: string; editId: string | null } | null>(null);
   const [bomEditDraft, setBomEditDraft] = useState<Partial<BomEdit>>({});
+  const [pnDropOpen, setPnDropOpen] = useState(false);
   const [kitChildPickOpen, setKitChildPickOpen] = useState<string | null>(null); // kitPn of open picker
   const [kitChildQ, setKitChildQ] = useState("");
   const kitFileInputRef = useRef<HTMLInputElement>(null);
@@ -1187,10 +1188,62 @@ function EcoNew({
                                 {editingBomEdit?.kitPn === kit.pn && (
                                   <div className="eco-kit-edit-form" data-test-id={`eco-kit-edit-form-${kit.pn}`}>
                                     <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-                                      <div style={{ width: 160 }}>
+                                      <div style={{ width: 200, position: 'relative' }}>
                                         <Field label="Part number">
-                                          <Input value={bomEditDraft.pn || ''} onChange={(e: any) => setBomEditDraft((p) => ({ ...p, pn: e.target.value }))} placeholder="e.g. 1006394-01" data-test-id="eco-edit-pn-input" />
+                                          <Input
+                                            value={bomEditDraft.pn || ''}
+                                            autoComplete="off"
+                                            placeholder="Search or type part number"
+                                            data-test-id="eco-edit-pn-input"
+                                            onChange={(e: any) => {
+                                              setBomEditDraft((p) => ({ ...p, pn: e.target.value, name: '' }));
+                                              setPnDropOpen(true);
+                                            }}
+                                            onFocus={() => setPnDropOpen(true)}
+                                            onBlur={() => setTimeout(() => setPnDropOpen(false), 180)}
+                                          />
                                         </Field>
+                                        {pnDropOpen && (
+                                          <div
+                                            data-test-id="eco-pn-dropdown"
+                                            style={{
+                                              position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 200,
+                                              background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8,
+                                              boxShadow: '0 4px 16px rgba(0,0,0,.12)', maxHeight: 220, overflowY: 'auto',
+                                              marginTop: 2,
+                                            }}
+                                          >
+                                            {((allBackendItems ?? ITEMS) as any[])
+                                              .filter((it: any) => (it.pn + ' ' + it.name).toLowerCase().includes((bomEditDraft.pn || '').toLowerCase()))
+                                              .slice(0, 12)
+                                              .map((it: any) => (
+                                                <button
+                                                  key={it.pn}
+                                                  type="button"
+                                                  data-test-id={`eco-pn-option-${it.pn}`}
+                                                  onMouseDown={(e) => {
+                                                    e.preventDefault();
+                                                    setBomEditDraft((p) => ({ ...p, pn: it.pn, name: it.name }));
+                                                    setPnDropOpen(false);
+                                                  }}
+                                                  style={{
+                                                    display: 'flex', alignItems: 'center', gap: 10,
+                                                    width: '100%', padding: '8px 12px',
+                                                    background: 'none', border: 'none', cursor: 'pointer',
+                                                    textAlign: 'left', borderBottom: '1px solid #f1f5f9',
+                                                  }}
+                                                  onMouseEnter={(e) => { e.currentTarget.style.background = '#f8fafc'; }}
+                                                  onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
+                                                >
+                                                  <span style={{ fontFamily: 'ui-monospace,"SF Mono",Menlo,Consolas,monospace', fontSize: 12, fontWeight: 700, color: '#0a2233', flexShrink: 0 }}>{it.pn}</span>
+                                                  <span style={{ fontSize: 12, color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{it.name}</span>
+                                                </button>
+                                              ))}
+                                            {((allBackendItems ?? ITEMS) as any[]).filter((it: any) => (it.pn + ' ' + it.name).toLowerCase().includes((bomEditDraft.pn || '').toLowerCase())).length === 0 && (
+                                              <div style={{ padding: '10px 12px', fontSize: 12, color: '#94a3b8' }}>No parts found</div>
+                                            )}
+                                          </div>
+                                        )}
                                       </div>
                                       <div style={{ flex: 1, minWidth: 160 }}>
                                         <Field label="Description">
@@ -1653,9 +1706,7 @@ function EcoNew({
                                 <span className="sub" style={{ fontSize: 13 }}>{(r.members ?? []).join(', ')}</span>
                               </div>
                             ))}
-                            <button type="button" className="eco-add-role-link" data-test-id={`routing-add-role-${st}`}>
-                              + Add role
-                            </button>
+
                           </div>
                         )}
                       </div>
