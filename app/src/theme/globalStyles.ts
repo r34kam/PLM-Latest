@@ -487,6 +487,11 @@ textarea.inp{height:auto;padding:8px 10px;line-height:1.5;resize:vertical}
 .emptyslot{border:none;box-shadow:0 1px 2px rgba(2,42,66,.05);border-radius:10px;padding:18px;text-align:center;font-size:11px;color:#7993a8;background:#ffffff}
 @media(max-width:1150px){.fb{grid-template-columns:1fr !important}}
 @keyframes spin{to{transform:rotate(360deg)}}
+.eco-info-tip{position:relative;display:inline-flex;align-items:center;color:#94a3b8;cursor:default;line-height:0}
+.eco-info-tip:hover{color:#64748b}
+.eco-info-tip-bubble{visibility:hidden;opacity:0;pointer-events:none;position:absolute;left:calc(100% + 8px);top:50%;transform:translateY(-50%);background:#1e293b;color:#f1f5f9;font-size:12px;font-weight:400;line-height:1.5;padding:7px 10px;border-radius:6px;white-space:normal;width:200px;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.2);transition:opacity .12s ease,visibility .12s ease}
+.eco-info-tip-bubble::before{content:'';position:absolute;right:100%;top:50%;transform:translateY(-50%);border:5px solid transparent;border-right-color:#1e293b}
+.eco-info-tip:hover .eco-info-tip-bubble{visibility:visible;opacity:1}
 @keyframes fadeSlideUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 .spin{animation:spin 0.8s linear infinite}

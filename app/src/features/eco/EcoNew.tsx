@@ -18,7 +18,6 @@ import { ROUTINGS, ROUTING_NAMES, approvalsFor } from '@/domain/routings'
 import { ME } from '@/domain/session'
 import { ECO_TEMPLATE } from '@/domain/templates'
 import { T } from '@/theme/tokens'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { AlertCircle, Boxes, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, FileSpreadsheet, FileText, Info, Layers, Loader2, Pencil, Plus, Search, Send, ShieldCheck, Sparkles, Trash2, Upload, Users, X } from 'lucide-react'
 import React, { useRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -497,14 +496,12 @@ function EcoNew({
                     <div className="kv-key" style={{ paddingTop: 6 }}>
                       <span className="kv-label" style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
                         Redline instructions
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Info size={13} style={{ color: T.g400, cursor: "default", flexShrink: 0 }} data-test-id="redline-instructions-tooltip-icon" />
-                          </TooltipTrigger>
-                          <TooltipContent side="right" style={{ maxWidth: 220 }}>
+                        <span className="eco-info-tip" data-test-id="redline-instructions-tooltip-icon">
+                          <Info size={13} />
+                          <span className="eco-info-tip-bubble" role="tooltip">
                             This description will be used to create Item list automatically
-                          </TooltipContent>
-                        </Tooltip>
+                          </span>
+                        </span>
                       </span>
                     </div>
                     <div className="kv-val">
