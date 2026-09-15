@@ -71,6 +71,9 @@ function Nav({
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [adminFlyoutOpen, setAdminFlyoutOpen] = useState(false);
   const [adminFlyoutPos, setAdminFlyoutPos] = useState({ top: 0, left: 0 });
+  // Use a ref-based hover counter so enter/leave on EITHER the icon OR the fixed flyout
+  // both contribute — only close when both are un-hovered.
+  const adminHoverCount = useRef(0);
   const adminFlyoutTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const userBtnRef = useRef<HTMLButtonElement>(null);
   const adminBtnRef = useRef<HTMLButtonElement>(null);
@@ -83,15 +86,20 @@ function Nav({
     { id: 'Form Builder', label: 'Form Builder' },
   ] as const;
 
-  const handleAdminGroupEnter = useCallback(() => {
+  const handleAdminEnter = useCallback(() => {
     if (adminFlyoutTimer.current) clearTimeout(adminFlyoutTimer.current);
+    adminHoverCount.current += 1;
     const rect = adminBtnRef.current?.getBoundingClientRect();
     if (rect) setAdminFlyoutPos({ top: rect.top, left: rect.right });
     setAdminFlyoutOpen(true);
   }, []);
 
-  const handleAdminGroupLeave = useCallback(() => {
-    adminFlyoutTimer.current = setTimeout(() => setAdminFlyoutOpen(false), 200);
+  const handleAdminLeave = useCallback(() => {
+    adminHoverCount.current = Math.max(0, adminHoverCount.current - 1);
+    if (adminFlyoutTimer.current) clearTimeout(adminFlyoutTimer.current);
+    adminFlyoutTimer.current = setTimeout(() => {
+      if (adminHoverCount.current === 0) setAdminFlyoutOpen(false);
+    }, 80);
   }, []);
 
   function handleLogout() {
@@ -296,16 +304,16 @@ function Nav({
           <>
             {mini ? (
               <div
-                onMouseEnter={handleAdminGroupEnter}
-                onMouseLeave={handleAdminGroupLeave}
+                onMouseEnter={handleAdminEnter}
+                onMouseLeave={handleAdminLeave}
                 style={{ position: 'relative' }}
                 data-test-id="admin-flyout-group"
               >
               <AdminNavBtn
                 btnRef={adminBtnRef}
                 active={page === "admin"}
-                onMouseEnter={handleAdminGroupEnter}
-                onMouseLeave={handleAdminGroupLeave}
+                onMouseEnter={handleAdminEnter}
+                onMouseLeave={handleAdminLeave}
                 onClick={() => { go({ page: "admin", tab: adminTab || "Users" }); try { navigate("/admin"); } catch (e) {} }}
               /></div>
             ) : (
@@ -341,8 +349,8 @@ function Nav({
         <div
           role="menu"
           data-test-id="admin-flyout"
-          onMouseEnter={handleAdminGroupEnter}
-          onMouseLeave={handleAdminGroupLeave}
+          onMouseEnter={handleAdminEnter}
+          onMouseLeave={handleAdminLeave}
           style={{
             position: 'fixed',
             top: adminFlyoutPos.top,
