@@ -1,7 +1,8 @@
 /**
  * PLM Data Exporter automation wrapper.
- * Sends a dataType string ('bom_item' or 'item') and gets back a fileUrl
- * which the app opens automatically to trigger the Excel download.
+ * Sends a dataType string ('bom_item' or 'item'), gets back a fileUrl,
+ * then fetches the file as a blob and triggers a direct download —
+ * no new tab or popup required.
  */
 import { useExecuteWorkflowNodeMutation } from '@unifyapps/app-builder-sdk/hooks/workflow'
 
@@ -12,43 +13,60 @@ const PAGE_SLUG = `global-page-of-${import.meta.env.VITE_APPLICATION_ID}`
 
 export type ExportDataType = 'bom_item' | 'item'
 
+/** Derive a filename from the URL or fall back to a sensible default. */
+function filenameFromUrl(url: string, dataType: ExportDataType): string {
+  try {
+    const pathname = new URL(url).pathname
+    const last = pathname.split('/').pop()
+    if (last && last.includes('.')) return decodeURIComponent(last)
+  } catch { /* ignore */ }
+  return dataType === 'bom_item' ? 'topcon-kits.xlsx' : 'topcon-parts.xlsx'
+}
+
+/** Fetch the file and trigger a browser download without opening a new tab. */
+async function downloadFromUrl(url: string, filename: string): Promise<void> {
+  const resp = await fetch(url)
+  const blob = await resp.blob()
+  const objectUrl = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = objectUrl
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(objectUrl), 5000)
+}
+
 export function useExportData() {
   const { mutateAsync, isPending, error, reset } = useExecuteWorkflowNodeMutation()
 
-  // `targetWindow` must be opened synchronously in the click handler BEFORE this
-  // async call — browsers block window.open() inside async callbacks as a popup.
-  async function runExport(dataType: ExportDataType, targetWindow: Window | null): Promise<void> {
-    try {
-      const result = await mutateAsync({
-        data: {
-          context: {
-            appName: 'callables',
-            resourceName: 'callables_call_automation',
-            resourceVersion: RESOURCE_VERSION,
-          },
-          id: DATA_SOURCE_ID,
-          inputs: {
-            automationId: AUTOMATION_ID,
-            version: '-1',
-            runtimeConnections: {},
-            parameters: {
-              __internals__: { m: 'BUILDER', s: PAGE_SLUG, c: 'PLATFORM', p: 'browser' },
-              dataType,
-            },
-            synchronous: true,
-          },
-          options: {},
+  async function runExport(dataType: ExportDataType): Promise<void> {
+    const result = await mutateAsync({
+      data: {
+        context: {
+          appName: 'callables',
+          resourceName: 'callables_call_automation',
+          resourceVersion: RESOURCE_VERSION,
         },
-      })
+        id: DATA_SOURCE_ID,
+        inputs: {
+          automationId: AUTOMATION_ID,
+          version: '-1',
+          runtimeConnections: {},
+          parameters: {
+            __internals__: { m: 'BUILDER', s: PAGE_SLUG, c: 'PLATFORM', p: 'browser' },
+            dataType,
+          },
+          synchronous: true,
+        },
+        options: {},
+      },
+    })
 
-      const fileUrl = (result?.response as { fileUrl?: string } | undefined)?.fileUrl
-      if (fileUrl && targetWindow) {
-        targetWindow.location.href = fileUrl
-      } else if (!fileUrl) {
-        targetWindow?.close()
-      }
-    } catch {
-      targetWindow?.close()
+    const fileUrl = (result?.response as { fileUrl?: string } | undefined)?.fileUrl
+    if (fileUrl) {
+      const filename = filenameFromUrl(fileUrl, dataType)
+      await downloadFromUrl(fileUrl, filename)
     }
   }
 
