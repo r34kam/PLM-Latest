@@ -323,15 +323,7 @@ function EcoNew({
 
   // ECO STEPS metadata for the wizard sidebar
   const ECO_WIZARD_STEPS = [
-    {
-      label: "Basic Details",
-      subItems: i === 0 ? [
-        { key: "general", label: "Change Details", active: subSection === "general", status: isGeneralFilled ? "done" as const : "pending" as const, onClick: () => setSubSection("general") },
-        { key: "desc", label: "Effectivity", active: subSection === "desc", status: isDescFilled ? "done" as const : "pending" as const, onClick: () => setSubSection("desc") },
-        { key: "files", label: "Associated Files", active: subSection === "files", status: isFilesFilled ? "done" as const : "none" as const, onClick: () => setSubSection("files") },
-        { key: "confirmations", label: "Confirmations", active: subSection === "confirmations", status: isConfirmationsFilled ? "done" as const : "none" as const, onClick: () => setSubSection("confirmations") },
-      ] : undefined,
-    },
+    { label: "Basic Details", sub: "Title, type & priority" },
     { label: "Add Items", sub: "Kits & assemblies to change" },
     { label: "Approvals", sub: "Routing & approval method" },
     { label: "Summary", sub: "Review & submit" },

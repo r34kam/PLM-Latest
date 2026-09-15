@@ -204,20 +204,16 @@ textarea.inp{height:auto;padding:8px 10px;line-height:1.5;resize:vertical}
 .stpline{height:1px;background:${T.g200};flex:1;margin:0 14px;min-width:16px}
 
 /* ---- eco wizard 2-column layout & sub-navigation ---- */
-/* eco-wizard: layout wrapper is now transparent — content is full-width in the right panel */
-.eco-wizard-layout{display:contents}
-.eco-subnav{display:none}
-
-/* ── WizardModal sub-items (indented children under the active step) ── */
-.mws-subitems{display:flex;flex-direction:column;gap:1px;margin-left:40px;margin-top:2px;margin-bottom:4px}
-.mws-subitem{display:flex;align-items:center;gap:8px;width:100%;padding:6px 10px 6px 8px;border-radius:7px;font-size:12px;font-weight:500;color:#627d98;background:transparent;border:none;text-align:left;cursor:pointer;transition:background .1s,color .1s;white-space:nowrap}
-.mws-subitem:hover{background:#f0f4f8;color:#0a2233}
-.mws-subitem.active{background:#EEF4FF;color:#0A4F8F;font-weight:600}
-.mws-subitem-dot{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.4;flex-shrink:0;transition:opacity .1s}
-.mws-subitem.active .mws-subitem-dot{opacity:1}
-.mws-subitem-label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
-.mws-subitem-check{width:16px;height:16px;border-radius:50%;background:#E8F5EE;color:#0B7A4B;display:grid;place-items:center;flex-shrink:0}
-.mws-subitem-pending{width:6px;height:6px;border-radius:50%;background:#f59e0b;flex-shrink:0}
+/* eco-wizard-layout: now single-column — subnav flows horizontally above content */
+.eco-wizard-layout{display:flex;flex-direction:column;gap:16px}
+.eco-subnav{display:flex;flex-direction:row;align-items:center;gap:2px;border-bottom:1px solid ${T.g200};padding-bottom:0;background:transparent;box-shadow:none;border-radius:0;padding:0}
+.eco-subnav-btn{display:flex;align-items:center;gap:7px;padding:9px 14px;border-radius:0;font-size:13px;font-weight:500;color:${T.g600};background:transparent;border:none;border-bottom:2px solid transparent;text-align:left;cursor:pointer;transition:color .12s ease,border-color .12s ease;white-space:nowrap;flex-shrink:0}
+.eco-subnav-btn:hover{color:${T.g900};border-bottom-color:${T.g300}}
+.eco-subnav-btn.on{color:${T.brand};font-weight:600;border-bottom-color:${T.brand}}
+.eco-subnav-btn .sub-badge{font-size:11px;font-weight:600;padding:1px 6px;border-radius:10px;background:${T.g100};color:${T.g700}}
+.eco-subnav-btn.on .sub-badge{background:${T.brand};color:#fff}
+.eco-subnav-btn .sub-check{width:16px;height:16px;border-radius:50%;background:#E8F5EE;color:#0B7A4B;display:grid;place-items:center;flex-shrink:0}
+.eco-subnav-btn .sub-pending{width:16px;height:16px;border-radius:50%;background:#FDF4E3;color:#9A6206;display:grid;place-items:center;flex-shrink:0}
 
 /* ---- key value form grid ---- */
 .kv-form{display:flex;flex-direction:column}
