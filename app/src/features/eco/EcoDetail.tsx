@@ -474,7 +474,11 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                 </div>
                 <div className="row">
                   <button className="btn sm"><Upload size={12} />Bulk import</button>
-                  <button className="btn sm"><Plus size={12} />Add item</button>
+                  <button
+                    className="btn sm"
+                    style={{
+                      overflow: "hidden"
+                    }}><Plus size={12} />Add item</button>
                 </div>
               </div>
 
@@ -1428,7 +1432,6 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
           </Field>
         </Modal>
       )}
-
       {/* ── Comment Drawer ── */}
       {commentDrawerOpen && (
         <>
