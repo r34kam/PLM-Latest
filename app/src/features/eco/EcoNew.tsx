@@ -397,16 +397,18 @@ function EcoNew({
 
   const handleCreate = async () => {
     setIsSubmitting(true);
-    // Build initial pending approvals from the selected routing — every role starts as pending
-    const initialApprovals = approvalsFor(routing, 'Approval').map((r: any) => ({
+    // Build initial pending approvals from the SELECTED routing stages.
+    // selectedStages already reflects the backend routing (or the domain fallback) for the
+    // routing name the user chose — use it directly so the saved approvals match what is shown.
+    const initialApprovals = selectedStages.map((r: any) => ({
       role: r.g,
-      approver: r.n,
+      approver: r.members?.[0] ?? r.n ?? 'Unassigned',
       req: r.req,
-      stage: 1,
-      status: r.req === 'Comments only' ? 'pending' : 'pending',
+      stage: r.stage ?? 1,
+      status: 'pending',
       signedAt: '',
       comment: '',
-      others: r.others ?? [],
+      others: (r.members ?? []).slice(1),
     }));
     try {
       await createChangeOrder({

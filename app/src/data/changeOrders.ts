@@ -233,7 +233,13 @@ export function useUpdateChangeOrder() {
   const mutation = useExecuteWorkflowNodeMutation()
   const qc = useQueryClient()
   return async (recordId: string, co: Partial<NewChangeOrder>) => {
-    const payload = co.approvals !== undefined ? toPayload(co as NewChangeOrder) : co
+    // Serialize any array fields that the backend stores as JSON strings.
+    // Sending the raw array bypasses the backend schema and the update is silently dropped.
+    const { approvals, ecoItems, comments, ...rest } = co as Partial<NewChangeOrder>
+    const payload: Record<string, unknown> = { ...rest }
+    if (approvals !== undefined) payload.approvalsJson = JSON.stringify(approvals)
+    if (ecoItems !== undefined) payload.ecoItemsJson = JSON.stringify(ecoItems)
+    if (comments !== undefined) payload.commentsJson = JSON.stringify(comments)
     await mutation.mutateAsync({
       data: {
         id: UPDATE.id,
