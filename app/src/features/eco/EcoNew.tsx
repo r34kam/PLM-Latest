@@ -274,10 +274,20 @@ function EcoNew({
     const nextRevCode = it.rev.length === 1 && it.rev >= "A" && it.rev < "Z"
       ? String.fromCharCode(it.rev.charCodeAt(0) + 1)
       : `${it.rev}+1`;
+    // Pre-seed bomEdits with the kit's current BOM children so they appear immediately
+    const children = bomFor(it.pn);
+    const seededEdits: BomEdit[] = children.map((child: any) => ({
+      id: `seed-${child.pn}-${Date.now()}`,
+      type: 'ADD' as BomEditType,
+      pn: child.pn,
+      name: child.name,
+      qty: child.qty ?? '',
+      newValue: '',
+    }));
     setKits((prev) => [...prev, {
       pn: it.pn, name: it.name, rev: it.rev, cat: it.cat || "KIT", phase: it.phase || "In Production",
       currentRev: it.rev, newRev: nextRevCode,
-      bomEdits: [], bomFile: null, editMode: "inline",
+      bomEdits: seededEdits, bomFile: null, editMode: "inline",
     }]);
     setExpandedKits((prev) => ({ ...prev, [it.pn]: true }));
     setKitPickQ(""); // picker stays open — user clicks "Done adding" to close
@@ -1161,10 +1171,12 @@ function EcoNew({
                                       </tr>
                                     </thead>
                                     <tbody>
-                                      {kit.bomEdits.map((edit) => (
+                                      {kit.bomEdits.map((edit) => {
+                                        const isSeeded = edit.id.startsWith('seed-');
+                                        return (
                                         <tr key={edit.id} data-test-id={`eco-kit-edit-row-${edit.id}`}>
                                           <td style={{ fontFamily: 'ui-monospace,"SF Mono",Menlo,Consolas,monospace', fontSize: 13, color: '#0a2233' }}>
-                                            {edit.type === 'DELETE' ? '−' : edit.type === 'ADD' ? '+' : ''}{edit.pn}
+                                            {!isSeeded && (edit.type === 'DELETE' ? '−' : '+')}{edit.pn}
                                           </td>
                                           <td style={{ fontSize: 13, color: '#374151' }}>{edit.qty || (edit.type === 'UPDATE_QTY' ? edit.newValue : '—')}</td>
                                           <td style={{ fontSize: 13, color: '#374151' }}>
@@ -1180,7 +1192,8 @@ function EcoNew({
                                             </button>
                                           </td>
                                         </tr>
-                                      ))}
+                                        );
+                                      })}
                                     </tbody>
                                   </table>
                                 )}
