@@ -1265,7 +1265,7 @@ function EcoNew({
                     </div>
                   )}
 
-                  {/* ── DONE: results table ── */}
+                  {/* ── DONE: stage-grouped results ── */}
                   {aiState === "done" && (
                     <>
                       <div className="aibox" data-test-id="ai-approval-result-header">
@@ -1291,45 +1291,88 @@ function EcoNew({
                           Based on SOP-DC-004, the division and category of the items on this change, and approver patterns from prior ECOs.
                         </div>
                       </div>
-                      <table className="tbl" data-test-id="ai-suggestions-table">
-                        <thead>
-                          <tr>
-                            <th style={{ width: 30 }}></th>
-                            <th>Approval role</th>
-                            <th>People</th>
-                            <th style={{ width: 150 }}>Confidence</th>
-                            <th>Why</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {aiSuggestions.map((a2) => {
-                            const on = picked.includes(a2.g);
-                            return (
-                              <tr key={a2.g} className={on ? "sel" : ""} data-test-id={`ai-suggestion-row-${a2.g}`}>
-                                <td>
-                                  <input
-                                    type="checkbox"
-                                    checked={on}
-                                    onChange={() => setPicked(on ? picked.filter((x) => x !== a2.g) : [...picked, a2.g])}
-                                    aria-label={`Include ${a2.g}`}
-                                  />
-                                </td>
-                                <td style={{ fontWeight: 600 }}>{a2.g}</td>
-                                <td className="sub">{a2.who}</td>
-                                <td>
-                                  <div className="row" style={{ gap: 7 }}>
-                                    <div style={{ flex: 1, height: 6, background: T.g200, borderRadius: 3, overflow: "hidden" }}>
-                                      <div style={{ width: `${a2.conf}%`, height: "100%", background: a2.conf > 80 ? T.ok : a2.conf > 60 ? T.warn : T.g400 }} />
-                                    </div>
-                                    <b style={{ fontSize: 11 }}>{a2.conf}%</b>
-                                  </div>
-                                </td>
-                                <td className="sub" style={{ maxWidth: 360 }}>{a2.why}</td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
+
+                      {[1, 2].map((st) => {
+                        const rows = aiSuggestions.filter((r) => r.stage === st);
+                        if (!rows.length) return null;
+                        const isCollapsed = Boolean(collapsedStages[`ai-${st}`]);
+                        const stageLabel = st === 1 ? "Functional approval" : "Document control sign-off";
+                        const checkedCount = rows.filter((r) => picked.includes(r.g)).length;
+                        return (
+                          <div key={st} className="stagecard" data-test-id={`ai-stagecard-${st}`}>
+                            <div
+                              className="stagehead"
+                              style={{ cursor: "pointer", userSelect: "none" }}
+                              onClick={() => toggleStageCollapse(`ai-${st}`)}
+                              data-test-id={`ai-stage-toggle-${st}`}
+                            >
+                              <button
+                                type="button"
+                                className="btn gh sm"
+                                style={{ width: 24, height: 24, minWidth: 24, padding: 0, display: "grid", placeItems: "center", marginRight: 2 }}
+                                title={isCollapsed ? "Expand stage" : "Collapse stage"}
+                                aria-label={isCollapsed ? "Expand stage" : "Collapse stage"}
+                                onClick={(e) => { e.stopPropagation(); toggleStageCollapse(`ai-${st}`); }}
+                                data-test-id={`ai-stage-chevron-${st}`}
+                              >
+                                {isCollapsed ? <ChevronRight size={14} /> : <ChevronDown size={14} />}
+                              </button>
+                              <span className="stagepill">Stage {st}</span>
+                              <b style={{ padding: "3px 6px" }}>{stageLabel}</b>
+                              <span className="mini">{checkedCount} of {rows.length} selected</span>
+                              <Chip k="vio" icon={Sparkles}>AI suggested</Chip>
+                            </div>
+
+                            {!isCollapsed && (
+                              <table className="tbl" data-test-id={`ai-stage-table-${st}`}>
+                                <thead>
+                                  <tr>
+                                    <th style={{ width: 30 }}></th>
+                                    <th>Approval role</th>
+                                    <th>People</th>
+                                    <th style={{ width: 90 }}>Requirement</th>
+                                    <th style={{ width: 150 }}>Confidence</th>
+                                    <th>Why</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {rows.map((a2) => {
+                                    const on = picked.includes(a2.g);
+                                    return (
+                                      <tr key={a2.g} className={on ? "sel" : ""} data-test-id={`ai-suggestion-row-${a2.g}`}>
+                                        <td>
+                                          <input
+                                            type="checkbox"
+                                            checked={on}
+                                            onChange={() => setPicked(on ? picked.filter((x) => x !== a2.g) : [...picked, a2.g])}
+                                            aria-label={`Include ${a2.g}`}
+                                          />
+                                        </td>
+                                        <td style={{ fontWeight: 600 }}>{a2.g}</td>
+                                        <td className="sub">{a2.who}</td>
+                                        <td>
+                                          <Chip k={a2.req === "One or more" ? "blue" : a2.req === "Optional" ? "gray" : a2.req === "Comments only" ? "gray" : "vio"}>
+                                            {a2.req}
+                                          </Chip>
+                                        </td>
+                                        <td>
+                                          <div className="row" style={{ gap: 7 }}>
+                                            <div style={{ flex: 1, height: 6, background: T.g200, borderRadius: 3, overflow: "hidden" }}>
+                                              <div style={{ width: `${a2.conf}%`, height: "100%", background: a2.conf > 80 ? T.ok : a2.conf > 60 ? T.warn : T.g400 }} />
+                                            </div>
+                                            <b style={{ fontSize: 11 }}>{a2.conf}%</b>
+                                          </div>
+                                        </td>
+                                        <td className="sub" style={{ maxWidth: 320 }}>{a2.why}</td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            )}
+                          </div>
+                        );
+                      })}
                     </>
                   )}
 

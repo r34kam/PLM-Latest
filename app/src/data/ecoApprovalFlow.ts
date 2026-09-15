@@ -10,6 +10,8 @@ export type AiSuggestion = {
   who: string     // comma-separated approvers
   conf: number    // 0–100 confidence
   why: string     // reasoning text
+  stage: number   // 1 = functional approval, 2 = document control gate
+  req: string     // "One or more" | "All members" | "Optional" | "Comments only"
   drop?: boolean  // true = pre-unchecked (AI recommends skipping)
 }
 
