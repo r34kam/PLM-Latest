@@ -3,226 +3,15 @@ import { Empty } from '@/components/primitives/Empty'
 import { Field, Input, Select } from '@/components/primitives/Field'
 import { useCreateBomItem } from '@/data/bomItems'
 import { useAllItems, useCreateItem } from '@/data/items'
-import { useKitExtractor, type ExtractedItem } from '@/data/kitExtractor'
 import { ITEMS } from '@/domain/catalog'
 import { PEOPLE } from '@/domain/people'
 import { T } from '@/theme/tokens'
 import { useUppy } from '@unifyapps/app-builder-sdk/hooks/upload'
-import { AlertTriangle, Check, ChevronRight, Layers, Loader2, Plus, Search, Sparkles, Trash2, Upload, X } from 'lucide-react'
+import { Check, ChevronRight, Layers, Plus, Search, Trash2, Upload, X } from 'lucide-react'
 import React, { useState } from 'react'
 import { toast } from 'sonner'
 import { WizardModal } from '@/components/primitives/WizardModal'
 
-// ─── Instruction extractor panel ─────────────────────────────────────────────
-
-type ExtractorPanelProps = {
-  onAdd: (items: Array<{ pn: string; name: string; cat: string; qty: string; uom: string; refDes: string; notes: string }>) => void
-  onCancel: () => void
-}
-
-function ExtractorPanel({ onAdd, onCancel }: ExtractorPanelProps) {
-  const [text, setText] = useState('')
-  const { extract, isPending } = useKitExtractor()
-  const [result, setResult] = useState<{ kitNumber: string; items: ExtractedItem[] } | null>(null)
-  const [selected, setSelected] = useState<Set<number>>(new Set())
-  const [extractError, setExtractError] = useState<string | null>(null)
-
-  async function handleExtract() {
-    if (!text.trim()) return
-    setExtractError(null)
-    setResult(null)
-    setSelected(new Set())
-    try {
-      const res = await extract(text.trim())
-      setResult(res)
-      // Pre-select all 'add' type items
-      const preSelected = new Set(
-        res.items.map((_, i) => i).filter((i) => {
-          const t = (res.items[i].type ?? '').toLowerCase()
-          return !t || t === 'add'
-        })
-      )
-      setSelected(preSelected)
-    } catch {
-      setExtractError('Failed to extract — check your instructions and try again.')
-    }
-  }
-
-  function toggleItem(idx: number) {
-    setSelected((prev) => {
-      const next = new Set(prev)
-      if (next.has(idx)) next.delete(idx); else next.add(idx)
-      return next
-    })
-  }
-
-  function handleConfirm() {
-    if (!result) return
-    const toAdd = result.items
-      .filter((_, i) => selected.has(i))
-      .map((item) => {
-        const [qty = '1', uom = 'EA'] = (item.qty ?? '1 EA').split(' ')
-        return {
-          pn: item.pn ?? '',
-          name: item.name ?? '',
-          cat: 'HARDWARE',
-          qty,
-          uom,
-          refDes: '',
-          notes: item.newValue ? `New value: ${item.newValue}` : '',
-        }
-      })
-    onAdd(toAdd)
-  }
-
-  function typeChip(type: string) {
-    const t = (type ?? 'add').toLowerCase()
-    if (t === 'remove') return { bg: T.badBg, color: T.bad, label: 'Remove' }
-    if (t === 'modify') return { bg: T.warnBg, color: T.warn, label: 'Modify' }
-    return { bg: T.okBg, color: T.ok, label: 'Add' }
-  }
-
-  return (
-    <div
-      style={{ background: T.b25, border: `1px solid ${T.g200}`, borderRadius: 10, padding: 16 }}
-      data-test-id="extractor-panel"
-    >
-      <div className="row" style={{ gap: 8, marginBottom: 12 }}>
-        <Sparkles size={15} style={{ color: T.brand }} />
-        <h3 style={{ margin: 0 }}>Pick from instructions</h3>
-      </div>
-
-      {/* Instruction input */}
-      {!result && (
-        <>
-          <div style={{ marginBottom: 8, fontSize: 13, color: T.g600 }}>
-            Paste your change instructions, email text, or engineering note — the AI will extract the kit number and items.
-          </div>
-          <textarea
-            className="inp"
-            rows={5}
-            placeholder="e.g. Add 4x M5 screws (PN 2505-0103) and 1x LNA PCB (PN 05-080401-01LF) to kit 1052100-01..."
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            style={{ width: '100%', marginBottom: 10, resize: 'vertical' }}
-            data-test-id="extractor-text-input"
-          />
-          {extractError && (
-            <div
-              className="row"
-              style={{ gap: 8, background: T.badBg, color: T.bad, padding: '8px 12px', borderRadius: 8, fontSize: 13, marginBottom: 10 }}
-              data-test-id="extractor-error"
-            >
-              <AlertTriangle size={13} />{extractError}
-            </div>
-          )}
-          <div className="row" style={{ justifyContent: 'flex-end', gap: 8 }}>
-            <button type="button" className="btn" onClick={onCancel} data-test-id="extractor-cancel-btn">Cancel</button>
-            <button
-              type="button"
-              className="btn pri"
-              disabled={!text.trim() || isPending}
-              onClick={handleExtract}
-              data-test-id="extractor-extract-btn"
-            >
-              {isPending ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
-              {isPending ? 'Extracting…' : 'Extract items'}
-            </button>
-          </div>
-        </>
-      )}
-
-      {/* Results */}
-      {result && (
-        <>
-          {result.kitNumber && (
-            <div style={{ marginBottom: 10 }}>
-              <span className="sub">Kit number: </span>
-              <span style={{ fontWeight: 700, fontSize: 13 }}>{result.kitNumber}</span>
-            </div>
-          )}
-          {result.items.length === 0 ? (
-            <div
-              className="row"
-              style={{ gap: 8, background: T.warnBg, color: T.warn, padding: '8px 12px', borderRadius: 8, fontSize: 13, marginBottom: 10 }}
-              data-test-id="extractor-no-items"
-            >
-              <AlertTriangle size={13} />No items could be extracted. Try rephrasing your instructions.
-            </div>
-          ) : (
-            <div style={{ border: `1px solid ${T.g200}`, borderRadius: 8, overflow: 'hidden', marginBottom: 12 }} data-test-id="extractor-results-table">
-              <table className="tbl">
-                <thead>
-                  <tr>
-                    <th style={{ width: 34 }}>Add</th>
-                    <th>Type</th>
-                    <th>Part number</th>
-                    <th>Name</th>
-                    <th>Qty</th>
-                    <th>Notes</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {result.items.map((item, idx) => {
-                    const chip = typeChip(item.type)
-                    const isSelected = selected.has(idx)
-                    return (
-                      <tr key={idx} data-test-id={`extractor-item-${idx}`}>
-                        <td>
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            aria-label={`Include ${item.pn || item.name}`}
-                            onChange={() => toggleItem(idx)}
-                          />
-                        </td>
-                        <td>
-                          <span style={{
-                            background: chip.bg, color: chip.color,
-                            padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600,
-                            display: 'inline-block', whiteSpace: 'nowrap',
-                          }}>
-                            {chip.label}
-                          </span>
-                        </td>
-                        <td style={{ fontWeight: 600 }}>{item.pn || '—'}</td>
-                        <td>{item.name || '—'}</td>
-                        <td>{item.qty || '—'}</td>
-                        <td className="sub">{item.newValue || '—'}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-          <div className="row" style={{ justifyContent: 'space-between', gap: 8 }}>
-            <button
-              type="button"
-              className="btn sm"
-              onClick={() => { setResult(null); setSelected(new Set()) }}
-              data-test-id="extractor-retry-btn"
-            >
-              Try again
-            </button>
-            <div className="row" style={{ gap: 8 }}>
-              <button type="button" className="btn" onClick={onCancel} data-test-id="extractor-cancel-result-btn">Cancel</button>
-              <button
-                type="button"
-                className="btn pri"
-                disabled={selected.size === 0}
-                onClick={handleConfirm}
-                data-test-id="extractor-confirm-btn"
-              >
-                <Check size={13} />Add {selected.size} item{selected.size !== 1 ? 's' : ''} to BOM
-              </button>
-            </div>
-          </div>
-        </>
-      )}
-    </div>
-  )
-}
 
 function ItemNew({ go, renderHeaderActions, isModal = false, onClose }: {
   go: any;
@@ -273,8 +62,6 @@ function ItemNew({ go, renderHeaderActions, isModal = false, onClose }: {
     pn: string; name: string; cat: string; qty: string; uom: string; refDes: string; notes: string;
     pickerQuery: string;
   } | null>(null);
-  const [showExtractor, setShowExtractor] = useState(false);
-
   // All items catalogue for the BOM picker in ItemNew
   const { data: newItemCatalogue } = useAllItems();
   const sections = isKitCat ? ["Identity", "Attributes", "SAP attributes", "BOM items"] : ["Identity", "Attributes", "SAP attributes"];
@@ -617,40 +404,25 @@ function ItemNew({ go, renderHeaderActions, isModal = false, onClose }: {
               <h3>Bill of materials</h3>
               <div className="sub" style={{ marginTop: 3 }}>Add the component parts that go into this {itemCat}. You can also add more after the kit is created.</div>
             </div>
-            <div className="row" style={{ gap: 8 }}>
-              <button
-                type="button"
-                className="btn"
-                data-test-id="add-bom-instructions-btn"
-                onClick={() => { setShowExtractor(true); setAddBomDraftModal(null); }}
-              >
-                <Sparkles size={13} />Pick from instructions
-              </button>
-              <button
-                type="button"
-                className="btn"
-                data-test-id="add-bom-draft-btn"
-                onClick={() => { setAddBomDraftModal({ pn: "", name: "", cat: "HARDWARE", qty: "1", uom: "EA", refDes: "", notes: "", pickerQuery: "" }); setShowExtractor(false); }}
-              >
-                <Plus size={13} />Add item
-              </button>
-            </div>
+            <button
+              type="button"
+              className="btn"
+              data-test-id="add-bom-draft-btn"
+              onClick={() => setAddBomDraftModal({ pn: "", name: "", cat: "HARDWARE", qty: "1", uom: "EA", refDes: "", notes: "", pickerQuery: "" })}
+            >
+              <Plus size={13} />Add item
+            </button>
           </div>
 
-          {bomDraft.length === 0 && !showExtractor && !addBomDraftModal ? (
+          {bomDraft.length === 0 && !addBomDraftModal ? (
             <Empty
               icon={Layers}
               title="No BOM items yet"
               body="Add component parts to build the bill of materials for this kit."
               action={
-                <div className="row" style={{ gap: 8 }}>
-                  <button className="btn" onClick={() => setShowExtractor(true)} data-test-id="empty-bom-instructions-btn">
-                    <Sparkles size={13} />Pick from instructions
-                  </button>
-                  <button className="btn" onClick={() => setAddBomDraftModal({ pn: "", name: "", cat: "HARDWARE", qty: "1", uom: "EA", refDes: "", notes: "", pickerQuery: "" })} data-test-id="empty-bom-add-btn">
-                    <Plus size={13} />Add first item
-                  </button>
-                </div>
+                <button className="btn" onClick={() => setAddBomDraftModal({ pn: "", name: "", cat: "HARDWARE", qty: "1", uom: "EA", refDes: "", notes: "", pickerQuery: "" })} data-test-id="empty-bom-add-btn">
+                  <Plus size={13} />Add first item
+                </button>
               }
             />
           ) : null}
@@ -682,17 +454,6 @@ function ItemNew({ go, renderHeaderActions, isModal = false, onClose }: {
                 ))}
               </tbody>
             </table>
-          )}
-
-          {/* ExtractorPanel */}
-          {showExtractor && (
-            <ExtractorPanel
-              onAdd={(items) => {
-                setBomDraft((prev) => [...prev, ...items]);
-                setShowExtractor(false);
-              }}
-              onCancel={() => setShowExtractor(false)}
-            />
           )}
 
           {/* Inline Add BOM draft — item picker */}
