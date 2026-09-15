@@ -1352,10 +1352,10 @@ function EcoNew({
       {i === 2 && (
         <div className="stack" data-test-id="eco-new-approvals-step">
           {!mode ? (
-            <div data-test-id="approval-method-selection">
-              <div style={{ fontWeight: 700, fontSize: 15, color: '#0a2233', marginBottom: 4 }}>Select Approval Method</div>
-              <div className="sub" style={{ fontSize: 12, marginBottom: 20 }}>Choose how reviewer stages should be determined for this change order</div>
-              <div className="approval-choice-grid" data-test-id="approval-choices-grid">
+            <div data-test-id="approval-method-selection" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, minHeight: 320, padding: '40px 0', textAlign: 'center' }}>
+              <div style={{ fontWeight: 700, fontSize: 24, color: '#1e2d3d', marginBottom: 8 }}>How would you like to set approvals?</div>
+              <div className="sub" style={{ fontSize: 14, color: '#64748b', marginBottom: 32 }}>Choose how reviewer stages should be determined for this change order</div>
+              <div className="approval-choice-grid" style={{ width: '100%' }} data-test-id="approval-choices-grid">
                 <button
                   type="button"
                   className="approval-choice-card"

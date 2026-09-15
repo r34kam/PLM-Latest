@@ -445,7 +445,7 @@ textarea.inp{height:auto;padding:8px 10px;line-height:1.5;resize:vertical}
 .approval-choices-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:14px}
 @media(max-width:900px){.approval-choices-grid{grid-template-columns:1fr}}
 /* Approval method cards — radio-style, subtle, matching reference */
-.approval-choice-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.approval-choice-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:16px;width:100%}
 .approval-choice-card{position:relative;display:flex;flex-direction:column;padding:22px 20px 20px;background:#ffffff;border:1px solid #e2e6ef;border-radius:16px;cursor:pointer;transition:border-color .18s,box-shadow .18s;outline:none;width:100%;text-align:left;box-shadow:0 1px 4px rgba(0,0,0,.06)}
 .approval-choice-card:hover{border-color:#cbd5e1;box-shadow:0 4px 16px rgba(0,0,0,.10)}
 .approval-choice-card.selected{border-color:#3b6ea8;box-shadow:0 0 0 2px rgba(59,110,168,.15)}
