@@ -208,9 +208,11 @@ function Nav({
           hasChevron={true}
           chevronOpen={itemsMenuOpen || page === "kits" || page === "parts"}
           onClick={() => {
-            if (!mini) {
-              setItemsMenuOpen((prev: boolean) => !prev);
+            if (mini) {
+              go({ page: "kits" });
             } else {
+              setItemsMenuOpen((prev: boolean) => !prev);
+              // Always navigate to kits when clicking Items in expanded nav
               go({ page: "kits" });
             }
           }}

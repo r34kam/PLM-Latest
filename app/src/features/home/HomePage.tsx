@@ -37,12 +37,21 @@ function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = ''
 
   const isApprover = userRole === 'approver'
 
-  // Backend change orders — approvers see only their engaged COs
+  // Backend change orders
   const { data: rawOrders, loading: ordersLoading } = useAllChangeOrders();
-  const allOrders = useMemo(
-    () => isApprover ? rawOrders.filter((o) => o.awaitingMe) : rawOrders,
-    [isApprover, rawOrders]
-  );
+
+  // For approvers: filter to only COs where this user appears in the approval board
+  // (either as the primary approver or as one of the 'others' in a role group).
+  // This ensures KPIs and the table reflect only their own engagements.
+  const allOrders = useMemo(() => {
+    if (!isApprover || !userName) return rawOrders
+    return rawOrders.filter((o) =>
+      o.approvals.some(
+        (entry) => entry.approver === userName || (entry.others ?? []).includes(userName)
+      )
+    )
+  }, [isApprover, userName, rawOrders])
+
   const kpis = useMemo(() => deriveCoKpis(allOrders), [allOrders]);
   const awaiting = useMemo(
     () => allOrders.filter((o) => o.awaitingMe || o.stage === 'Rejected'),
@@ -125,10 +134,10 @@ function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = ''
         ) : (
           <>
             <Kpi
-              label="Open / Submit"
-              value={kpis.open + kpis.submit}
-              icon={Pencil}
-              onClick={() => go({ page: "ecos", filter: "Open" })}
+              label={isApprover ? "Awaiting my review" : "Open / Submit"}
+              value={isApprover ? allOrders.filter((o) => o.awaitingMe).length : kpis.open + kpis.submit}
+              icon={isApprover ? Clock : Pencil}
+              onClick={() => go({ page: "ecos", filter: isApprover ? "Approval" : "Open" })}
               data-test-id="home-kpi-open"
             />
             <Kpi
