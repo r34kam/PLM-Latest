@@ -903,7 +903,12 @@ function EcoNew({
                   className="approval-choice-card item-choice-card"
                   onClick={() => setItemMode('manual')}
                   data-test-id="item-choice-manual"
-                >
+                  style={{
+                    gap: "0px",
+                    borderWidth: "1px",
+                    borderStyle: "solid",
+                    borderColor: "#d1d5db"
+                  }}>
                   <span className="approval-choice-radio" aria-hidden="true"><span className="approval-choice-radio-dot" /></span>
                   <div className="approval-choice-title">Add manually</div>
                   <div className="approval-choice-desc">
@@ -1059,7 +1064,6 @@ function EcoNew({
                             <X size={14} />
                           </button>
                         </div>
-
                         {/* ── Expanded body ── */}
                         {isExpanded && (
                           <div className="eco-kit-card-body">
@@ -1132,7 +1136,7 @@ function EcoNew({
                               </div>
                             ) : (
                               /* Inline edit mode — BOM lines table + action buttons */
-                              <div>
+                              (<div>
                                 {kit.bomEdits.length > 0 && (
                                   <table className="eco-kit-bom-table" data-test-id={`eco-kit-edits-table-${kit.pn}`}>
                                     <thead>
@@ -1167,7 +1171,6 @@ function EcoNew({
                                     </tbody>
                                   </table>
                                 )}
-
                                 {/* Add edit inline form */}
                                 {editingBomEdit?.kitPn === kit.pn && (
                                   <div className="eco-kit-edit-form" data-test-id={`eco-kit-edit-form-${kit.pn}`}>
@@ -1203,7 +1206,6 @@ function EcoNew({
                                     </div>
                                   </div>
                                 )}
-
                                 {/* Action buttons */}
                                 {editingBomEdit?.kitPn !== kit.pn && (
                                   <div className="row" style={{ gap: 8, marginTop: kit.bomEdits.length > 0 ? 12 : 0 }}>
@@ -1212,7 +1214,7 @@ function EcoNew({
                                     <button className="btn sm" onClick={() => openBomEditDraft(kit.pn, 'UPDATE_DESC')} data-test-id={`eco-kit-add-edit-${kit.pn}-UPDATE_DESC`}>Update description</button>
                                   </div>
                                 )}
-                              </div>
+                              </div>)
                             )}
                           </div>
                         )}
