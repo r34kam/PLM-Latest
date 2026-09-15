@@ -1407,33 +1407,31 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
           })()}
 
           {tab === "History" && (() => {
-            // Use backend-persisted history for real COs; fall back to derived static for demo ECOs
-            const backendHistory: CoHistoryEntry[] = eco.history ?? []
-            const hasBackendHistory = backendHistory.length > 0
+            // Always use backend-persisted history for real COs.
+            // Static demo ECOs (no backendCo) fall back to the derived static list.
+            const historyRows: CoHistoryEntry[] = backendCo
+              ? (backendCo.history ?? [])
+              : HISTORY.map((h: any, k: number) => ({
+                  id: `static-${k}`,
+                  timestamp: new Date().toISOString(),
+                  who: h.w,
+                  action: h.a,
+                }))
             return (
               <div className="card" style={{ overflow: "hidden" }}>
                 <table className="tbl">
                   <thead><tr><th style={{ width: 190 }}>When</th><th style={{ width: 180 }}>Who</th><th>Activity</th></tr></thead>
                   <tbody>
-                    {hasBackendHistory
-                      ? [...backendHistory].reverse().map((h) => (
-                          <tr key={h.id} data-test-id={`history-row-${h.id}`}>
-                            <td className="sub">{new Date(h.timestamp).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</td>
-                            <td style={{ fontWeight: 600 }}>{h.who}</td>
-                            <td>{h.action}</td>
-                          </tr>
-                        ))
-                      : HISTORY.map((h: any, k: number) => (
-                          <tr key={k} data-test-id={`history-row-static-${k}`}>
-                            <td className="sub">{h.t}</td>
-                            <td style={{ fontWeight: 600 }}>{h.w}</td>
-                            <td>{h.a}</td>
-                          </tr>
-                        ))
-                    }
-                    {hasBackendHistory && backendHistory.length === 0 && (
+                    {historyRows.length === 0 && (
                       <tr><td colSpan={3} className="sub" style={{ textAlign: 'center', padding: '24px 0' }}>No history recorded yet.</td></tr>
                     )}
+                    {[...historyRows].reverse().map((h) => (
+                      <tr key={h.id} data-test-id={`history-row-${h.id}`}>
+                        <td className="sub">{new Date(h.timestamp).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</td>
+                        <td style={{ fontWeight: 600 }}>{h.who}</td>
+                        <td>{h.action}</td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
