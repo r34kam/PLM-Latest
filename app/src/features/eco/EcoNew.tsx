@@ -11,7 +11,7 @@ import { Stepper } from '@/components/primitives/Stepper'
 import { useRoutings } from '@/data/admin'
 import { useAllItems } from '@/data/items'
 import { useKitExtractor } from '@/data/kitExtractor'
-import { useCreateChangeOrder } from '@/data/changeOrders'
+import { useCreateChangeOrder, type CoHistoryEntry } from '@/data/changeOrders'
 import { ITEMS, ASSEMBLIES } from '@/domain/catalog'
 import { bomFor } from '@/domain/boms'
 import { useEcoApprovalFlow, type AiSuggestion } from '@/data/ecoApprovalFlow'
@@ -452,6 +452,12 @@ function EcoNew({
         rejectionReason: '',
         rejectionNotes: '',
         rejectedBy: '',
+        history: [{
+          id: `h-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          who: ME.name,
+          action: `Change created — submitted to ${routing} approval flow`,
+        }] as CoHistoryEntry[],
       });
       toast.success(`${coId} submitted to ${routing} approval flow`);
       go({ page: "ecos" });

@@ -14,7 +14,7 @@ import { ECO_010870_ITEMS, LC, ecoById, historyFor } from '@/domain/ecos'
 import { ROUTINGS, deriveApprovalState, notificationRecipientsFor } from '@/domain/routings'
 import { ME } from '@/domain/session'
 import { suppliersFor } from '@/domain/suppliers'
-import { useAllChangeOrders, useUpdateChangeOrder, type EcoComment } from '@/data/changeOrders'
+import { useAllChangeOrders, useUpdateChangeOrder, type EcoComment, type CoHistoryEntry } from '@/data/changeOrders'
 import { useExportEcoExcel } from '@/data/export'
 import { useSendReminder } from '@/data/reminder'
 import { downloadFile } from '@/lib/download'
@@ -58,8 +58,9 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
         rejectionReason: backendCo.rejectionReason ?? '',
         rejectionNotes: backendCo.rejectionNotes ?? '',
         rejectedBy: backendCo.rejectedBy ?? '',
+        history: backendCo.history ?? [],
       }
-    : { ...staticEco, ecoItems: [] as any[], comments: [] as any[], rejectionReason: '', rejectionNotes: '', rejectedBy: '' };
+    : { ...staticEco, ecoItems: [] as any[], comments: [] as any[], rejectionReason: '', rejectionNotes: '', rejectedBy: '', history: [] as CoHistoryEntry[] };
   // Use real persisted approvals from backend when available; fall back to derived for static ECOs.
   // Normalise backend ApprovalEntry shape to the legacy {g, n, req, st, at, cm, others} shape
   // that the Approvals tab rendering already uses — keeping one render path.
@@ -138,11 +139,20 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
     setIsDcRejecting(true)
     try {
       if (backendCo) {
+        const rejecterName = currentUserName || ME.name
+        const entry: CoHistoryEntry = {
+          id: `h-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          who: rejecterName,
+          action: `Rejected by DC — ${dcRejectReason.trim()}`,
+        }
+        const updatedHistory = [...(eco.history ?? []), entry]
         await updateChangeOrder(backendCo.id, {
           stage: 'Rejected',
           rejectionReason: dcRejectReason.trim(),
           rejectionNotes: dcRejectNotes.trim(),
-          rejectedBy: currentUserName || ME.name,
+          rejectedBy: rejecterName,
+          history: updatedHistory,
         } as any)
       }
       setModal(null)
@@ -156,17 +166,41 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
     }
   }
   const canApprove = isApproverRole && eco.stage === 'Approval' && (eco.awaitingMe === true || eco.mine === true)
-  const handleApprove = () => { setApprovalDone('approved') }
+  const handleApprove = async () => {
+    const approverName = currentUserName || ME.name
+    if (backendCo) {
+      const entry: CoHistoryEntry = {
+        id: `h-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        who: approverName,
+        action: `Approved — ${approverName}`,
+      }
+      const updatedHistory = [...(eco.history ?? []), entry]
+      try {
+        await updateChangeOrder(backendCo.id, { history: updatedHistory } as any)
+      } catch { /* non-blocking */ }
+    }
+    setApprovalDone('approved')
+  }
   const handleReject = async () => {
     if (!rejectReason.trim()) return
     setIsRejecting(true)
     try {
       if (backendCo) {
+        const rejecterName = currentUserName || ME.name
+        const entry: CoHistoryEntry = {
+          id: `h-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          who: rejecterName,
+          action: `Rejected — ${rejectReason.trim()}`,
+        }
+        const updatedHistory = [...(eco.history ?? []), entry]
         await updateChangeOrder(backendCo.id, {
           stage: 'Rejected',
           rejectionReason: rejectReason.trim(),
           rejectionNotes: rejectNotes.trim(),
-          rejectedBy: currentUserName || ME.name,
+          rejectedBy: rejecterName,
+          history: updatedHistory,
         } as any)
       }
       setApprovalDone('rejected')
@@ -1245,23 +1279,67 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
           })()}
 
           {tab === "Notifications" && (() => {
-            const recipients = notificationRecipientsFor(eco);
+            // For real backend COs: derive recipients from stored approvals (the actual approval board members)
+            // For static demo ECOs: fall back to the static notificationRecipientsFor helper
+            const approvalRoles: any[] = (backendCo ? backendApprovals : APPROVALS) as any[]
+            let recipients: { name: string; reason: string; notifyOn: string; checked: boolean }[] = []
+
+            if (backendCo && approvalRoles.length > 0) {
+              const map = new Map<string, { name: string; reason: string; notifyOn: string; checked: boolean }>()
+              // Submitter always first
+              const submitterName = eco.submitter && eco.submitter !== '—' ? eco.submitter : ME.name
+              map.set(submitterName, {
+                name: submitterName,
+                reason: 'Part of the approval board · submitted this change',
+                notifyOn: 'Every status change',
+                checked: true,
+              })
+              // Each approver in the flow
+              for (const role of approvalRoles) {
+                // role.n = approver name, role.g = group
+                const name = role.n ?? role.name ?? ''
+                const group = role.g ?? role.group ?? ''
+                if (!name) continue
+                if (map.has(name)) {
+                  const ex = map.get(name)!
+                  if (!ex.reason.includes('submitted this change')) {
+                    ex.reason = `${ex.reason} · ${group}`
+                  }
+                } else {
+                  map.set(name, {
+                    name,
+                    reason: group ? `Part of the approval board · ${group}` : 'Part of the approval board',
+                    notifyOn: 'Every status change',
+                    checked: role.st === 'decided' || role.st === 'approved' || role.st === undefined,
+                  })
+                }
+              }
+              recipients = Array.from(map.values())
+            } else {
+              recipients = notificationRecipientsFor(eco).map((r: any) => ({ ...r, checked: true }))
+            }
+
             return (
               <div className="stack">
                 <div className="bet">
-                  <div><h3>{`${recipients.length} users will be notified of status changes`}</h3>
-                    <div className="sub" style={{ marginTop: 2 }}>Employees and partners are notified on status change. Suppliers are notified only when the change completes.</div></div>
-                  <div className="row"><button className="btn sm"><Plus size={12} />Add</button><button className="btn sm gh"><Trash2 size={12} /></button></div>
+                  <div>
+                    <h3 data-test-id="notifications-heading">{`${recipients.length} users will be notified of status changes`}</h3>
+                    <div className="sub" style={{ marginTop: 2 }}>Employees and partners are notified on status change. Suppliers are notified only when the change completes.</div>
+                  </div>
+                  <div className="row"><button className="btn sm" data-test-id="notifications-add-btn"><Plus size={12} />Add</button><button className="btn sm gh" data-test-id="notifications-delete-btn"><Trash2 size={12} /></button></div>
                 </div>
                 <div className="card" style={{ overflow: "hidden" }}>
-                  <table className="tbl">
+                  <table className="tbl" data-test-id="notifications-table">
                     <thead><tr><th style={{ width: 26 }}></th><th>#</th><th>Name</th><th>Reason for notification</th><th>Notify on</th></tr></thead>
                     <tbody>
-                      {recipients.map((r: any, k: any) => (
-                        <tr key={r.name}><td><input type="checkbox" defaultChecked /></td><td>{k + 1}</td>
+                      {recipients.map((r, k) => (
+                        <tr key={r.name} data-test-id={`notification-row-${k}`}>
+                          <td><input type="checkbox" defaultChecked={r.checked} data-test-id={`notification-check-${k}`} /></td>
+                          <td>{k + 1}</td>
                           <td className="lnk">{r.name}</td>
                           <td className="sub">{r.reason}</td>
-                          <td><Chip k="gray">{r.notifyOn}</Chip></td></tr>
+                          <td><Chip k="gray">{r.notifyOn}</Chip></td>
+                        </tr>
                       ))}
                     </tbody>
                   </table>
@@ -1271,18 +1349,39 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
             );
           })()}
 
-          {tab === "History" && (
-            <div className="card" style={{ overflow: "hidden" }}>
-              <table className="tbl">
-                <thead><tr><th style={{ width: 170 }}>When</th><th style={{ width: 180 }}>Who</th><th>Activity</th></tr></thead>
-                <tbody>
-                  {HISTORY.map((h: any, k: any) => (
-                    <tr key={k}><td className="sub">{h.t}</td><td style={{ fontWeight: 600 }}>{h.w}</td><td>{h.a}</td></tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          {tab === "History" && (() => {
+            // Use backend-persisted history for real COs; fall back to derived static for demo ECOs
+            const backendHistory: CoHistoryEntry[] = eco.history ?? []
+            const hasBackendHistory = backendHistory.length > 0
+            return (
+              <div className="card" style={{ overflow: "hidden" }}>
+                <table className="tbl">
+                  <thead><tr><th style={{ width: 190 }}>When</th><th style={{ width: 180 }}>Who</th><th>Activity</th></tr></thead>
+                  <tbody>
+                    {hasBackendHistory
+                      ? [...backendHistory].reverse().map((h) => (
+                          <tr key={h.id} data-test-id={`history-row-${h.id}`}>
+                            <td className="sub">{new Date(h.timestamp).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</td>
+                            <td style={{ fontWeight: 600 }}>{h.who}</td>
+                            <td>{h.action}</td>
+                          </tr>
+                        ))
+                      : HISTORY.map((h: any, k: number) => (
+                          <tr key={k} data-test-id={`history-row-static-${k}`}>
+                            <td className="sub">{h.t}</td>
+                            <td style={{ fontWeight: 600 }}>{h.w}</td>
+                            <td>{h.a}</td>
+                          </tr>
+                        ))
+                    }
+                    {hasBackendHistory && backendHistory.length === 0 && (
+                      <tr><td colSpan={3} className="sub" style={{ textAlign: 'center', padding: '24px 0' }}>No history recorded yet.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            )
+          })()}
         </div>
       </Card>
       {modal === "share" && (
