@@ -23,6 +23,7 @@ import { AlertCircle, Boxes, Check, CheckCircle2, ChevronDown, ChevronLeft, Chev
 import React, { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
+import * as XLSX from 'xlsx'
 
 /* ---- BOM edit types ---- */
 type BomEditType = 'ADD' | 'DELETE' | 'UPDATE_DESC' | 'UPDATE_QTY';
@@ -33,6 +34,7 @@ type BomEdit = {
   name: string;
   qty: string;
   newValue: string; // new description or new qty string
+  warn?: string;   // validation warning — PN not found in catalogue, etc.
 };
 type KitItem = {
   pn: string;
@@ -46,6 +48,67 @@ type KitItem = {
   bomFile: StagedFile | null;
   editMode: 'inline' | 'file';
 };
+
+/* ======================== BOM EXCEL PARSER ========================== */
+
+/**
+ * Accepted column headers (case-insensitive, trimmed):
+ *   Change Type | Part Number | Part Name | Qty | Notes / New Value
+ *
+ * Valid Change Type values → mapped to BomEditType:
+ *   ADD / REMOVE / DELETE → DELETE maps to DELETE, ADD → ADD
+ *   UPDATE_QTY / UPDATE QTY / MODIFY QTY → UPDATE_QTY
+ *   UPDATE_DESC / UPDATE DESC / MODIFY DESC → UPDATE_DESC
+ */
+function parseBomExcel(
+  buf: ArrayBuffer,
+  catalogPns: Set<string>
+): { edits: BomEdit[]; parseError?: string } {
+  let wb: XLSX.WorkBook
+  try {
+    wb = XLSX.read(buf, { type: 'array' })
+  } catch {
+    return { edits: [], parseError: 'Could not read file — please upload a valid Excel or CSV file.' }
+  }
+  const sheet = wb.Sheets[wb.SheetNames[0]]
+  const rows: Record<string, string>[] = XLSX.utils.sheet_to_json(sheet, { defval: '' })
+  if (rows.length === 0) return { edits: [], parseError: 'The file appears to be empty.' }
+
+  // Normalise headers: find canonical column by fuzzy match
+  function col(row: Record<string, string>, ...candidates: string[]): string {
+    for (const key of Object.keys(row)) {
+      const k = key.trim().toLowerCase().replace(/[\s_]+/g, '')
+      for (const c of candidates) {
+        if (k === c.toLowerCase().replace(/[\s_]+/g, '')) return String(row[key] ?? '').trim()
+      }
+    }
+    return ''
+  }
+
+  function mapType(raw: string): BomEditType {
+    const t = raw.trim().toLowerCase().replace(/[\s_]+/g, '')
+    if (t === 'delete' || t === 'remove') return 'DELETE'
+    if (t === 'updatedesc' || t === 'modifydesc' || t === 'changedesc') return 'UPDATE_DESC'
+    if (t === 'updateqty' || t === 'modifyqty' || t === 'changeqty') return 'UPDATE_QTY'
+    return 'ADD'
+  }
+
+  const edits: BomEdit[] = []
+  rows.forEach((row, idx) => {
+    const pn = col(row, 'Part Number', 'PartNumber', 'Item Number', 'PN', 'Part No')
+    if (!pn) return // skip blank rows
+    const type = mapType(col(row, 'Change Type', 'ChangeType', 'Type', 'Action', 'Edit Type'))
+    const name = col(row, 'Part Name', 'PartName', 'Item Name', 'Description', 'Name')
+    const qty = col(row, 'Qty', 'Quantity', 'QTY')
+    const newValue = col(row, 'Notes', 'New Value', 'NewValue', 'Value', 'Note')
+    const inCatalog = catalogPns.has(pn.toUpperCase())
+    const warn = inCatalog ? undefined : `Part number "${pn}" not found in the catalogue — verify before submitting`
+    edits.push({ id: `file-${idx}-${Date.now()}`, type, pn, name, qty, newValue, warn })
+  })
+
+  if (edits.length === 0) return { edits: [], parseError: 'No valid rows found. Check the column headers match the expected format.' }
+  return { edits }
+}
 
 /* ======================== ECO CREATION FLOW ========================= */
 
@@ -242,8 +305,16 @@ function EcoNew({
       };
 
       if (result.kitNumber) {
+        const catalog: any[] = allBackendItems ?? [...ITEMS, ...ASSEMBLIES];
+        const catalogPns = new Set<string>(catalog.map((it: any) => String(it.pn ?? '').toUpperCase()));
+
+        // Warn if the kit itself isn't in the catalogue
+        if (!catalogPns.has(result.kitNumber.toUpperCase())) {
+          toast.warning(`Kit "${result.kitNumber}" was not found in the catalogue — it will be added as-is. Verify the kit number before submitting.`);
+        }
         addKit(kitRecord);
-        // Add each extracted item as a BOM edit on the kit
+
+        // Add each extracted item as a BOM edit on the kit, flagging unknown PNs
         result.items.forEach((item) => {
           const rawType = (item.type ?? 'add').toLowerCase();
           const editType: BomEditType =
@@ -251,16 +322,21 @@ function EcoNew({
             : rawType === 'modify' || rawType === 'update' || rawType === 'update_qty' ? 'UPDATE_QTY'
             : rawType === 'update_desc' ? 'UPDATE_DESC'
             : 'ADD';
+          const pn = item.pn ?? '';
+          const inCatalog = pn ? catalogPns.has(pn.toUpperCase()) : true;
           const bomEdit: BomEdit = {
             id: `${result.kitNumber}-${Date.now()}-${Math.random()}`,
             type: editType,
-            pn: item.pn ?? '',
+            pn,
             name: item.name ?? '',
             qty: item.qty ?? '',
             newValue: item.newValue ?? '',
+            warn: inCatalog || !pn ? undefined : `Part number "${pn}" not found in the catalogue — verify before submitting`,
           };
           addBomEdit(kitRecord.pn, bomEdit);
         });
+      } else {
+        toast.warning('No kit number could be extracted from the instructions. Add the kit manually and paste the BOM edits.');
       }
     } catch {
       toast.error('Failed to extract from instructions — check your redline text and try again.');
@@ -1067,25 +1143,40 @@ function EcoNew({
                                     </thead>
                                     <tbody>
                                       {kit.bomEdits.map((edit) => (
-                                        <tr key={edit.id} data-test-id={`eco-kit-edit-row-${edit.id}`}>
-                                          <td>
-                                            {edit.type === "ADD" && <Chip k="ok">Add</Chip>}
-                                            {edit.type === "DELETE" && <Chip k="bad">Delete</Chip>}
-                                            {(edit.type === "UPDATE_DESC" || edit.type === "UPDATE_QTY") && <Chip k="warn">Update</Chip>}
-                                          </td>
-                                          <td className="pn" style={{ fontFamily: 'ui-monospace,"SF Mono",Menlo,Consolas,monospace', fontSize: 12 }}>{edit.pn}</td>
-                                          <td style={{ maxWidth: 240, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{edit.name}</td>
-                                          <td className="sub">
-                                            {edit.type === "ADD" || edit.type === "DELETE" ? edit.qty
-                                              : edit.type === "UPDATE_QTY" ? `→ ${edit.newValue}`
-                                              : edit.newValue ? `→ "${edit.newValue.slice(0, 30)}${edit.newValue.length > 30 ? "…" : ""}"` : "—"}
-                                          </td>
-                                          <td style={{ textAlign: "right" }}>
-                                            <button className="btn gh sm" onClick={() => removeBomEdit(kit.pn, edit.id)} data-test-id={`eco-kit-edit-remove-${edit.id}`}>
-                                              <Trash2 size={12} />
-                                            </button>
-                                          </td>
-                                        </tr>
+                                        <React.Fragment key={edit.id}>
+                                          <tr data-test-id={`eco-kit-edit-row-${edit.id}`} style={edit.warn ? { background: T.warnBg } : undefined}>
+                                            <td>
+                                              {edit.type === "ADD" && <Chip k="ok">Add</Chip>}
+                                              {edit.type === "DELETE" && <Chip k="bad">Delete</Chip>}
+                                              {(edit.type === "UPDATE_DESC" || edit.type === "UPDATE_QTY") && <Chip k="warn">Update</Chip>}
+                                            </td>
+                                            <td className="pn" style={{ fontFamily: 'ui-monospace,"SF Mono",Menlo,Consolas,monospace', fontSize: 12 }}>
+                                              {edit.warn && <AlertCircle size={11} style={{ color: T.warn, marginRight: 4, verticalAlign: 'middle' }} />}
+                                              {edit.pn}
+                                            </td>
+                                            <td style={{ maxWidth: 240, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{edit.name}</td>
+                                            <td className="sub">
+                                              {edit.type === "ADD" || edit.type === "DELETE" ? edit.qty
+                                                : edit.type === "UPDATE_QTY" ? `→ ${edit.newValue}`
+                                                : edit.newValue ? `→ "${edit.newValue.slice(0, 30)}${edit.newValue.length > 30 ? "…" : ""}"` : "—"}
+                                            </td>
+                                            <td style={{ textAlign: "right" }}>
+                                              <button className="btn gh sm" onClick={() => removeBomEdit(kit.pn, edit.id)} data-test-id={`eco-kit-edit-remove-${edit.id}`}>
+                                                <Trash2 size={12} />
+                                              </button>
+                                            </td>
+                                          </tr>
+                                          {edit.warn && (
+                                            <tr data-test-id={`eco-kit-edit-warn-${edit.id}`}>
+                                              <td colSpan={5} style={{ padding: '4px 10px 8px', background: T.warnBg }}>
+                                                <div className="row" style={{ gap: 6, color: T.warn, fontSize: 11 }}>
+                                                  <AlertCircle size={11} />
+                                                  {edit.warn}
+                                                </div>
+                                              </td>
+                                            </tr>
+                                          )}
+                                        </React.Fragment>
                                       ))}
                                     </tbody>
                                   </table>
@@ -1254,13 +1345,37 @@ function EcoNew({
               onChange={(e) => {
                 const f = e.target.files?.[0];
                 if (!f || !activeKitFilePn) return;
+                const kitPn = activeKitFilePn;
                 const staged: StagedFile = {
                   n: f.name,
                   size: f.size < 1024 * 1024 ? `${(f.size / 1024).toFixed(0)} KB` : `${(f.size / (1024 * 1024)).toFixed(1)} MB`,
                   fileType: "Drawing",
                   visibility: "Internal only",
                 };
-                updateKit(activeKitFilePn, { bomFile: staged });
+                // Parse Excel/CSV files for BOM edits
+                if (/\.(xlsx|xls|csv)$/i.test(f.name)) {
+                  const reader = new FileReader();
+                  reader.onload = (ev) => {
+                    const buf = ev.target?.result as ArrayBuffer;
+                    const catalogPns = new Set<string>(
+                      ((allBackendItems ?? []) as any[])
+                        .concat(ITEMS as any[])
+                        .map((it: any) => String(it.pn ?? '').toUpperCase())
+                    );
+                    const { edits, parseError } = parseBomExcel(buf, catalogPns);
+                    if (parseError) {
+                      toast.error(parseError);
+                      updateKit(kitPn, { bomFile: staged });
+                    } else {
+                      toast.success(`Parsed ${edits.length} BOM edit${edits.length !== 1 ? 's' : ''} from ${f.name}`);
+                      updateKit(kitPn, { bomFile: staged, bomEdits: edits, editMode: 'inline' });
+                    }
+                  };
+                  reader.readAsArrayBuffer(f);
+                } else {
+                  // PDF / DOCX — just store as reference file
+                  updateKit(kitPn, { bomFile: staged });
+                }
                 setActiveKitFilePn(null);
                 e.target.value = "";
               }}
