@@ -190,8 +190,10 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
           </div>
         </div>
       </div>
-
-      <div className="card" style={{ padding: "16px 24px 20px" }}>
+      <div className="card" style={{
+        padding: "16px 24px 20px",
+        paddingLeft: "100px"
+      }}>
         <Lifecycle
           stages={LC}
           current={rejected ? "Approval" : eco.stage}
@@ -199,7 +201,6 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
           sub={approvalState.requiredCount > 0 ? [Math.round((approvalState.decidedCount / approvalState.requiredCount) * 100), 0] : [60, 0]}
         />
       </div>
-
       {/* Combined Where this stands band + AI Rejection Insight */}
       <WhereThisStandsBand
         eco={eco}
@@ -241,7 +242,6 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
           ) : null
         }
       />
-
       {aiReview && (
         <Card title="Rework plan" sub="Drafted from the rejection notes on this change — edit before you act"
           right={<button className="btn gh sm" onClick={() => setAiReview(false)}><X size={13} /></button>}>
@@ -258,7 +258,6 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
           </div>
         </Card>
       )}
-
       <Card pad={false}>
         <Tabs tabs={TABS} active={tab} onChange={setTab} />
         <div style={{ padding: 16 }}>
@@ -1107,7 +1106,6 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
           )}
         </div>
       </Card>
-
       {modal === "share" && (
         <Modal title="Share this change with suppliers" wide onClose={() => setModal(null)}
           foot={<><button className="btn" onClick={() => setModal(null)}>Cancel</button>
@@ -1118,14 +1116,12 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
             value={shareDraft} onChange={setShareDraft} />
         </Modal>
       )}
-
       <FileUploadModal
         open={fileModalOpen}
         onClose={() => setFileModalOpen(false)}
         onAttach={(files) => setAttachedFiles((prev) => [...prev, ...files])}
         context="this change order"
       />
-
       {modal === "cancelEco" && (
         <Modal title="Cancel this change" onClose={() => setModal(null)}
           foot={<><button className="btn" onClick={() => setModal(null)}>Keep it open</button>
@@ -1139,7 +1135,6 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
           <Field label="Notes"><textarea className="inp" rows={3} /></Field>
         </Modal>
       )}
-
       {modal === "approve" && (
         <Modal title="Approve this change" onClose={() => setModal(null)}
           foot={<><button className="btn" onClick={() => setModal(null)}>Cancel</button>
@@ -1148,7 +1143,6 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
           <div className="note" style={{ marginTop: 12 }}>You are approving for <b>Construction Engineering</b>. This role needs one or more approvals; one is already in.</div>
         </Modal>
       )}
-
       {modal === "reject" && (
         <Modal title="Reject this change" onClose={() => setModal(null)}
           foot={<><button className="btn" onClick={() => setModal(null)}>Cancel</button>
@@ -1161,7 +1155,6 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
             <textarea className="inp" rows={4} /></Field>
         </Modal>
       )}
-
       {modal === "withdraw" && (
         <Modal title="Withdraw to Open" onClose={() => setModal(null)}
           foot={<><button className="btn" onClick={() => setModal(null)}>Cancel</button>
@@ -1174,7 +1167,6 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
           <label className="row"><input type="checkbox" defaultChecked /> Email the requester with the rejection notes</label>
         </Modal>
       )}
-
       {modal === "complete" && (
         <Modal title="Verify SAP write-back" onClose={() => setModal(null)} wide
           foot={<><button className="btn" onClick={() => setModal(null)}>Close</button>
@@ -1204,7 +1196,6 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
           </div>
         </Modal>
       )}
-
       {modal === "analysis" && (() => {
         const isECO010870 = eco.id === "ECO-010870";
         const rows = isECO010870
