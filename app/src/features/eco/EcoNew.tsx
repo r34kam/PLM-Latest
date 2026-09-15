@@ -1037,268 +1037,179 @@ function EcoNew({
                 <div className="stack" style={{ gap: 12 }} data-test-id="eco-kit-list">
                   {kits.map((kit) => {
                     const isExpanded = expandedKits[kit.pn] !== false;
-                    const existingBomChildren = bomFor(kit.pn);
-                    const totalEdits = kit.bomEdits.length;
-                    const adds = kit.bomEdits.filter((e) => e.type === "ADD").length;
-                    const dels = kit.bomEdits.filter((e) => e.type === "DELETE").length;
-                    const upds = kit.bomEdits.filter((e) => e.type === "UPDATE_DESC" || e.type === "UPDATE_QTY").length;
                     return (
-                      <div key={kit.pn} className="card" style={{ padding: 0, overflow: "hidden" }} data-test-id={`eco-kit-card-${kit.pn}`}>
-                        {/* Kit header */}
+                      <div key={kit.pn} className="eco-kit-card" data-test-id={`eco-kit-card-${kit.pn}`}>
+                        {/* ── Kit header row ── */}
                         <div
-                          className="bet"
-                          style={{ padding: "12px 16px", cursor: "pointer", borderBottom: isExpanded ? `1px solid ${T.g200}` : "none" }}
+                          className="eco-kit-card-head"
                           onClick={() => setExpandedKits((p) => ({ ...p, [kit.pn]: !isExpanded }))}
                           data-test-id={`eco-kit-header-${kit.pn}`}
                         >
-                          <div className="row" style={{ gap: 12 }}>
-                            {isExpanded ? <ChevronDown size={14} color={T.g500} /> : <ChevronRight size={14} color={T.g500} />}
-                            <div>
-                              <div className="row" style={{ gap: 8 }}>
-                                <span className="pn" style={{ fontFamily: 'ui-monospace,"SF Mono",Menlo,Consolas,monospace', fontSize: 13 }}>{kit.pn}</span>
-                                <Chip k="blue">{kit.cat}</Chip>
-                                {phaseChip(kit.phase)}
-                              </div>
-                              <div style={{ fontWeight: 600, fontSize: 13, marginTop: 2 }}>{kit.name}</div>
-                            </div>
-                          </div>
-                          <div className="row" style={{ gap: 8 }}>
-                            {totalEdits > 0 && (
-                              <div className="row" style={{ gap: 4, fontSize: 12, color: T.g600 }}>
-                                {adds > 0 && <span style={{ color: "#0B7A4B", fontWeight: 600 }}>+{adds}</span>}
-                                {dels > 0 && <span style={{ color: "#B91C1C", fontWeight: 600 }}>−{dels}</span>}
-                                {upds > 0 && <span style={{ color: "#92400E", fontWeight: 600 }}>{upds} upd</span>}
-                              </div>
-                            )}
-                            <span className="sub" style={{ fontSize: 12 }}>Rev {kit.currentRev} → Rev {kit.newRev}</span>
-                            <button
-                              className="btn gh sm"
-                              onClick={(e) => { e.stopPropagation(); removeKit(kit.pn); }}
-                              data-test-id={`eco-kit-remove-${kit.pn}`}
-                            >
-                              <X size={12} />
-                            </button>
-                          </div>
+                          <ChevronDown size={14} color={T.g500} style={{ flexShrink: 0, transform: isExpanded ? 'none' : 'rotate(-90deg)', transition: 'transform .14s' }} />
+                          <span style={{ fontWeight: 700, fontSize: 14, fontFamily: 'ui-monospace,"SF Mono",Menlo,Consolas,monospace', color: '#0a2233' }}>{kit.pn}</span>
+                          <span className="sub" style={{ fontSize: 13, fontWeight: 500 }}>Rev {kit.currentRev}</span>
+                          <span style={{ fontSize: 13, color: '#374151', fontWeight: 500 }}>{kit.name}</span>
+                          {phaseChip(kit.phase)}
+                          <button
+                            className="btn gh sm eco-kit-remove-btn"
+                            onClick={(e) => { e.stopPropagation(); removeKit(kit.pn); }}
+                            aria-label={`Remove ${kit.pn}`}
+                            data-test-id={`eco-kit-remove-${kit.pn}`}
+                          >
+                            <X size={14} />
+                          </button>
                         </div>
 
+                        {/* ── Expanded body ── */}
                         {isExpanded && (
-                          <div style={{ padding: "14px 16px" }}>
-                            {/* Rev range & edit mode */}
-                            <div className="row" style={{ gap: 16, marginBottom: 14, flexWrap: "wrap" }}>
-                              <div className="row" style={{ gap: 8, alignItems: "center" }}>
-                                <span className="sub" style={{ fontSize: 12 }}>Current rev</span>
+                          <div className="eco-kit-card-body">
+                            {/* REVISION CHANGE */}
+                            <div className="eco-kit-section-label">REVISION CHANGE</div>
+                            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 12, marginBottom: 24 }}>
+                              <div>
+                                <div className="eco-kit-input-label">From</div>
                                 <Input
-                                  style={{ height: 28, width: 60, textAlign: "center" }}
+                                  style={{ width: 80, textAlign: 'center' }}
                                   value={kit.currentRev}
                                   onChange={(e: any) => updateKit(kit.pn, { currentRev: e.target.value })}
                                   data-test-id={`eco-kit-current-rev-${kit.pn}`}
                                 />
-                                <span className="sub">→</span>
-                                <span className="sub" style={{ fontSize: 12 }}>New rev</span>
+                              </div>
+                              <span style={{ fontSize: 18, color: T.g400, paddingBottom: 4 }}>→</span>
+                              <div>
+                                <div className="eco-kit-input-label">To</div>
                                 <Input
-                                  style={{ height: 28, width: 60, textAlign: "center" }}
+                                  style={{ width: 80, textAlign: 'center', borderColor: '#3b6ea8', boxShadow: '0 0 0 2px #dbeafe' }}
                                   value={kit.newRev}
                                   onChange={(e: any) => updateKit(kit.pn, { newRev: e.target.value })}
                                   data-test-id={`eco-kit-new-rev-${kit.pn}`}
                                 />
                               </div>
-                              <div className="seg" style={{ height: 28 }}>
-                                <button
-                                  className={kit.editMode === "inline" ? "on" : ""}
-                                  onClick={() => updateKit(kit.pn, { editMode: "inline" })}
-                                  data-test-id={`eco-kit-mode-inline-${kit.pn}`}
-                                >
-                                  <FileText size={12} />Enter inline
-                                </button>
-                                <button
-                                  className={kit.editMode === "file" ? "on" : ""}
-                                  onClick={() => updateKit(kit.pn, { editMode: "file" })}
-                                  data-test-id={`eco-kit-mode-file-${kit.pn}`}
-                                >
-                                  <Upload size={12} />Upload file
-                                </button>
-                              </div>
                             </div>
 
-                            {kit.editMode === "file" ? (
-                              /* File upload mode */
-                              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                            {/* HOW DO YOU WANT TO SPECIFY THE EDIT? */}
+                            <div className="eco-kit-section-label" style={{ marginBottom: 10 }}>HOW DO YOU WANT TO SPECIFY THE EDIT?</div>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+                              <button
+                                type="button"
+                                className={`eco-edit-mode-card${kit.editMode !== 'file' ? ' selected' : ''}`}
+                                onClick={() => updateKit(kit.pn, { editMode: 'inline' })}
+                                data-test-id={`eco-kit-mode-inline-${kit.pn}`}
+                              >
+                                <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>✏️ Edit inline</div>
+                                <div className="sub" style={{ fontSize: 12 }}>Add, remove, or change BOM lines directly here</div>
+                              </button>
+                              <button
+                                type="button"
+                                className={`eco-edit-mode-card${kit.editMode === 'file' ? ' selected' : ''}`}
+                                onClick={() => updateKit(kit.pn, { editMode: 'file' })}
+                                data-test-id={`eco-kit-mode-file-${kit.pn}`}
+                              >
+                                <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>↑ Upload redline file</div>
+                                <div className="sub" style={{ fontSize: 12 }}>Attach a marked-up BOM instead of typing edits</div>
+                              </button>
+                            </div>
+
+                            {kit.editMode === 'file' ? (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                                 <div
-                                  style={{
-                                    border: `2px dashed ${T.g200}`, borderRadius: 8, padding: "20px 16px",
-                                    textAlign: "center", cursor: "pointer", background: T.g50,
-                                  }}
+                                  className="eco-kit-dropzone"
                                   onClick={() => { setActiveKitFilePn(kit.pn); kitFileInputRef.current?.click(); }}
                                   data-test-id={`eco-kit-file-drop-${kit.pn}`}
                                 >
-                                  <Upload size={18} color={T.g400} style={{ margin: "0 auto 6px" }} />
+                                  <Upload size={18} color={T.g400} style={{ margin: '0 auto 6px' }} />
                                   <div style={{ fontSize: 13, color: T.g700, fontWeight: 600 }}>Drop redline file here or click to browse</div>
                                   <div className="sub" style={{ marginTop: 4 }}>PDF, Excel, CSV — your BOM redline for {kit.pn}</div>
                                 </div>
                                 {kit.bomFile && (
-                                  <div className="row" style={{ gap: 10, padding: "8px 12px", background: "#F0FDF4", borderRadius: 6, border: "1px solid #BBF7D0" }}>
+                                  <div className="row" style={{ gap: 10, padding: '8px 12px', background: '#F0FDF4', borderRadius: 6, border: '1px solid #BBF7D0' }}>
                                     <CheckCircle2 size={14} color="#0B7A4B" />
                                     <span style={{ fontSize: 13, fontWeight: 600 }}>{kit.bomFile.n}</span>
                                     <span className="sub">{kit.bomFile.size}</span>
-                                    <button className="btn gh sm" style={{ marginLeft: "auto" }} onClick={() => updateKit(kit.pn, { bomFile: null })}><X size={11} /></button>
+                                    <button className="btn gh sm" style={{ marginLeft: 'auto' }} onClick={() => updateKit(kit.pn, { bomFile: null })}><X size={11} /></button>
                                   </div>
                                 )}
                               </div>
                             ) : (
-                              /* Inline BOM edit mode */
-                              <div className="stack" style={{ gap: 8 }}>
-                                {/* Existing BOM children as quick-add reference */}
-                                {existingBomChildren.length > 0 && kit.bomEdits.length === 0 && (
-                                  <div style={{ padding: "10px 12px", background: T.g50, borderRadius: 6, border: `1px solid ${T.g200}` }}>
-                                    <div className="sub" style={{ marginBottom: 8, fontWeight: 600 }}>Current BOM children — click to add an edit</div>
-                                    <div className="row" style={{ gap: 6, flexWrap: "wrap" }}>
-                                      {existingBomChildren.slice(0, 8).map((child: any) => (
-                                        <button
-                                          key={child.pn}
-                                          className="btn sm gh"
-                                          onClick={() => addBomEditFromChild(kit.pn, child, "DELETE")}
-                                          data-test-id={`eco-kit-child-quick-${kit.pn}-${child.pn}`}
-                                        >
-                                          <Trash2 size={11} />−{child.pn}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-
-                                {/* Existing edits */}
+                              /* Inline edit mode — BOM lines table + action buttons */
+                              <div>
                                 {kit.bomEdits.length > 0 && (
-                                  <table className="tbl" data-test-id={`eco-kit-edits-table-${kit.pn}`}>
+                                  <table className="eco-kit-bom-table" data-test-id={`eco-kit-edits-table-${kit.pn}`}>
                                     <thead>
                                       <tr>
-                                        <th style={{ width: 120 }}>Change type</th>
-                                        <th>Item number</th>
-                                        <th>Item name</th>
-                                        <th>Qty / Value</th>
+                                        <th>PART</th>
+                                        <th>QTY</th>
+                                        <th>DESCRIPTION</th>
                                         <th></th>
                                       </tr>
                                     </thead>
                                     <tbody>
                                       {kit.bomEdits.map((edit) => (
-                                        <React.Fragment key={edit.id}>
-                                          <tr data-test-id={`eco-kit-edit-row-${edit.id}`}>
-                                            <td>
-                                              {edit.type === "ADD" && <Chip k="ok">Add</Chip>}
-                                              {edit.type === "DELETE" && <Chip k="bad">Delete</Chip>}
-                                              {(edit.type === "UPDATE_DESC" || edit.type === "UPDATE_QTY") && <Chip k="warn">Update</Chip>}
-                                            </td>
-                                            <td className="pn" style={{ fontFamily: 'ui-monospace,"SF Mono",Menlo,Consolas,monospace', fontSize: 12 }}>
-                                              {edit.pn}
-                                            </td>
-                                            <td style={{ maxWidth: 240, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{edit.name}</td>
-                                            <td className="sub">
-                                              {edit.type === "ADD" || edit.type === "DELETE" ? edit.qty
-                                                : edit.type === "UPDATE_QTY" ? `→ ${edit.newValue}`
-                                                : edit.newValue ? `→ "${edit.newValue.slice(0, 30)}${edit.newValue.length > 30 ? "…" : ""}"` : "—"}
-                                            </td>
-                                            <td style={{ textAlign: "right" }}>
-                                              <button className="btn gh sm" onClick={() => removeBomEdit(kit.pn, edit.id)} data-test-id={`eco-kit-edit-remove-${edit.id}`}>
-                                                <Trash2 size={12} />
-                                              </button>
-                                            </td>
-                                          </tr>
-                                        </React.Fragment>
+                                        <tr key={edit.id} data-test-id={`eco-kit-edit-row-${edit.id}`}>
+                                          <td style={{ fontFamily: 'ui-monospace,"SF Mono",Menlo,Consolas,monospace', fontSize: 13, color: '#0a2233' }}>
+                                            {edit.type === 'DELETE' ? '−' : edit.type === 'ADD' ? '+' : ''}{edit.pn}
+                                          </td>
+                                          <td style={{ fontSize: 13, color: '#374151' }}>{edit.qty || (edit.type === 'UPDATE_QTY' ? edit.newValue : '—')}</td>
+                                          <td style={{ fontSize: 13, color: '#374151' }}>
+                                            {edit.name || (edit.type === 'UPDATE_DESC' ? edit.newValue : '—')}
+                                          </td>
+                                          <td style={{ textAlign: 'right' }}>
+                                            <button
+                                              className="eco-kit-delete-link"
+                                              onClick={() => removeBomEdit(kit.pn, edit.id)}
+                                              data-test-id={`eco-kit-edit-remove-${edit.id}`}
+                                            >
+                                              Delete
+                                            </button>
+                                          </td>
+                                        </tr>
                                       ))}
                                     </tbody>
                                   </table>
                                 )}
 
                                 {/* Add edit inline form */}
-                                {editingBomEdit?.kitPn === kit.pn ? (
-                                  <div style={{ padding: "12px 14px", background: T.g50, borderRadius: 8, border: `1px solid ${T.g200}` }} data-test-id={`eco-kit-edit-form-${kit.pn}`}>
-                                    <div className="row" style={{ gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
-                                      <div style={{ width: 150 }}>
-                                        <Field label="Change type">
-                                          <Select
-                                            value={bomEditDraft.type || "ADD"}
-                                            onChange={(e: any) => setBomEditDraft((p) => ({ ...p, type: e.target.value as BomEditType }))}
-                                            options={["ADD", "DELETE", "UPDATE_DESC", "UPDATE_QTY"]}
-                                            data-test-id="eco-edit-type-select"
-                                          />
-                                        </Field>
-                                      </div>
+                                {editingBomEdit?.kitPn === kit.pn && (
+                                  <div className="eco-kit-edit-form" data-test-id={`eco-kit-edit-form-${kit.pn}`}>
+                                    <div className="row" style={{ gap: 8, flexWrap: 'wrap', alignItems: 'flex-end' }}>
                                       <div style={{ width: 160 }}>
                                         <Field label="Part number">
-                                          <Input
-                                            value={bomEditDraft.pn || ""}
-                                            onChange={(e: any) => setBomEditDraft((p) => ({ ...p, pn: e.target.value }))}
-                                            placeholder="e.g. 1006394-01"
-                                            data-test-id="eco-edit-pn-input"
-                                          />
+                                          <Input value={bomEditDraft.pn || ''} onChange={(e: any) => setBomEditDraft((p) => ({ ...p, pn: e.target.value }))} placeholder="e.g. 1006394-01" data-test-id="eco-edit-pn-input" />
                                         </Field>
                                       </div>
-                                      <div style={{ flex: 1, minWidth: 180 }}>
-                                        <Field label="Item name">
-                                          <Input
-                                            value={bomEditDraft.name || ""}
-                                            onChange={(e: any) => setBomEditDraft((p) => ({ ...p, name: e.target.value }))}
-                                            placeholder="e.g. WASHER FLAT M5"
-                                            data-test-id="eco-edit-name-input"
-                                          />
+                                      <div style={{ flex: 1, minWidth: 160 }}>
+                                        <Field label="Description">
+                                          <Input value={bomEditDraft.name || ''} onChange={(e: any) => setBomEditDraft((p) => ({ ...p, name: e.target.value }))} placeholder="e.g. WASHER FLAT M5" data-test-id="eco-edit-name-input" />
                                         </Field>
                                       </div>
-                                      {(bomEditDraft.type === "ADD" || bomEditDraft.type === "DELETE") && (
-                                        <div style={{ width: 90 }}>
+                                      {(bomEditDraft.type === 'ADD' || bomEditDraft.type === 'DELETE') && (
+                                        <div style={{ width: 80 }}>
                                           <Field label="Qty">
-                                            <Input
-                                              value={bomEditDraft.qty || ""}
-                                              onChange={(e: any) => setBomEditDraft((p) => ({ ...p, qty: e.target.value }))}
-                                              placeholder="e.g. 4 EA"
-                                              data-test-id="eco-edit-qty-input"
-                                            />
+                                            <Input value={bomEditDraft.qty || ''} onChange={(e: any) => setBomEditDraft((p) => ({ ...p, qty: e.target.value }))} placeholder="e.g. 2" data-test-id="eco-edit-qty-input" />
                                           </Field>
                                         </div>
                                       )}
-                                      {(bomEditDraft.type === "UPDATE_DESC" || bomEditDraft.type === "UPDATE_QTY") && (
-                                        <div style={{ width: 200 }}>
-                                          <Field label={bomEditDraft.type === "UPDATE_DESC" ? "New description" : "New qty"}>
-                                            <Input
-                                              value={bomEditDraft.newValue || ""}
-                                              onChange={(e: any) => setBomEditDraft((p) => ({ ...p, newValue: e.target.value }))}
-                                              placeholder={bomEditDraft.type === "UPDATE_DESC" ? "New description text…" : "e.g. 6 EA"}
-                                              data-test-id="eco-edit-newvalue-input"
-                                            />
+                                      {(bomEditDraft.type === 'UPDATE_DESC' || bomEditDraft.type === 'UPDATE_QTY') && (
+                                        <div style={{ width: 160 }}>
+                                          <Field label={bomEditDraft.type === 'UPDATE_DESC' ? 'New description' : 'New qty'}>
+                                            <Input value={bomEditDraft.newValue || ''} onChange={(e: any) => setBomEditDraft((p) => ({ ...p, newValue: e.target.value }))} placeholder={bomEditDraft.type === 'UPDATE_DESC' ? 'New description…' : 'e.g. 6'} data-test-id="eco-edit-newvalue-input" />
                                           </Field>
                                         </div>
                                       )}
                                     </div>
                                     <div className="row" style={{ gap: 8, marginTop: 10 }}>
-                                      <button
-                                        className="btn pri sm"
-                                        disabled={!bomEditDraft.pn}
-                                        onClick={commitBomEdit}
-                                        data-test-id="eco-edit-commit-btn"
-                                      >
-                                        <Check size={12} />Add edit
-                                      </button>
-                                      <button className="btn sm" onClick={() => { setEditingBomEdit(null); setBomEditDraft({}); }} data-test-id="eco-edit-cancel-btn">
-                                        Cancel
-                                      </button>
-                                      <span className="sub" style={{ fontSize: 12, marginLeft: 4 }}>
-                                        Or search existing children:
-                                      </span>
-                                      <button className="btn sm gh" onClick={() => setKitChildPickOpen(kit.pn)} data-test-id={`eco-kit-child-pick-${kit.pn}`}>
-                                        <Search size={12} />Pick from BOM
-                                      </button>
+                                      <button className="btn pri sm" disabled={!bomEditDraft.pn} onClick={commitBomEdit} data-test-id="eco-edit-commit-btn"><Check size={12} />Save line</button>
+                                      <button className="btn sm" onClick={() => { setEditingBomEdit(null); setBomEditDraft({}); }} data-test-id="eco-edit-cancel-btn">Cancel</button>
                                     </div>
                                   </div>
-                                ) : (
-                                  <div className="row" style={{ gap: 8 }}>
-                                    {(["ADD", "DELETE", "UPDATE_DESC", "UPDATE_QTY"] as BomEditType[]).map((t) => (
-                                      <button
-                                        key={t}
-                                        className="btn sm gh"
-                                        onClick={() => openBomEditDraft(kit.pn, t)}
-                                        data-test-id={`eco-kit-add-edit-${kit.pn}-${t}`}
-                                      >
-                                        <Plus size={11} />{BOM_EDIT_LABELS[t]}
-                                      </button>
-                                    ))}
+                                )}
+
+                                {/* Action buttons */}
+                                {editingBomEdit?.kitPn !== kit.pn && (
+                                  <div className="row" style={{ gap: 8, marginTop: kit.bomEdits.length > 0 ? 12 : 0 }}>
+                                    <button className="btn sm" onClick={() => openBomEditDraft(kit.pn, 'ADD')} data-test-id={`eco-kit-add-edit-${kit.pn}-ADD`}>+ Add line</button>
+                                    <button className="btn sm" onClick={() => openBomEditDraft(kit.pn, 'UPDATE_QTY')} data-test-id={`eco-kit-add-edit-${kit.pn}-UPDATE_QTY`}>Update qty</button>
+                                    <button className="btn sm" onClick={() => openBomEditDraft(kit.pn, 'UPDATE_DESC')} data-test-id={`eco-kit-add-edit-${kit.pn}-UPDATE_DESC`}>Update description</button>
                                   </div>
                                 )}
                               </div>
@@ -1308,6 +1219,20 @@ function EcoNew({
                       </div>
                     );
                   })}
+                </div>
+              )}
+
+              {/* + Add another kit — shown once at least one kit is added */}
+              {kits.length > 0 && !kitPickOpen && (
+                <div style={{ marginTop: 4 }}>
+                  <button
+                    className="btn"
+                    style={{ border: '1.5px solid #c8d8e8', background: '#fff', color: '#3b6ea8', fontWeight: 600 }}
+                    onClick={() => { setKitPickOpen(true); setKitPickQ(''); }}
+                    data-test-id="eco-add-another-kit-btn"
+                  >
+                    + Add another kit
+                  </button>
                 </div>
               )}
    

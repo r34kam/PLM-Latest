@@ -515,6 +515,26 @@ textarea.inp{height:auto;padding:8px 10px;line-height:1.5;resize:vertical}
 .eco-back-link:hover{color:#0a2233}
 
 /* ── Kit catalog panel (empty dashed + search results) ─── */
+/* ── Kit card (Add Items step) ─── */
+.eco-kit-card{background:#fff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(2,42,66,.04)}
+.eco-kit-card-head{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;user-select:none;border-bottom:1px solid #e2e8f0;background:#fff}
+.eco-kit-card-head:hover{background:#f8fafc}
+.eco-kit-remove-btn{margin-left:auto}
+.eco-kit-card-body{padding:20px 20px 16px}
+.eco-kit-section-label{font-size:11px;font-weight:700;letter-spacing:0.06em;color:#7993a8;text-transform:uppercase;margin-bottom:10px}
+.eco-kit-input-label{font-size:12px;color:#6b7280;margin-bottom:4px}
+.eco-edit-mode-card{display:flex;flex-direction:column;align-items:flex-start;padding:14px 16px;background:#fff;border:1.5px solid #d1dde8;border-radius:8px;cursor:pointer;text-align:left;transition:border-color .14s,background .14s}
+.eco-edit-mode-card:hover{border-color:#3b6ea8}
+.eco-edit-mode-card.selected{border-color:#3b6ea8;background:#eff6ff}
+.eco-kit-bom-table{width:100%;border-collapse:collapse;margin-bottom:4px}
+.eco-kit-bom-table th{font-size:11px;font-weight:700;letter-spacing:0.05em;color:#7993a8;text-transform:uppercase;text-align:left;padding:0 10px 8px;border-bottom:1px solid #e2e8f0}
+.eco-kit-bom-table td{padding:10px 10px;border-bottom:1px solid #f1f5f9;font-size:13px}
+.eco-kit-bom-table tr:last-child td{border-bottom:none}
+.eco-kit-delete-link{background:none;border:none;cursor:pointer;font-size:13px;color:#6b7280;font-weight:500;padding:0}
+.eco-kit-delete-link:hover{color:#dc2626}
+.eco-kit-edit-form{padding:12px 14px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;margin-top:12px}
+.eco-kit-dropzone{border:2px dashed #c8d8e8;border-radius:8px;padding:24px 16px;text-align:center;cursor:pointer;background:#f8fafc}
+.eco-kit-dropzone:hover{border-color:#3b6ea8}
 .eco-kit-catalog-panel{border:1.5px dashed #c8d8e8;border-radius:10px;overflow:hidden;background:#fff}
 .eco-kit-empty-dashed{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 24px;text-align:center}
 
