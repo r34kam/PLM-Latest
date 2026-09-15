@@ -1,8 +1,9 @@
 import { NAV } from '@/domain/navigation'
 import { ME } from '@/domain/session'
 import type { AppRole } from '@/lib/useAppRole'
-import { ChevronDown, ChevronRight, PanelLeft } from 'lucide-react'
-import { useState } from 'react'
+import { useLogout } from '@unifyapps/app-builder-sdk/hooks/auth'
+import { ChevronDown, ChevronRight, LogOut, PanelLeft, User } from 'lucide-react'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 function Nav({
@@ -41,6 +42,17 @@ function Nav({
   const navigate = useNavigate();
   const [brandHover, setBrandHover] = useState(false);
   const [adminMenuOpen, setAdminMenuOpen] = useState(page === "admin");
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+  const logout = useLogout();
+
+  function handleLogout() {
+    setUserMenuOpen(false);
+    logout.mutate(undefined, {
+      onSuccess: () => navigate('/login'),
+      onError: () => navigate('/login'),
+    });
+  }
 
   const Item = ({ k, label, icon: Ic, onClick, active, count, hasChevron, chevronOpen }: {
     k: string;
@@ -214,13 +226,93 @@ function Nav({
         )}
       </nav>
 
-      <div className="sidefoot">
-        <button className="sideuser" title={`${userName || ME.name} — ${userRole || ME.role}`} data-test-id="sidebar-user-btn">
-          <div className="avatar">{(userName || ME.name).charAt(0).toUpperCase()}</div>
-          <div className="lbl" style={{ lineHeight: 1.35, minWidth: 0 }}>
-            <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: "#FFFFFF" }}>{userName || ME.name}</div>
-            <div style={{ fontSize: 11, color: "#B9DCFF" }}>{userRole || ME.role}</div>
+      <div className="sidefoot" style={{ position: 'relative' }} ref={userMenuRef}>
+        {/* User menu popover */}
+        {userMenuOpen && (
+          <div
+            role="menu"
+            data-test-id="sidebar-user-menu"
+            style={{
+              position: 'absolute',
+              bottom: 'calc(100% + 8px)',
+              left: 8,
+              right: 8,
+              background: '#fff',
+              borderRadius: 10,
+              border: '1px solid #E2E8F0',
+              boxShadow: '0 8px 24px rgba(2,42,66,.14)',
+              padding: '6px 0',
+              zIndex: 200,
+            }}
+          >
+            {/* User identity header */}
+            <div style={{ padding: '10px 14px 8px', borderBottom: '1px solid #F0F4F8' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#0a2233', marginBottom: 1 }}>
+                {userName || ME.name}
+              </div>
+              <div style={{ fontSize: 11, color: '#627d98' }}>
+                {userRole || ME.role}
+              </div>
+            </div>
+            {/* Sign out */}
+            <button
+              role="menuitem"
+              className="sideuser-menu-item"
+              onClick={handleLogout}
+              disabled={logout.isPending}
+              data-test-id="sidebar-signout-btn"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                width: '100%',
+                padding: '9px 14px',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: 13,
+                color: '#c0392b',
+                fontWeight: 500,
+                textAlign: 'left',
+              }}
+            >
+              <LogOut size={14} />
+              {logout.isPending ? 'Signing out…' : 'Sign out'}
+            </button>
           </div>
+        )}
+
+        {/* Click-outside overlay */}
+        {userMenuOpen && (
+          <div
+            aria-hidden="true"
+            style={{ position: 'fixed', inset: 0, zIndex: 199 }}
+            onClick={() => setUserMenuOpen(false)}
+          />
+        )}
+
+        <button
+          className="sideuser"
+          title={`${userName || ME.name} — ${userRole || ME.role}`}
+          onClick={() => setUserMenuOpen((v) => !v)}
+          aria-haspopup="menu"
+          aria-expanded={userMenuOpen}
+          data-test-id="sidebar-user-btn"
+        >
+          <div className="avatar" style={{ position: 'relative', zIndex: 201 }}>
+            {(userName || ME.name).charAt(0).toUpperCase()}
+          </div>
+          {!mini && (
+            <div className="lbl" style={{ lineHeight: 1.35, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: "#FFFFFF" }}>
+                {userName || ME.name}
+              </div>
+              <div style={{ fontSize: 11, color: "#B9DCFF" }}>{userRole || ME.role}</div>
+            </div>
+          )}
+          {!mini && (
+            <User size={13} style={{ marginLeft: 'auto', flexShrink: 0, color: '#B9DCFF', opacity: 0.7 }} />
+          )}
         </button>
       </div>
     </aside>
