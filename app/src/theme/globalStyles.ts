@@ -446,7 +446,7 @@ textarea.inp{height:auto;padding:8px 10px;line-height:1.5;resize:vertical}
 @media(max-width:900px){.approval-choices-grid{grid-template-columns:1fr}}
 /* Approval method cards — radio-style, subtle, matching reference */
 .approval-choice-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
-.approval-choice-card{position:relative;display:flex;flex-direction:column;padding:16px;background:#ffffff;border:1.5px solid #c8d8e8;border-radius:10px;cursor:pointer;transition:border-color .14s,box-shadow .14s;outline:none;width:100%;text-align:left}
+.approval-choice-card{position:relative;display:flex;flex-direction:column;padding:16px;background:#ffffff;border:1px solid #94a3b8;border-radius:10px;cursor:pointer;transition:border-color .14s,box-shadow .14s;outline:none;width:100%;text-align:left}
 .approval-choice-card:hover{border-color:#94a3b8;box-shadow:0 2px 8px rgba(2,42,66,.06)}
 .approval-choice-card.selected{border-color:#0A4F8F;box-shadow:0 0 0 2px rgba(10,79,143,.12)}
 .approval-choice-radio{position:absolute;top:14px;right:14px;width:18px;height:18px;border-radius:50%;border:1.5px solid #cbd5e1;background:#fff;display:grid;place-items:center;flex-shrink:0;transition:border-color .12s}
