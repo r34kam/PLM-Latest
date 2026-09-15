@@ -1304,57 +1304,67 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
           })()}
 
           {tab === "Notifications" && (() => {
-            // For real backend COs: derive recipients from stored approvals (the actual approval board members)
-            // For static demo ECOs: fall back to the static notificationRecipientsFor helper
-            const approvalRoles: any[] = (backendCo ? backendApprovals : APPROVALS) as any[]
+            const extraNames: string[] = (eco as any).extraNotifyNames ?? []
             let recipients: { name: string; reason: string; notifyOn: string; checked: boolean }[] = []
 
-            if (backendCo && approvalRoles.length > 0) {
-              const map = new Map<string, { name: string; reason: string; notifyOn: string; checked: boolean }>()
+            if (backendCo) {
+              // Build a lookup: name → role label, from the stored approvals
+              const nameToRole = new Map<string, string>()
+              const submitterName = eco.submitter && eco.submitter !== '—' ? eco.submitter : ME.name
+              for (const entry of backendApprovals as import('@/data/changeOrders').ApprovalEntry[]) {
+                const groupLabel = entry.role ?? ''
+                if (entry.approver) nameToRole.set(entry.approver, groupLabel)
+                for (const other of entry.others ?? []) nameToRole.set(other, groupLabel)
+              }
 
-              // Helper: add a person to the map, merging role groups if they appear in multiple
-              const addPerson = (name: string, groupLabel: string, isSubmitter = false) => {
-                if (!name || name === '—') return
-                if (map.has(name)) {
-                  const ex = map.get(name)!
-                  if (!ex.reason.includes(groupLabel) && !ex.reason.includes('submitted this change')) {
-                    ex.reason = `${ex.reason} · ${groupLabel}`
+              if (extraNames.length > 0) {
+                // Primary path: extraNotifyNames is seeded at creation with the full approval flow.
+                // Show each person with their reason derived from the approval role lookup.
+                const map = new Map<string, { name: string; reason: string; notifyOn: string; checked: boolean }>()
+                for (const name of extraNames) {
+                  if (!name || map.has(name)) continue
+                  let reason: string
+                  if (name === submitterName) {
+                    reason = nameToRole.has(name)
+                      ? `Part of the approval board · submitted this change`
+                      : 'Submitted this change'
+                  } else if (nameToRole.has(name)) {
+                    reason = `Part of the approval board · ${nameToRole.get(name)}`
+                  } else {
+                    reason = 'Manually added'
                   }
-                } else {
-                  const reason = isSubmitter
-                    ? `Part of the approval board · submitted this change`
-                    : `Part of the approval board · ${groupLabel}`
                   map.set(name, { name, reason, notifyOn: 'Every status change', checked: true })
                 }
-              }
-
-              // Submitter always first
-              const submitterName = eco.submitter && eco.submitter !== '—' ? eco.submitter : ME.name
-              addPerson(submitterName, '', true)
-
-              // Each approval role: primary approver + all others in that role group
-              // ApprovalEntry shape: { role, approver, others: string[], status, ... }
-              for (const entry of approvalRoles as import('@/data/changeOrders').ApprovalEntry[]) {
-                const groupLabel = entry.role ?? ''
-                if (entry.approver) addPerson(entry.approver, groupLabel)
-                for (const other of entry.others ?? []) {
-                  addPerson(other, groupLabel)
+                recipients = Array.from(map.values())
+              } else {
+                // Fallback for COs created before extraNotifyNames was introduced:
+                // derive dynamically from backendApprovals.
+                const map = new Map<string, { name: string; reason: string; notifyOn: string; checked: boolean }>()
+                const addPerson = (name: string, groupLabel: string, isSubmitter = false) => {
+                  if (!name || name === '—') return
+                  if (map.has(name)) {
+                    const ex = map.get(name)!
+                    if (!ex.reason.includes(groupLabel) && !ex.reason.includes('submitted this change')) {
+                      ex.reason = `${ex.reason} · ${groupLabel}`
+                    }
+                  } else {
+                    const reason = isSubmitter
+                      ? 'Part of the approval board · submitted this change'
+                      : `Part of the approval board · ${groupLabel}`
+                    map.set(name, { name, reason, notifyOn: 'Every status change', checked: true })
+                  }
                 }
-              }
-
-              // Also add manually-added extra recipients
-              const extraNames: string[] = (eco as any).extraNotifyNames ?? []
-              for (const name of extraNames) {
-                if (!map.has(name)) {
-                  map.set(name, { name, reason: 'Manually added', notifyOn: 'Every status change', checked: true })
+                addPerson(submitterName, '', true)
+                for (const entry of backendApprovals as import('@/data/changeOrders').ApprovalEntry[]) {
+                  const groupLabel = entry.role ?? ''
+                  if (entry.approver) addPerson(entry.approver, groupLabel)
+                  for (const other of entry.others ?? []) addPerson(other, groupLabel)
                 }
+                recipients = Array.from(map.values())
               }
-
-              recipients = Array.from(map.values())
             } else {
+              // Static demo ECOs
               recipients = notificationRecipientsFor(eco).map((r: any) => ({ ...r, checked: true }))
-              // Merge extra notify names for static ECOs too
-              const extraNames: string[] = (eco as any).extraNotifyNames ?? []
               for (const name of extraNames) {
                 if (!recipients.find((r) => r.name === name)) {
                   recipients.push({ name, reason: 'Manually added', notifyOn: 'Every status change', checked: true })

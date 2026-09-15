@@ -452,7 +452,19 @@ function EcoNew({
         rejectionReason: '',
         rejectionNotes: '',
         rejectedBy: '',
-        extraNotifyNames: [],
+        // Seed notifications with every person in the approval flow so the
+        // Notifications tab is fully populated from day one.
+        extraNotifyNames: (() => {
+          const seen = new Set<string>()
+          const names: string[] = []
+          const add = (n: string) => { if (n && n !== 'Unassigned' && !seen.has(n)) { seen.add(n); names.push(n) } }
+          add(ME.name)                                  // submitter is always first
+          for (const r of initialApprovals) {
+            add(r.approver)
+            for (const o of r.others ?? []) add(o)
+          }
+          return names
+        })(),
         history: [{
           id: `h-${Date.now()}`,
           timestamp: new Date().toISOString(),
