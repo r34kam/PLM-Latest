@@ -10,6 +10,12 @@ const ITEM_TEMPLATE = [
   "AUTO,KIT TS CG MOUNTING,KIT,A,Design,Steve Howe,EA,Made-to-Specification (MTS),1210 – TPS Livermore,10 – NEW,002 – Construction,Yes",
 ].join("\n");
 
-export { ECO_TEMPLATE, ITEM_TEMPLATE }
+const BOM_ITEM_TEMPLATE = [
+  "Kit number,Part number,Part name,Category,Quantity,UOM,Reference designator,Notes",
+  "1052100-01,2505-0103,SCR M5-0.8 X 16MM HEX HD ZN,HARDWARE,6,EA,,Structural fastener",
+  "1052100-01,05-080401-01LF,ASSY FLASH GORDON LNA PCB,PCB,1,EA,U1,Main RF board",
+].join("\n");
+
+export { ECO_TEMPLATE, ITEM_TEMPLATE, BOM_ITEM_TEMPLATE }
 
 

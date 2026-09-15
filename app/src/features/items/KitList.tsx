@@ -7,23 +7,21 @@ import { Modal } from '@/components/primitives/Modal'
 import { PAGE_SIZE, Pagination } from '@/components/primitives/Pagination'
 import { useAllItems } from '@/data/items'
 import { ITEM_TEMPLATE } from '@/domain/templates'
+import { downloadExcel } from '@/lib/download'
 import { T } from '@/theme/tokens'
 import {
   AlertTriangle, Ban, Boxes, CheckCircle2, ChevronDown, ChevronRight,
   Clock, Database, Download, Layers, Plus, Upload,
 } from 'lucide-react'
 import React, { useMemo, useState } from 'react'
-import * as XLSX from 'xlsx'
 
 /* ============================== KIT LIST ============================== */
 
-const KIT_CAT = 'KIT'
-
-function exportKitsToExcel(kits: any[]) {
-  const rows = kits.map((k) => ({
-    'Kit number': k.pn,
+function exportKitsToExcel(items: any[]) {
+  const rows = items.map((k) => ({
+    'Item number': k.pn,
     'Revision': k.rev,
-    'Kit name': k.name,
+    'Item name': k.name,
     'Category': k.cat,
     'Phase': k.phase,
     'SAP status': k.status,
@@ -42,10 +40,7 @@ function exportKitsToExcel(kits: any[]) {
     'BOM lines': k.bom,
     'Description': k.description,
   }))
-  const ws = XLSX.utils.json_to_sheet(rows)
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, 'Kits')
-  XLSX.writeFile(wb, 'topcon-kits.xlsx')
+  downloadExcel('topcon-kits.xlsx', rows, 'Kits')
 }
 
 function KitRow({ it, go }: { it: any; go: any }) {
@@ -139,24 +134,24 @@ function KitList({ go, renderHeaderActions }: { go: any; renderHeaderActions?: (
 
   const { data: allItems, loading, error } = useAllItems()
 
-  // All kits from the item object where cat = KIT
-  const kits = useMemo(() => (allItems ?? []).filter((i: any) => i.cat === KIT_CAT), [allItems])
+  // All items from the item object — no category filter, show everything
+  const items = useMemo(() => allItems ?? [], [allItems])
 
-  const filteredKits = useMemo(() => kits.filter((i: any) => {
+  const filteredItems = useMemo(() => items.filter((i: any) => {
     const matchesSeg = seg === 'All' || i.phase === seg
-    const matchesQ = (i.pn + ' ' + i.name + ' ' + i.div).toLowerCase().includes(q.toLowerCase())
+    const matchesQ = (i.pn + ' ' + i.name + ' ' + i.cat + ' ' + i.div).toLowerCase().includes(q.toLowerCase())
     return matchesSeg && matchesQ
-  }), [kits, q, seg])
+  }), [items, q, seg])
 
   React.useEffect(() => { setPage(0) }, [q, seg])
 
-  const inProd = kits.filter((i: any) => i.phase === 'In Production').length
-  const discontinued = kits.filter((i: any) => i.phase === 'Discontinued').length
-  const obsolete = kits.filter((i: any) => i.phase === 'Obsolete').length
-  const withBom = kits.filter((i: any) => i.bom > 0).length
+  const inProd = items.filter((i: any) => i.phase === 'In Production').length
+  const discontinued = items.filter((i: any) => i.phase === 'Discontinued').length
+  const obsolete = items.filter((i: any) => i.phase === 'Obsolete').length
+  const withBom = items.filter((i: any) => i.bom > 0).length
 
-  const SEGS = ['All', 'In Production', 'Discontinued', 'Prototype', 'Obsolete']
-  const countForSeg = (s: string) => s === 'All' ? kits.length : kits.filter((i: any) => i.phase === s).length
+  const SEGS = ['All', 'In Production', 'Discontinued', 'Prototype', 'Obsolete', 'Design']
+  const countForSeg = (s: string) => s === 'All' ? items.length : items.filter((i: any) => i.phase === s).length
 
   return (
     <div className="stack" data-test-id="kit-list-page">
@@ -166,15 +161,15 @@ function KitList({ go, renderHeaderActions }: { go: any; renderHeaderActions?: (
           <div className="crumb">Items · Kits</div>
           <h1>Kits</h1>
           <div className="sub" style={{ marginTop: 4 }}>
-            Kit assemblies from the item master — {kits.length} total
+            All items from the item master — {items.length} total
           </div>
         </div>
         <div className="row">
           <button
             className="btn"
-            onClick={() => exportKitsToExcel(kits)}
+            onClick={() => exportKitsToExcel(items)}
             data-test-id="export-kits-btn"
-            disabled={kits.length === 0}
+            disabled={items.length === 0}
           >
             <Download size={13} />Export to Excel
           </button>
@@ -193,7 +188,7 @@ function KitList({ go, renderHeaderActions }: { go: any; renderHeaderActions?: (
         <Kpi label="In production" value={inProd} icon={CheckCircle2} tint={T.okBg} bd={T.okBd} tone={T.ok} />
         <Kpi label="Discontinued" value={discontinued} icon={Clock} tint={T.warnBg} bd={T.warnBd} tone={T.warn} />
         <Kpi label="Obsolete" value={obsolete} icon={Ban} tint={T.badBg} bd={T.badBd} tone={T.bad} />
-        <Kpi label="Kits with a BOM" value={withBom} icon={Layers} />
+        <Kpi label="Items with a BOM" value={withBom} icon={Layers} />
       </div>
 
       {/* Toolbar */}
@@ -248,17 +243,17 @@ function KitList({ go, renderHeaderActions }: { go: any; renderHeaderActions?: (
               {Boolean(error) && (
                 <tr><td colSpan={9}><Empty icon={AlertTriangle} title="Failed to load kits" body="Check your connection and try refreshing." /></td></tr>
               )}
-              {!loading && !error && filteredKits.length === 0 && (
-                <tr><td colSpan={9}><Empty icon={Boxes} title="No kits match" body="Try a different search or lifecycle filter." /></td></tr>
+              {!loading && !error && filteredItems.length === 0 && (
+                <tr><td colSpan={9}><Empty icon={Boxes} title="No items match" body="Try a different search or lifecycle filter." /></td></tr>
               )}
-              {!loading && !error && filteredKits
+              {!loading && !error && filteredItems
                 .slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
                 .map((it: any) => <KitRow key={it.id} it={it} go={go} />)
               }
             </tbody>
           </table>
         </div>
-        <Pagination total={filteredKits.length} page={page} setPage={setPage} />
+        <Pagination total={filteredItems.length} page={page} setPage={setPage} />
       </Card>
 
       {bulk && (

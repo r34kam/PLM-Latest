@@ -1,15 +1,18 @@
+import { ImportPanel } from '@/components/data-io/ImportPanel'
 import { Card } from '@/components/primitives/Card'
 import { Empty } from '@/components/primitives/Empty'
 import { Kpi } from '@/components/primitives/Kpi'
+import { Modal } from '@/components/primitives/Modal'
 import { PAGE_SIZE, Pagination } from '@/components/primitives/Pagination'
 import { useAllBomItems } from '@/data/bomItems'
+import { BOM_ITEM_TEMPLATE } from '@/domain/templates'
+import { downloadExcel } from '@/lib/download'
 import { T } from '@/theme/tokens'
 import {
   AlertTriangle, ChevronDown, ChevronRight,
-  Database, Download, Layers, Package, Wrench,
+  Database, Download, Layers, Package, Upload, Wrench,
 } from 'lucide-react'
 import React, { useMemo, useState } from 'react'
-import * as XLSX from 'xlsx'
 
 /* ============================ PARTS LIST ============================= */
 
@@ -25,10 +28,7 @@ function exportPartsToExcel(parts: any[]) {
     'Notes': p.notes,
     'Date added': p.addedAt,
   }))
-  const ws = XLSX.utils.json_to_sheet(rows)
-  const wb = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(wb, ws, 'Parts')
-  XLSX.writeFile(wb, 'topcon-parts.xlsx')
+  downloadExcel('topcon-parts.xlsx', rows, 'Parts')
 }
 
 function PartRow({ bi }: { bi: any }) {
@@ -104,6 +104,7 @@ function PartsList({ renderHeaderActions }: { renderHeaderActions?: () => React.
   const [q, setQ] = useState('')
   const [catFilter, setCatFilter] = useState('All')
   const [page, setPage] = useState(0)
+  const [bulk, setBulk] = useState(false)
 
   const { bomItems, loading, error } = useAllBomItems()
 
@@ -145,6 +146,9 @@ function PartsList({ renderHeaderActions }: { renderHeaderActions?: () => React.
             disabled={bomItems.length === 0}
           >
             <Download size={13} />Export to Excel
+          </button>
+          <button className="btn" onClick={() => setBulk(true)} data-test-id="parts-bulk-upload-btn">
+            <Upload size={13} />Bulk upload
           </button>
           {renderHeaderActions?.()}
         </div>
@@ -221,6 +225,22 @@ function PartsList({ renderHeaderActions }: { renderHeaderActions?: () => React.
         </div>
         <Pagination total={filtered.length} page={page} setPage={setPage} />
       </Card>
+
+      {bulk && (
+        <Modal
+          title="Bulk upload parts"
+          wide
+          onClose={() => setBulk(false)}
+          foot={
+            <>
+              <span className="sub">Upload BOM line items using the template below. Each row must reference an existing kit number.</span>
+              <button className="btn" style={{ marginLeft: 'auto' }} onClick={() => setBulk(false)}>Close</button>
+            </>
+          }
+        >
+          <ImportPanel template={BOM_ITEM_TEMPLATE} templateName="topcon-parts-template.csv" entity="parts" />
+        </Modal>
+      )}
     </div>
   )
 }
