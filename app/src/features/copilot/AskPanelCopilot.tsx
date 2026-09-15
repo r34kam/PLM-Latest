@@ -149,29 +149,7 @@ function HistoryOverlay({ visible, onClose }: { visible: boolean; onClose: () =>
   )
 }
 
-/* ---- agent avatar -------------------------------------------------- */
 
-function AgentAvatar({ size = 40 }: { size?: number }) {
-  return (
-    <div
-      aria-hidden
-      style={{
-        width: size,
-        height: size,
-        borderRadius: '50%',
-        background: '#1a3a2a',
-        display: 'grid',
-        placeItems: 'center',
-        flexShrink: 0,
-      }}
-    >
-      <svg width={size * 0.48} height={size * 0.48} viewBox="0 0 20 20" fill="none">
-        <circle cx="7" cy="11" r="4" fill="white" fillOpacity="0.9" />
-        <circle cx="14" cy="7" r="2.5" fill="white" fillOpacity="0.6" />
-      </svg>
-    </div>
-  )
-}
 
 /* ---- main component ------------------------------------------------ */
 
@@ -214,8 +192,6 @@ export function AskPanelCopilot({ agentId, onClose, className }: Props) {
         }}
         data-test-id="ask-panel-header"
       >
-        <AgentAvatar size={40} />
-
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: '#0a2233', lineHeight: 1.2 }}>
             {AGENT_NAME}
