@@ -5,31 +5,16 @@ import { Kpi } from '@/components/primitives/Kpi'
 import { Modal } from '@/components/primitives/Modal'
 import { PAGE_SIZE, Pagination } from '@/components/primitives/Pagination'
 import { useAllBomItems } from '@/data/bomItems'
+import { useExportData } from '@/data/export'
 import { BOM_ITEM_TEMPLATE } from '@/domain/templates'
-import { downloadExcel } from '@/lib/download'
 import { T } from '@/theme/tokens'
 import {
   AlertTriangle, ChevronDown, ChevronRight,
-  Database, Download, Layers, Package, Upload, Wrench,
+  Database, Download, Layers, Loader2, Package, Upload, Wrench,
 } from 'lucide-react'
 import React, { useMemo, useState } from 'react'
 
 /* ============================ PARTS LIST ============================= */
-
-function exportPartsToExcel(parts: any[]) {
-  const rows = parts.map((p) => ({
-    'Part number': p.pn,
-    'Part name': p.name,
-    'Category': p.cat,
-    'Quantity': p.qty,
-    'UOM': p.uom,
-    'Kit number': p.kitNumber,
-    'Reference designator': p.refDes,
-    'Notes': p.notes,
-    'Date added': p.addedAt,
-  }))
-  downloadExcel('topcon-parts.xlsx', rows, 'Parts')
-}
 
 function PartRow({ bi }: { bi: any }) {
   const [open, setOpen] = useState(false)
@@ -107,6 +92,7 @@ function PartsList({ renderHeaderActions }: { renderHeaderActions?: () => React.
   const [bulk, setBulk] = useState(false)
 
   const { bomItems, loading, error } = useAllBomItems()
+  const { runExport, isPending: exporting } = useExportData()
 
   // Unique categories for filter pills
   const cats = useMemo(() => {
@@ -141,11 +127,12 @@ function PartsList({ renderHeaderActions }: { renderHeaderActions?: () => React.
         <div className="row">
           <button
             className="btn"
-            onClick={() => exportPartsToExcel(bomItems)}
+            onClick={() => runExport('item')}
             data-test-id="export-parts-btn"
-            disabled={bomItems.length === 0}
+            disabled={exporting}
           >
-            <Download size={13} />Export to Excel
+            {exporting ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+            {exporting ? 'Preparing…' : 'Export to Excel'}
           </button>
           <button className="btn" onClick={() => setBulk(true)} data-test-id="parts-bulk-upload-btn">
             <Upload size={13} />Bulk upload

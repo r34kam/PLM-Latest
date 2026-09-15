@@ -5,43 +5,17 @@ import { Empty } from '@/components/primitives/Empty'
 import { Kpi } from '@/components/primitives/Kpi'
 import { Modal } from '@/components/primitives/Modal'
 import { PAGE_SIZE, Pagination } from '@/components/primitives/Pagination'
+import { useExportData } from '@/data/export'
 import { useAllItems } from '@/data/items'
 import { ITEM_TEMPLATE } from '@/domain/templates'
-import { downloadExcel } from '@/lib/download'
 import { T } from '@/theme/tokens'
 import {
   AlertTriangle, Ban, Boxes, CheckCircle2, ChevronDown, ChevronRight,
-  Clock, Database, Download, Layers, Plus, Upload,
+  Clock, Database, Download, Layers, Loader2, Plus, Upload,
 } from 'lucide-react'
 import React, { useMemo, useState } from 'react'
 
 /* ============================== KIT LIST ============================== */
-
-function exportKitsToExcel(items: any[]) {
-  const rows = items.map((k) => ({
-    'Item number': k.pn,
-    'Revision': k.rev,
-    'Item name': k.name,
-    'Category': k.cat,
-    'Phase': k.phase,
-    'SAP status': k.status,
-    'Plant': k.plant,
-    'Owner': k.owner,
-    'Division': k.div,
-    'Procurement': k.proc,
-    'UOM': k.uom,
-    'Material group': k.mg,
-    'BOM usage': k.bomUsage,
-    'RoHS': k.rohs,
-    'ERP system': k.erpSystem,
-    'Assembly type': k.assemblyType,
-    'Standard cost': k.cost,
-    'Created': k.created,
-    'BOM lines': k.bom,
-    'Description': k.description,
-  }))
-  downloadExcel('topcon-kits.xlsx', rows, 'Kits')
-}
 
 function KitRow({ it, go }: { it: any; go: any }) {
   const [open, setOpen] = useState(false)
@@ -133,6 +107,7 @@ function KitList({ go, renderHeaderActions }: { go: any; renderHeaderActions?: (
   const [page, setPage] = useState(0)
 
   const { data: allItems, loading, error } = useAllItems()
+  const { runExport, isPending: exporting } = useExportData()
 
   // All items from the item object — no category filter, show everything
   const items = useMemo(() => allItems ?? [], [allItems])
@@ -167,11 +142,12 @@ function KitList({ go, renderHeaderActions }: { go: any; renderHeaderActions?: (
         <div className="row">
           <button
             className="btn"
-            onClick={() => exportKitsToExcel(items)}
+            onClick={() => runExport('bom_item')}
             data-test-id="export-kits-btn"
-            disabled={items.length === 0}
+            disabled={exporting}
           >
-            <Download size={13} />Export to Excel
+            {exporting ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+            {exporting ? 'Preparing…' : 'Export to Excel'}
           </button>
           <button className="btn" onClick={() => setBulk(true)} data-test-id="bulk-upload-btn">
             <Upload size={13} />Bulk upload
