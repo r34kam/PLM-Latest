@@ -20,6 +20,80 @@ const ItemNew = lazy(() => import('@/features/items/ItemNew').then((m) => ({ def
 const Reports = lazy(() => import('@/features/reports/ReportsPage').then((m) => ({ default: m.Reports })))
 const Suppliers = lazy(() => import('@/features/suppliers/SuppliersPage').then((m) => ({ default: m.Suppliers })))
 
+/* ── Floating Ask AI FAB ─────────────────────────────────────────────
+   Circle at rest → pill with "Ask AI" label on hover.
+   Brand blue: #0A4F8F (rest) / #005fa8 (hover).                       */
+
+function AskAiFab({ onClick }: { onClick: () => void }) {
+  const [hovered, setHovered] = React.useState(false)
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Ask AI"
+      data-test-id="floating-ask-ai-btn"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        position: "fixed",
+        right: 28,
+        bottom: 28,
+        height: 52,
+        width: hovered ? 128 : 52,
+        minWidth: 52,
+        borderRadius: 999,
+        background: hovered ? "#005fa8" : "#0A4F8F",
+        boxShadow: hovered
+          ? "0 4px 20px rgba(0,95,168,0.5), 0 2px 8px rgba(0,0,0,0.18)"
+          : "0 2px 12px rgba(10,79,143,0.4), 0 1px 4px rgba(0,0,0,0.14)",
+        display: "flex",
+        alignItems: "center",
+        border: "none",
+        padding: 0,
+        cursor: "pointer",
+        zIndex: 60,
+        outline: "none",
+        overflow: "hidden",
+        transition: "width .22s cubic-bezier(0.16,1,0.3,1), background .15s ease, box-shadow .15s ease",
+      }}
+    >
+      {/* Icon circle */}
+      <div style={{
+        width: 52,
+        height: 52,
+        borderRadius: "50%",
+        flexShrink: 0,
+        display: "grid",
+        placeItems: "center",
+        background: hovered ? "rgba(255,255,255,0.15)" : "transparent",
+        transition: "background .15s ease",
+      }}>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+          stroke="#ffffff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M14.5 2.5C14.5 6.5 17.5 9.5 21.5 9.5C17.5 9.5 14.5 12.5 14.5 16.5C14.5 12.5 11.5 9.5 7.5 9.5C11.5 9.5 14.5 6.5 14.5 2.5Z" />
+          <path d="M6 14C6 16.2 7.8 18 10 18C7.8 18 6 19.8 6 22C6 19.8 4.2 18 2 18C4.2 18 6 16.2 6 14Z" />
+        </svg>
+      </div>
+      {/* Label */}
+      <span style={{
+        color: "#ffffff",
+        fontSize: 14,
+        fontWeight: 600,
+        whiteSpace: "nowrap",
+        paddingRight: hovered ? 16 : 0,
+        maxWidth: hovered ? 76 : 0,
+        opacity: hovered ? 1 : 0,
+        transition: "max-width .22s cubic-bezier(0.16,1,0.3,1), opacity .14s ease, padding-right .22s cubic-bezier(0.16,1,0.3,1)",
+        overflow: "hidden",
+        letterSpacing: "-0.01em",
+      }}>
+        Ask AI
+      </span>
+    </button>
+  )
+}
+
 /* =============================== APP ================================ */
 
 function TopconPLM({
@@ -191,82 +265,7 @@ function TopconPLM({
       </Suspense>
 
       {/* Floating Ask AI Button — hidden on Reports page since the full copilot is there */}
-      {v.page !== "reports" && <button
-        type="button"
-        onClick={handleToggleAsk}
-        data-test-id="floating-ask-ai-btn"
-        title="Ask AI"
-        aria-label="Ask AI"
-        style={{
-          position: "fixed",
-          right: 28,
-          bottom: 28,
-          width: 60,
-          height: 60,
-          borderRadius: "50%",
-          background: "#EDE9DE",
-          boxShadow: "0 0 0 1px rgba(0, 35, 65, 0.2), 0 6px 20px rgba(10, 79, 143, 0.35), 0 2px 6px rgba(0, 0, 0, 0.12)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          cursor: "pointer",
-          zIndex: 60,
-          padding: 4,
-          transition: "transform .18s cubic-bezier(0.16, 1, 0.3, 1), box-shadow .18s ease",
-          outline: "none"
-        }}
-        onMouseEnter={(e: any) => {
-          e.currentTarget.style.transform = "scale(1.08)";
-          e.currentTarget.style.boxShadow = "0 0 0 1px rgba(10, 79, 143, 0.32), 0 8px 24px rgba(10, 79, 143, 0.45), 0 3px 8px rgba(0, 0, 0, 0.16)";
-          const inner = e.currentTarget.querySelector(".ai-inner-circle") as HTMLElement;
-          if (inner) inner.style.background = "#005fa8";
-        }}
-        onMouseLeave={(e: any) => {
-          e.currentTarget.style.transform = "scale(1)";
-          e.currentTarget.style.boxShadow = "0 0 0 1px rgba(0, 35, 65, 0.2), 0 6px 20px rgba(10, 79, 143, 0.35), 0 2px 6px rgba(0, 0, 0, 0.12)";
-          const inner = e.currentTarget.querySelector(".ai-inner-circle") as HTMLElement;
-          if (inner) inner.style.background = "#0A4F8F";
-        }}
-        onMouseDown={(e: any) => {
-          e.currentTarget.style.transform = "scale(0.96)";
-        }}
-        onMouseUp={(e: any) => {
-          e.currentTarget.style.transform = "scale(1.08)";
-        }}
-      >
-        <div
-          className="ai-inner-circle"
-          style={{
-            width: "100%",
-            height: "100%",
-            borderRadius: "50%",
-            background: "#0A4F8F",
-            color: "#FFFFFF",
-            display: "grid",
-            placeItems: "center",
-            boxShadow: "0 0 0 1px rgba(0, 35, 65, 0.32), inset 0 1px 1.5px rgba(255, 255, 255, 0.25)",
-            transition: "background .18s ease",
-            pointerEvents: "none"
-          }}
-        >
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.9"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            style={{ display: "block" }}
-          >
-            {/* Main 4-pointed sparkle in upper right */}
-            <path d="M14.5 2.5C14.5 6.5 17.5 9.5 21.5 9.5C17.5 9.5 14.5 12.5 14.5 16.5C14.5 12.5 11.5 9.5 7.5 9.5C11.5 9.5 14.5 6.5 14.5 2.5Z" />
-            {/* Smaller 4-pointed sparkle in lower left */}
-            <path d="M6 14C6 16.2 7.8 18 10 18C7.8 18 6 19.8 6 22C6 19.8 4.2 18 2 18C4.2 18 6 16.2 6 14Z" />
-          </svg>
-        </div>
-      </button>}
+      {v.page !== "reports" && <AskAiFab onClick={handleToggleAsk} />}
 
       {inspectOpen && (
         <InspectRail
