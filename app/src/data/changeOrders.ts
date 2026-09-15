@@ -59,7 +59,8 @@ export type NewChangeOrder = Omit<ChangeOrder, 'id'>
 // Payload shape sent to the backend — approvals serialised to JSON string
 type CoPayload = Omit<NewChangeOrder, 'approvals'> & { approvalsJson: string }
 
-export const CO_STAGES = ['Open', 'Submit', 'Approval', 'Effective', 'Complete', 'Rejected'] as const
+// ECOs go directly into Approval when created — no Open or Submit holding states in practice
+export const CO_STAGES = ['Approval', 'Effective', 'Complete', 'Rejected'] as const
 export type CoStage = (typeof CO_STAGES)[number]
 
 export const CO_TYPES = ['ECO', 'DCO', 'TPCO', 'RFD'] as const

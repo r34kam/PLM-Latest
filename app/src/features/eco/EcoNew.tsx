@@ -13,7 +13,7 @@ import { useCreateChangeOrder } from '@/data/changeOrders'
 import { ITEMS, ASSEMBLIES } from '@/domain/catalog'
 import { bomFor } from '@/domain/boms'
 import { AI_SUGGEST } from '@/domain/ecos'
-import { ROUTINGS, ROUTING_NAMES } from '@/domain/routings'
+import { ROUTINGS, ROUTING_NAMES, approvalsFor } from '@/domain/routings'
 import { ME } from '@/domain/session'
 import { ECO_TEMPLATE } from '@/domain/templates'
 import { T } from '@/theme/tokens'
@@ -224,23 +224,34 @@ function EcoNew({
   const coId = `${coTypePrefix}-${String(Date.now()).slice(-6)}`;
   const today = format(new Date(), "MM/dd/yyyy");
 
-  const handleCreate = async (submitToRouting: boolean) => {
+  const handleCreate = async () => {
     setIsSubmitting(true);
+    // Build initial pending approvals from the selected routing — every role starts as pending
+    const initialApprovals = approvalsFor(routing, 'Approval').map((r: any) => ({
+      role: r.g,
+      approver: r.n,
+      req: r.req,
+      stage: 1,
+      status: r.req === 'Comments only' ? 'pending' : 'pending',
+      signedAt: '',
+      comment: '',
+      others: r.others ?? [],
+    }));
     try {
       await createChangeOrder({
         coId,
         title: form.title,
         type: coTypePrefix,
         cat: form.cat,
-        stage: submitToRouting ? "Submit" : "Open",
+        stage: "Approval",
         div: form.div.split("–")[0].trim(),
         site: form.site,
         routing,
         creator: ME.name,
-        submitter: submitToRouting ? ME.name : "—",
+        submitter: ME.name,
         dc: form.dc || ME.name,
         created: today,
-        submitted: submitToRouting ? today : "—",
+        submitted: today,
         itemCount: ecoItems.length,
         modCount: ecoItems.length,
         pnsJson: JSON.stringify(ecoItems.map((it: any) => it.pn)),
@@ -258,10 +269,10 @@ function EcoNew({
         awaitingMe: false,
         effectiveDate: form.eff === "Effective on date" ? form.effDate : "",
         completedDate: "",
-        approvals: [],
-        currentStageNum: 0,
+        approvals: initialApprovals,
+        currentStageNum: 1,
       });
-      toast.success(`${coId} created${submitToRouting ? " and submitted to routing" : ""}`);
+      toast.success(`${coId} submitted to ${routing} approval flow`);
       go({ page: "ecos" });
     } catch {
       toast.error("Failed to create change order — please try again");
@@ -1607,28 +1618,17 @@ function EcoNew({
             </button>
           )}
 
-          {/* Step 2: two create actions replace Continue */}
+          {/* Step 2: single create action — ECOs go directly into the approval flow */}
           {i === 2 && (
-            <>
-              <button
-                className="btn"
-                onClick={() => handleCreate(false)}
-                disabled={isSubmitting}
-                data-test-id="eco-create-open-btn"
-              >
-                {isSubmitting ? <Loader2 size={13} className="animate-spin" /> : null}
-                Create — keep open
-              </button>
-              <button
-                className="btn pri"
-                onClick={() => handleCreate(true)}
-                disabled={isSubmitting}
-                data-test-id="eco-create-submit-btn"
-              >
-                {isSubmitting ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
-                Create &amp; submit to routing
-              </button>
-            </>
+            <button
+              className="btn pri"
+              onClick={handleCreate}
+              disabled={isSubmitting}
+              data-test-id="eco-create-submit-btn"
+            >
+              {isSubmitting ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
+              Create &amp; submit to routing
+            </button>
           )}
         </div>
       </div>
