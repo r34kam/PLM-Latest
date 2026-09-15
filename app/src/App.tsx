@@ -7,6 +7,8 @@ import TopconPLM from '@/TopconPLM'
 import Home from '@/pages/Home'
 import Ecos from '@/pages/Ecos'
 import Items from '@/pages/Items'
+import Kits from '@/pages/Kits'
+import Parts from '@/pages/Parts'
 import Suppliers from '@/pages/Suppliers'
 import Admin from '@/pages/Admin'
 import EcoNew from '@/pages/EcoNew'
@@ -36,6 +38,8 @@ export default function App() {
         <Route path="/home" element={<Home />} />
         <Route path="/ecos" element={<Ecos />} />
         <Route path="/items" element={<Items />} />
+        <Route path="/kits" element={<Kits />} />
+        <Route path="/parts" element={<Parts />} />
         <Route path="/suppliers" element={<Suppliers />} />
         <Route path="/reports" element={<Suspense fallback={<Skeleton className="h-full w-full" />}><Reports /></Suspense>} />
         <Route path="/admin" element={<Admin />} />
