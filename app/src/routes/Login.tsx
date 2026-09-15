@@ -545,7 +545,6 @@ function PasswordView({
           Sign in
         </button>
       </form>
-
       {/* Demo user autofill */}
       <div style={{ marginTop: 32, borderTop: "1px solid #e5e7eb", paddingTop: 20 }}>
         {DEMO_USERS.map((u) => (
@@ -553,7 +552,11 @@ function PasswordView({
             key={u.username}
             style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
           >
-            <span style={{ fontSize: 12, color: "#6b7280" }}>Demo user: {u.label}</span>
+            <span style={{
+              fontSize: 12,
+              color: "#6b7280",
+              overflow: "hidden"
+            }}>Demo user: {u.label}</span>
             <button
               type="button"
               onClick={() => handleAutofill(u.username, u.password)}
@@ -569,7 +572,6 @@ function PasswordView({
           </div>
         ))}
       </div>
-
       {showBack && <BackToLogin onBack={onBack} />}
     </AuthCard>
   );

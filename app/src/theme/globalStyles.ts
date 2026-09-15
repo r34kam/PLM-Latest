@@ -423,6 +423,20 @@ textarea.inp{height:auto;padding:8px 10px;line-height:1.5;resize:vertical}
 .eco-exec-metrics{display:flex;align-items:center;gap:20px;flex-shrink:0}
 .eco-exec-metric-tile{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:88px;padding:10px 16px;background:#ffffff;border:1px solid #E2E8F0;border-radius:8px;box-shadow:0 1px 2px rgba(2,42,66,.04)}
 .eco-exec-instructions{padding:20px 28px 24px;background:#ffffff;border-top:1px solid #E2E8F0}
+/* ── Summary step redesign ─── */
+.eco-summary-header-card{display:flex;align-items:center;gap:0;background:#fff;border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(2,42,66,.05)}
+.eco-summary-header-left{flex:1;min-width:0;padding:18px 22px}
+.eco-summary-stats{display:flex;flex-shrink:0;border-left:1px solid #e2e8f0}
+.eco-summary-stat-box{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:88px;padding:16px 20px;border-left:1px solid #e2e8f0}
+.eco-summary-stat-box:first-child{border-left:none}
+.eco-draft-chip{background:#f1f5f9;border:none;color:#627d98;font-size:11px;font-weight:600;letter-spacing:0.04em;padding:2px 7px;border-radius:3px;text-transform:uppercase;display:inline-block}
+.eco-summary-section{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:18px 22px;margin-top:12px;box-shadow:0 1px 2px rgba(2,42,66,.03)}
+.eco-summary-section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.eco-summary-section-title{font-size:14px;font-weight:700;color:#0a2233}
+.eco-summary-edit-link{background:none;border:none;cursor:pointer;font-size:13px;color:#3b6ea8;font-weight:600;padding:0;line-height:1}
+.eco-summary-edit-link:hover{text-decoration:underline}
+.eco-summary-stage-row{padding:12px 16px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:8px;background:#fff}
+.eco-summary-stage-row:last-child{margin-bottom:0}
 .eco-summary-kv-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 36px}
 @media(max-width:840px){.eco-summary-kv-grid{grid-template-columns:1fr;gap:12px}}
 .eco-summary-kv-item{display:flex;flex-direction:column;gap:5px;padding-bottom:10px;border-bottom:1px solid #F1F5F9}
@@ -515,18 +529,6 @@ textarea.inp{height:auto;padding:8px 10px;line-height:1.5;resize:vertical}
 .eco-add-role-link:hover{color:#0a2233}
 
 /* ── Summary redesign ─── */
-.eco-summary-header-card{display:flex;align-items:center;gap:24px;background:#fff;border:1.5px solid #d1dde8;border-radius:12px;padding:20px 24px}
-.eco-summary-stats{display:flex;gap:0;flex-shrink:0}
-.eco-summary-stat-box{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:80px;padding:10px 18px;border-left:1.5px solid #e2e8f0}
-.eco-summary-stat-box:first-child{border-left:none}
-.eco-draft-chip{background:#f1f5f9;border:1px solid #c8d8e8;color:#627d98;font-size:11px;font-weight:700;letter-spacing:0.05em;padding:2px 8px;border-radius:4px;text-transform:uppercase}
-.eco-summary-section{padding:20px 0 4px;border-top:1px solid #e9eef4;margin-top:8px}
-.eco-summary-section:first-of-type{border-top:none;margin-top:0}
-.eco-summary-section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
-.eco-summary-section-title{font-size:14px;font-weight:700;color:#0a2233}
-.eco-summary-edit-link{background:none;border:none;cursor:pointer;font-size:13px;color:#3b6ea8;font-weight:600;padding:0}
-.eco-summary-edit-link:hover{text-decoration:underline}
-.eco-summary-stage-row{padding:10px 16px;border:1.5px solid #d1dde8;border-radius:8px;margin-bottom:8px;background:#fff}
 .eco-info-tip{position:relative;display:inline-flex;align-items:center;color:#94a3b8;cursor:default;line-height:0}
 .eco-info-tip:hover{color:#64748b}
 .eco-info-tip-bubble{visibility:hidden;opacity:0;pointer-events:none;position:absolute;left:calc(100% + 8px);top:50%;transform:translateY(-50%);background:#1e293b;color:#f1f5f9;font-size:12px;font-weight:400;line-height:1.5;padding:7px 10px;border-radius:6px;white-space:normal;width:200px;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.2);transition:opacity .12s ease,visibility .12s ease}

@@ -1783,24 +1783,24 @@ function EcoNew({
 
           {/* ── Header card: DRAFT + type + title + stats ── */}
           <div className="eco-summary-header-card" data-test-id="eco-summary-header">
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="row" style={{ gap: 8, marginBottom: 6 }}>
+            <div className="eco-summary-header-left">
+              <div className="row" style={{ gap: 8, marginBottom: 7, alignItems: 'center' }}>
                 <span className="eco-draft-chip">DRAFT</span>
-                <span style={{ fontSize: 13, color: '#3b6ea8', fontWeight: 600 }}>{form.cat.split(':')[0]} — {form.cat.split(':')[1]?.trim() ?? form.cat}</span>
+                <span style={{ fontSize: 13, color: '#3b6ea8', fontWeight: 600 }}>{form.cat.includes(':') ? form.cat.split(':')[1]?.trim() : form.cat}</span>
               </div>
-              <div style={{ fontWeight: 700, fontSize: 18, color: '#0a2233' }}>
+              <div style={{ fontWeight: 700, fontSize: 17, color: '#0a2233', lineHeight: 1.3 }}>
                 {form.title || 'New change order'}
               </div>
             </div>
             <div className="eco-summary-stats">
               {[
                 ['ITEMS', ecoItems.length],
-                ['STAGES', mode === 'manual' ? manStages.length : (selectedStages.filter((r: any, idx2: number, arr: any[]) => arr.findIndex((x: any) => x.stage === r.stage) === idx2).length || 2)],
+                ['STAGES', mode === 'manual' ? manStages.length : (selectedStages.filter((r: any, idx2: number, arr: any[]) => arr.findIndex((x: any) => x.stage === r.stage) === idx2).length || 1)],
                 ['APPROVERS', mode === 'ai' ? picked.length : mode === 'manual' ? manStages.reduce((a2: any, x: any) => a2 + x.people.length, 0) : selectedStages.length]
               ].map(([label, val]: any) => (
                 <div key={label} className="eco-summary-stat-box">
-                  <div style={{ fontSize: 22, fontWeight: 700, color: '#0a2233', lineHeight: 1 }}>{val}</div>
-                  <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#7993a8', marginTop: 3 }}>{label}</div>
+                  <div style={{ fontSize: 24, fontWeight: 700, color: '#0a2233', lineHeight: 1 }}>{val}</div>
+                  <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#7993a8', marginTop: 5 }}>{label}</div>
                 </div>
               ))}
             </div>
