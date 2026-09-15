@@ -5,9 +5,8 @@ import { Kpi } from '@/components/primitives/Kpi'
 import { PAGE_SIZE, Pagination } from '@/components/primitives/Pagination'
 import { Toolbar } from '@/components/toolbar/Toolbar'
 import { useAllChangeOrders, deriveCoKpis, CO_STAGES, ChangeOrder } from '@/data/changeOrders'
-import { downloadFile } from '@/lib/download'
 import { T } from '@/theme/tokens'
-import { AlertTriangle, Clock, Database, Download, Eye, Filter, GitPullRequest, LayoutGrid, List, Pencil, Plus } from 'lucide-react'
+import { AlertTriangle, Clock, Database, Eye, Filter, GitPullRequest, LayoutGrid, List, Pencil, Plus } from 'lucide-react'
 import React, { useMemo, useState } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -23,7 +22,6 @@ function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, 
   const [selectedStages, setSelectedStages] = useState<string[]>(
     initialFilter && (CO_STAGES as readonly string[]).includes(initialFilter) ? [initialFilter] : []
   );
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [ecoPage, setEcoPage] = useState(0);
   // Approvers only see "Needs me"; DC sees all filters
   const filters = isApproverRole ? ["Needs me"] : ["Needs me", "Open", "All"];
@@ -89,31 +87,6 @@ function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, 
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [rows, inspectedId, onInspect, ecoPage]);
 
-  const allPageIds = rows.slice(ecoPage * PAGE_SIZE, (ecoPage + 1) * PAGE_SIZE).map((e) => e.id);
-  const allSelected = allPageIds.length > 0 && allPageIds.every((id) => selectedIds.includes(id));
-
-  const toggleSelectAll = () => {
-    if (allSelected) {
-      setSelectedIds((prev: any) => prev.filter((id: any) => !allPageIds.includes(id)));
-    } else {
-      setSelectedIds((prev: any) => Array.from(new Set([...prev, ...allPageIds])));
-    }
-  };
-
-  const toggleSelect = (id: any) => {
-    setSelectedIds((prev: any) =>
-      prev.includes(id) ? prev.filter((x: any) => x !== id) : [...prev, id]
-    );
-  };
-
-  const exportSelected = () => {
-    const toExport = allOrders.filter((e) => selectedIds.includes(e.id));
-    const header = "Change,Title,Category,Routing,Division,Items,Mods,Stage,Creator,Created,Priority";
-    const body = toExport.map((e) =>
-      `"${e.coId}","${e.title.replace(/"/g, '""')}","${e.type}","${e.routing}","${e.div}",${e.itemCount},${e.modCount},"${e.stage}","${e.creator}","${e.created}","${e.priority}"`
-    ).join("\n");
-    downloadFile("change-orders-selected.csv", header + "\n" + body);
-  };
 
   return (
     <div className="stack" data-test-id="eco-list-page">
@@ -173,13 +146,6 @@ function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, 
       <Card pad={false}>
         <Toolbar q={q} setQ={setQ} placeholder="Search change or title"
           segs={filters} seg={f} setSeg={(newF: any) => { setF(newF); }} count={count}
-          selected={selectedIds.length}
-          onClearSel={() => setSelectedIds([])}
-          bulk={
-            <button className="btn sm" onClick={exportSelected} data-test-id="export-selected-btn">
-              <Download size={12} />Export selected
-            </button>
-          }
           right={<>
             <div style={{ position: "relative" }}>
               <button
@@ -288,9 +254,6 @@ function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, 
           <div className="scrollx">
             <table className="tbl">
               <thead><tr>
-                <th style={{ width: 34 }}>
-                  <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} />
-                </th>
                 <th>Change</th>
                 {!railOpen && <th>Category</th>}
                 {!railOpen && <th>Routing</th>}
@@ -305,16 +268,9 @@ function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, 
                 {rows.slice(ecoPage * PAGE_SIZE, (ecoPage + 1) * PAGE_SIZE).map((e) => (
                   <tr
                     key={e.id}
-                    className={`${selectedIds.includes(e.id) ? "sel" : ""} ${inspectedId === e.coId ? "inspected-row" : ""}`}
+                    className={inspectedId === e.coId ? "inspected-row" : ""}
                     data-test-id={`eco-row-${e.id}`}
                   >
-                    <td>
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.includes(e.id)}
-                        onChange={() => toggleSelect(e.id)}
-                      />
-                    </td>
                     <td style={railOpen ? { maxWidth: 220 } : undefined}>
                       <a className="pn" onClick={() => go({ page: "eco", id: e.coId })}>{e.coId}</a>
                       <div

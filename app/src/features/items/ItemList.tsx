@@ -18,7 +18,6 @@ import React, { useState } from 'react'
 function ItemList({ go, railOpen = false, renderHeaderActions }: { go: any; railOpen?: boolean; renderHeaderActions?: () => React.ReactNode }) {
   const [q, setQ] = useState("");
   const [seg, setSeg] = useState("All");
-  const [sel, setSel] = useState<any[]>([]);
   const [bulk, setBulk] = useState(false);
   const [itemPage, setItemPage] = useState(0);
   const segs = ["All", "In Production", "Discontinued", "Prototype", "Obsolete"];
@@ -32,7 +31,6 @@ function ItemList({ go, railOpen = false, renderHeaderActions }: { go: any; rail
     (i.pn + i.name + i.cat).toLowerCase().includes(q.toLowerCase()));
 
   const count = (x: any) => (x === "All" ? items.length : items.filter((i: any) => i.phase === x).length);
-  const toggle = (pn: any) => setSel(sel.includes(pn) ? sel.filter((x: any) => x !== pn) : [...sel, pn]);
 
   // Reset page when filter changes
   React.useEffect(() => { setItemPage(0); }, [q, seg]);
@@ -70,15 +68,10 @@ function ItemList({ go, railOpen = false, renderHeaderActions }: { go: any; rail
         <Toolbar q={q} setQ={setQ} placeholder="Part number, name or category"
           segs={segs} seg={seg} setSeg={setSeg} count={count}
           selects={[["All categories", "KIT", "ASSEMBLY", "HARDWARE", "BRACKETS & PLATES", "PCB", "BATTERY"]]}
-          selected={sel.length} onClearSel={() => setSel([])}
-                      bulk={<>
-            <button className="btn sm dan" onClick={() => go({ page: "inactivate", id: sel[0] })}><Ban size={12} />Mark inactive</button>
-          </>} />
+/>
         <div className="scrollx">
           <table className="tbl">
-            <thead><tr><th style={{ width: 34 }}><input type="checkbox"
-              checked={sel.length > 0 && sel.length === rows.length}
-              onChange={() => setSel(sel.length === rows.length ? [] : rows.map((r: any) => r.pn))} /></th>
+            <thead><tr>
               <th>Item number</th>
               {!railOpen && <th>Rev</th>}
               <th>Item name</th>
@@ -99,8 +92,7 @@ function ItemList({ go, railOpen = false, renderHeaderActions }: { go: any; rail
                 <tr><td colSpan={10}><Empty icon={Boxes} title="No items match" body="Try a different search or lifecycle filter." /></td></tr>
               )}
               {!loading && !error && rows.slice(itemPage * PAGE_SIZE, (itemPage + 1) * PAGE_SIZE).map((it: any) => (
-                <tr key={it.pn} className={sel.includes(it.pn) ? "sel" : ""} data-test-id={`item-row-${it.pn}`}>
-                  <td><input type="checkbox" checked={sel.includes(it.pn)} onChange={() => toggle(it.pn)} /></td>
+                <tr key={it.pn} data-test-id={`item-row-${it.pn}`}>
                   <td style={{ whiteSpace: "nowrap" }}><a className="pn" onClick={() => go({ page: "item", id: it.pn })}>{it.pn}</a></td>
                   {!railOpen && <td>{it.rev}</td>}
                   <td style={{
