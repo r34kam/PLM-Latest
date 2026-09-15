@@ -1286,34 +1286,37 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
 
             if (backendCo && approvalRoles.length > 0) {
               const map = new Map<string, { name: string; reason: string; notifyOn: string; checked: boolean }>()
-              // Submitter always first
-              const submitterName = eco.submitter && eco.submitter !== '—' ? eco.submitter : ME.name
-              map.set(submitterName, {
-                name: submitterName,
-                reason: 'Part of the approval board · submitted this change',
-                notifyOn: 'Every status change',
-                checked: true,
-              })
-              // Each approver in the flow
-              for (const role of approvalRoles) {
-                // role.n = approver name, role.g = group
-                const name = role.n ?? role.name ?? ''
-                const group = role.g ?? role.group ?? ''
-                if (!name) continue
+
+              // Helper: add a person to the map, merging role groups if they appear in multiple
+              const addPerson = (name: string, groupLabel: string, isSubmitter = false) => {
+                if (!name || name === '—') return
                 if (map.has(name)) {
                   const ex = map.get(name)!
-                  if (!ex.reason.includes('submitted this change')) {
-                    ex.reason = `${ex.reason} · ${group}`
+                  if (!ex.reason.includes(groupLabel) && !ex.reason.includes('submitted this change')) {
+                    ex.reason = `${ex.reason} · ${groupLabel}`
                   }
                 } else {
-                  map.set(name, {
-                    name,
-                    reason: group ? `Part of the approval board · ${group}` : 'Part of the approval board',
-                    notifyOn: 'Every status change',
-                    checked: role.st === 'decided' || role.st === 'approved' || role.st === undefined,
-                  })
+                  const reason = isSubmitter
+                    ? `Part of the approval board · submitted this change`
+                    : `Part of the approval board · ${groupLabel}`
+                  map.set(name, { name, reason, notifyOn: 'Every status change', checked: true })
                 }
               }
+
+              // Submitter always first
+              const submitterName = eco.submitter && eco.submitter !== '—' ? eco.submitter : ME.name
+              addPerson(submitterName, '', true)
+
+              // Each approval role: primary approver + all others in that role group
+              // ApprovalEntry shape: { role, approver, others: string[], status, ... }
+              for (const entry of approvalRoles as import('@/data/changeOrders').ApprovalEntry[]) {
+                const groupLabel = entry.role ?? ''
+                if (entry.approver) addPerson(entry.approver, groupLabel)
+                for (const other of entry.others ?? []) {
+                  addPerson(other, groupLabel)
+                }
+              }
+
               recipients = Array.from(map.values())
             } else {
               recipients = notificationRecipientsFor(eco).map((r: any) => ({ ...r, checked: true }))
