@@ -191,15 +191,13 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
         </div>
       </div>
 
-      <div className="card" style={{ padding: "13px 16px" }}>
-        <div className="row" style={{ gap: 18 }}>
-          <Lifecycle
-            stages={LC}
-            current={rejected ? "Approval" : eco.stage}
-            rejected={rejected}
-            sub={approvalState.requiredCount > 0 ? [Math.round((approvalState.decidedCount / approvalState.requiredCount) * 100), 0] : [60, 0]}
-          />
-        </div>
+      <div className="card" style={{ padding: "16px 24px 20px" }}>
+        <Lifecycle
+          stages={LC}
+          current={rejected ? "Approval" : eco.stage}
+          rejected={rejected}
+          sub={approvalState.requiredCount > 0 ? [Math.round((approvalState.decidedCount / approvalState.requiredCount) * 100), 0] : [60, 0]}
+        />
       </div>
 
       {/* Combined Where this stands band + AI Rejection Insight */}

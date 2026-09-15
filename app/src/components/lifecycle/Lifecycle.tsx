@@ -58,14 +58,12 @@ const Lifecycle = ({ stages, current, rejected }: {
                 </div>
               )}
 
-              {/* Line fills the rest of the cell (except last) */}
-              {k < n - 1 && (
-                <div style={{
-                  flex: 1, height: 2, marginLeft: 8,
-                  background: lineColor,
-                  transition: 'background .3s',
-                }} aria-hidden="true" />
-              )}
+              {/* Line fills the rest of the cell; last column gets a spacer for visual balance */}
+              <div style={{
+                flex: 1, height: 2, marginLeft: 8,
+                background: k < n - 1 ? lineColor : 'transparent',
+                transition: 'background .3s',
+              }} aria-hidden="true" />
             </div>
 
             {/* ── Labels: left-aligned directly below the number ── */}
