@@ -42,6 +42,7 @@ function Nav({
   const navigate = useNavigate();
   const [brandHover, setBrandHover] = useState(false);
   const [adminMenuOpen, setAdminMenuOpen] = useState(page === "admin");
+  const [itemsMenuOpen, setItemsMenuOpen] = useState(page === "kits" || page === "parts");
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userBtnRef = useRef<HTMLButtonElement>(null);
   const logout = useLogout();
@@ -201,7 +202,43 @@ function Nav({
           count={role === 'approver' ? undefined : 22}
           label={role === 'approver' ? 'My changes' : (NAV[1].label as string)}
         />
-        <Item {...NAV[2]} active={page === "items"} />
+        <Item
+          {...NAV[2]}
+          active={page === "kits" || page === "parts"}
+          hasChevron={true}
+          chevronOpen={itemsMenuOpen || page === "kits" || page === "parts"}
+          onClick={() => {
+            if (!mini) {
+              setItemsMenuOpen((prev: boolean) => !prev);
+            } else {
+              go({ page: "kits" });
+            }
+          }}
+        />
+        {(itemsMenuOpen || page === "kits" || page === "parts") && !mini && (
+          <div className="sidesubmenu" data-test-id="items-subnav">
+            {[
+              { id: "kits", label: "Kits" },
+              { id: "parts", label: "Parts" },
+            ].map((sub) => {
+              const isSubActive = page === sub.id;
+              return (
+                <button
+                  key={sub.id}
+                  type="button"
+                  className={`sidesubitem ${isSubActive ? "on" : ""}`}
+                  data-test-id={`items-subitem-${sub.id}`}
+                  onClick={() => {
+                    go({ page: sub.id });
+                    try { navigate(`/${sub.id}`); } catch (e) {}
+                  }}
+                >
+                  {sub.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Insight & setup — DC only */}
         {role !== 'approver' && (

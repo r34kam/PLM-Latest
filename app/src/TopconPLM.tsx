@@ -17,6 +17,8 @@ const Inactivate = lazy(() => import('@/features/items/Inactivate').then((m) => 
 const ItemDetail = lazy(() => import('@/features/items/ItemDetail').then((m) => ({ default: m.ItemDetail })))
 const ItemList = lazy(() => import('@/features/items/ItemList').then((m) => ({ default: m.ItemList })))
 const ItemNew = lazy(() => import('@/features/items/ItemNew').then((m) => ({ default: m.ItemNew })))
+const KitList = lazy(() => import('@/features/items/KitList').then((m) => ({ default: m.KitList })))
+const PartsList = lazy(() => import('@/features/items/PartsList').then((m) => ({ default: m.PartsList })))
 const Reports = lazy(() => import('@/features/reports/ReportsPage').then((m) => ({ default: m.Reports })))
 const Suppliers = lazy(() => import('@/features/suppliers/SuppliersPage').then((m) => ({ default: m.Suppliers })))
 
@@ -166,7 +168,7 @@ function TopconPLM({
   const [itemNewOpen, setItemNewOpen] = useState(false);
 
   // Pages Approvers are allowed to navigate to
-  const APPROVER_ALLOWED_PAGES = new Set(['home', 'ecos', 'eco', 'items', 'item'])
+  const APPROVER_ALLOWED_PAGES = new Set(['home', 'ecos', 'eco', 'items', 'item', 'kits', 'parts'])
   const go = (next: any) => {
     // Approvers can only navigate to their allowed pages
     if (isApprover && next?.page && !APPROVER_ALLOWED_PAGES.has(next.page)) return
@@ -212,6 +214,8 @@ function TopconPLM({
     case "ecos": body = <EcoList go={go} initialFilter={isApprover ? "Needs me" : (v.filter ?? undefined)} onInspect={handleInspectEco} inspectedId={inspectedEcoId} railOpen={false} renderHeaderActions={renderHeaderActions} role={role} currentUserName={userName} />; break;
     case "eco": body = <EcoDetail id={v.id} go={go} initialTab={v.tab} renderHeaderActions={renderHeaderActions} role={role} currentUserName={userName} />; break;
     case "items": body = <ItemList go={go} railOpen={false} renderHeaderActions={renderHeaderActions} />; break;
+    case "kits": body = !isApprover ? <KitList go={go} renderHeaderActions={renderHeaderActions} /> : <HomePage go={go} renderHeaderActions={renderHeaderActions} />; break;
+    case "parts": body = !isApprover ? <PartsList renderHeaderActions={renderHeaderActions} /> : <HomePage go={go} renderHeaderActions={renderHeaderActions} />; break;
     case "item": body = <ItemDetail id={v.id} go={go} initialTab={v.tab} renderHeaderActions={renderHeaderActions} />; break;
     case "inactivate": body = !isApprover ? <Inactivate go={go} id={v.id} renderHeaderActions={renderHeaderActions} /> : <HomePage go={go} renderHeaderActions={renderHeaderActions} />; break;
     case "admin": body = !isApprover ? <Admin initialTab={v.tab || "Users"} go={go} renderHeaderActions={renderHeaderActions} /> : <HomePage go={go} renderHeaderActions={renderHeaderActions} />; break;
@@ -221,7 +225,8 @@ function TopconPLM({
   }
 
   const navPage = ["eco"].includes(v.page) ? "ecos"
-    : ["item", "inactivate"].includes(v.page) ? "items" : v.page;
+    : ["item", "inactivate", "items"].includes(v.page) ? "kits"
+    : v.page;
 
   return (
     <div className="tp" data-test-id="topcon-plm-app">
