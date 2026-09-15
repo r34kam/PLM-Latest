@@ -426,6 +426,11 @@ function EcoNew({
         itemCount: ecoItems.length,
         modCount: ecoItems.length,
         pnsJson: JSON.stringify(ecoItems.map((it: any) => it.pn)),
+        ecoItems: kits.map((k) => ({
+          pn: k.pn, name: k.name, rev: k.rev, cat: k.cat,
+          currentRev: k.currentRev, newRev: k.newRev, bomEdits: k.bomEdits,
+        })),
+        comments: [],
         desc: form.desc,
         redline: "",
         notes: [

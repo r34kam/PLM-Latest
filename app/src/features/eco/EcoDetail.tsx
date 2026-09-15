@@ -14,13 +14,13 @@ import { ECO_010870_ITEMS, LC, ecoById, historyFor } from '@/domain/ecos'
 import { ROUTINGS, deriveApprovalState, notificationRecipientsFor } from '@/domain/routings'
 import { ME } from '@/domain/session'
 import { suppliersFor } from '@/domain/suppliers'
-import { useAllChangeOrders } from '@/data/changeOrders'
+import { useAllChangeOrders, useUpdateChangeOrder, type EcoComment } from '@/data/changeOrders'
 import { useSendReminder } from '@/data/reminder'
 import { downloadFile } from '@/lib/download'
 import { toast } from 'sonner'
 import { initials } from '@/lib/prng'
 import { T } from '@/theme/tokens'
-import { AlertTriangle, Ban, Bell, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, Clock, CornerUpLeft, Database, Download, FileText, Info, Layers, Link2, Plus, RefreshCw, Send, Sparkles, Trash2, Upload, Users, X } from 'lucide-react'
+import { AlertCircle, AlertTriangle, Ban, Bell, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, Clock, CornerUpLeft, Database, Download, FileText, Info, Layers, Link2, Loader2, MessageSquare, Plus, RefreshCw, Send, Sparkles, Trash2, Upload, Users, X } from 'lucide-react'
 import React, { useState } from 'react'
 
 function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', currentUserName = '' }: { id: any; go: any; initialTab?: string; renderHeaderActions?: () => React.ReactNode; role?: string; currentUserName?: string }) {
@@ -52,8 +52,10 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
         desc: backendCo.desc,
         redline: backendCo.redline,
         notes: backendCo.notes,
+        ecoItems: backendCo.ecoItems ?? [],
+        comments: backendCo.comments ?? [],
       }
-    : staticEco;
+    : { ...staticEco, ecoItems: [] as any[], comments: [] as any[] };
   // Use real persisted approvals from backend when available; fall back to derived for static ECOs.
   // Normalise backend ApprovalEntry shape to the legacy {g, n, req, st, at, cm, others} shape
   // that the Approvals tab rendering already uses — keeping one render path.
@@ -101,16 +103,58 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
   const [selectedPns, setSelectedPns] = useState<any[]>([]);
 
   /* ---- Approve / Reject for Approver role ---- */
+  const updateChangeOrder = useUpdateChangeOrder()
   const [approvalDone, setApprovalDone] = useState<'approved' | 'rejected' | null>(null)
   const [rejectModal, setRejectModal] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
+  const [isRejecting, setIsRejecting] = useState(false)
   const canApprove = isApproverRole && eco.stage === 'Approval' && (eco.awaitingMe === true || eco.mine === true)
   const handleApprove = () => { setApprovalDone('approved') }
-  const handleReject = () => {
+  const handleReject = async () => {
     if (!rejectReason.trim()) return
-    setApprovalDone('rejected')
-    setRejectModal(false)
-    setRejectReason('')
+    setIsRejecting(true)
+    try {
+      if (backendCo) {
+        await updateChangeOrder(backendCo.id, { stage: 'Rejected' })
+      }
+      setApprovalDone('rejected')
+      setRejectModal(false)
+      setRejectReason('')
+    } catch {
+      toast.error('Failed to update status — please try again.')
+    } finally {
+      setIsRejecting(false)
+    }
+  }
+
+  /* ---- Comment drawer ---- */
+  const [commentDrawerOpen, setCommentDrawerOpen] = useState(false)
+  const [commentAuthor, setCommentAuthor] = useState(currentUserName || ME.name)
+  const [commentText, setCommentText] = useState('')
+  const [isSavingComment, setIsSavingComment] = useState(false)
+
+  const handleSaveComment = async () => {
+    if (!commentText.trim() || !commentAuthor.trim()) return
+    const newComment: EcoComment = {
+      id: `c-${Date.now()}`,
+      author: commentAuthor.trim(),
+      message: commentText.trim(),
+      timestamp: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }),
+    }
+    const updatedComments = [...(eco.comments ?? []), newComment]
+    setIsSavingComment(true)
+    try {
+      if (backendCo) {
+        await updateChangeOrder(backendCo.id, { comments: updatedComments })
+      }
+      setCommentText('')
+      setCommentDrawerOpen(false)
+      toast.success('Comment added.')
+    } catch {
+      toast.error('Failed to save comment — please try again.')
+    } finally {
+      setIsSavingComment(false)
+    }
   }
 
   // Reset page when switching ECO or changing view
@@ -165,7 +209,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
             {/* DC-only actions */}
             {!isApproverRole && rejected && <button className="btn dan" onClick={() => setModal("withdraw")}><CornerUpLeft size={13} />Withdraw to Open</button>}
             {!isApproverRole && eco.stage === "Approval" && <>
-              <button className="btn" onClick={() => setModal("reject")}><X size={13} />Reject</button>
+              <button className="btn" onClick={() => setRejectModal(true)}><X size={13} />Reject</button>
               <button className="btn ok" onClick={() => setModal("approve")}><Check size={13} />Approve</button>
             </>}
             {!isApproverRole && eco.stage === "Open" && <button className="btn pri"><Send size={13} />Submit to routing</button>}
@@ -176,15 +220,26 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                 {actions && (<>
                   <div style={{ position: "fixed", inset: 0, zIndex: 40 }} onClick={() => setActions(false)} />
                   <div className="menu">
-                    {[["Print change order", Download], ["Export to Excel", Download], ["Duplicate this change", Layers],
-                      ["Add a comment", FileText], ["Subscribe to updates", Bell], ["Copy link", Link2]].map(([l, Ic]: any) => (
-                      <button key={l} onClick={() => { setActions(false); if (l === "Export to Excel") downloadFile(
-                        `${eco.id}.csv`, `Change,Title,Stage,Routing,Creator\n${eco.id},${eco.title},${eco.stage},${eco.routing},${eco.creator}`); }}>
-                        <Ic size={14} />{l}</button>
-                    ))}
+                    <button onClick={() => {
+                      setActions(false);
+                      downloadFile(`${eco.id}.csv`, `Change,Title,Stage,Routing,Creator\n${eco.id},${eco.title},${eco.stage},${eco.routing},${eco.creator}`);
+                    }}>
+                      <Download size={14} />Export to Excel
+                    </button>
+                    <button onClick={() => { setActions(false); setCommentDrawerOpen(true); }}>
+                      <FileText size={14} />Add a comment
+                    </button>
+                    <button onClick={() => {
+                      setActions(false);
+                      navigator.clipboard.writeText(window.location.href);
+                      toast.success('Link copied to clipboard');
+                    }}>
+                      <Link2 size={14} />Copy link
+                    </button>
                     <div className="menusep" />
                     <button className="dang" onClick={() => { setActions(false); setModal("cancelEco"); }}>
-                      <Ban size={14} />Cancel this change</button>
+                      <Ban size={14} />Cancel this change
+                    </button>
                   </div>
                 </>)}
               </div>
@@ -603,7 +658,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                   ? `Rev ${target.rev} → Rev ${target.newRev} · ${target.bom || "Inactivation redline"}`
                   : "Rev B → Rev C · 2 additions, 1 removal, 0 edited line items";
 
-                // Build BOM rows from affectedAssembly.bomEdits when available
+                // Build BOM rows: prefer affectedAssembly, then ecoItems (from creation), then static fallback
                 const bomRowsFromAA = aa
                   ? aa.bomEdits.map((e: any) => ({
                       pn: e.pn, rev: "—", name: e.name, cat: "—", phase: "—",
@@ -611,10 +666,27 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                       st: e.op === "ADD" ? "add" : e.op === "DELETE" ? "del" : "upd",
                       op: e.op,
                       newValue: e.newValue,
+                      warn: e.warn,
                     }))
                   : null;
 
-                const bomRows = bomRowsFromAA ?? BOM_1003140;
+                // From ecoItems stored at creation time — find the kit matching the selected/primary pn
+                const ecoItemEdits = (() => {
+                  if (!eco.ecoItems || eco.ecoItems.length === 0) return null;
+                  const kitPn = activeRedlineItem?.pn ?? eco.ecoItems[0]?.pn;
+                  const kit = eco.ecoItems.find((ki: any) => ki.pn === kitPn) ?? eco.ecoItems[0];
+                  if (!kit || kit.bomEdits.length === 0) return null;
+                  return kit.bomEdits.map((e: any) => ({
+                    pn: e.pn, rev: "—", name: e.name, cat: "—", phase: "—",
+                    qty: e.qty || "—",
+                    st: e.type === "ADD" ? "add" : e.type === "DELETE" ? "del" : "upd",
+                    op: e.type,
+                    newValue: e.newValue,
+                    warn: e.warn,
+                  }));
+                })();
+
+                const bomRows = bomRowsFromAA ?? ecoItemEdits ?? BOM_1003140;
 
                 return (
                   <Card title={redlineTitle} sub={redlineSub} pad={false}
@@ -624,23 +696,38 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                       <thead><tr><th>#</th><th>Item number</th><th>Item name</th><th>Qty</th><th>Change</th></tr></thead>
                       <tbody>
                         {bomRows.map((b2: any, k: any) => (
-                          <tr key={`${b2.pn}-${k}`} data-test-id={`bom-redline-row-${b2.pn}`}>
-                            <td>{k + 1}</td>
-                            <td className={b2.st === "del" ? "del" : "pn"}>{b2.pn}</td>
-                            <td className={b2.st === "del" ? "del" : b2.st === "add" ? "add" : ""}>
-                              {b2.name}
-                              {b2.op === "UPDATE_DESC" && b2.newValue && (
-                                <span className="mut" style={{ marginLeft: 8 }}>→ {b2.newValue}</span>
-                              )}
-                            </td>
-                            <td>{b2.qty}</td>
-                            <td>
-                              {b2.st === "add" ? <Chip k="ok">Added</Chip>
-                                : b2.st === "del" ? <Chip k="bad">Removed</Chip>
-                                : b2.op === "UPDATE_DESC" ? <Chip k="blue">Desc updated</Chip>
-                                : <span className="mut">Unchanged</span>}
-                            </td>
-                          </tr>
+                          <React.Fragment key={`${b2.pn}-${k}`}>
+                            <tr data-test-id={`bom-redline-row-${b2.pn}`} style={b2.warn ? { background: T.warnBg } : undefined}>
+                              <td>{k + 1}</td>
+                              <td className={b2.st === "del" ? "del" : "pn"}>
+                                {b2.warn && <AlertCircle size={11} style={{ color: T.warn, marginRight: 4, verticalAlign: 'middle' }} />}
+                                {b2.pn}
+                              </td>
+                              <td className={b2.st === "del" ? "del" : b2.st === "add" ? "add" : ""}>
+                                {b2.name}
+                                {b2.op === "UPDATE_DESC" && b2.newValue && (
+                                  <span className="mut" style={{ marginLeft: 8 }}>→ {b2.newValue}</span>
+                                )}
+                              </td>
+                              <td>{b2.qty}</td>
+                              <td>
+                                {b2.st === "add" ? <Chip k="ok">Added</Chip>
+                                  : b2.st === "del" ? <Chip k="bad">Removed</Chip>
+                                  : b2.op === "UPDATE_DESC" ? <Chip k="blue">Desc updated</Chip>
+                                  : b2.op === "UPDATE_QTY" ? <Chip k="warn">Qty updated</Chip>
+                                  : <span className="mut">Unchanged</span>}
+                              </td>
+                            </tr>
+                            {b2.warn && (
+                              <tr data-test-id={`bom-redline-warn-${b2.pn}`}>
+                                <td colSpan={5} style={{ padding: '4px 10px 8px', background: T.warnBg }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: T.warn, fontSize: 11 }}>
+                                    <AlertCircle size={11} />{b2.warn}
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
                         ))}
                       </tbody>
                     </table>
@@ -1266,11 +1353,11 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
               <button
                 className="btn dan"
                 style={{ marginLeft: "auto" }}
-                disabled={!rejectReason.trim()}
+                disabled={!rejectReason.trim() || isRejecting}
                 onClick={handleReject}
                 data-test-id="approver-reject-confirm-btn"
               >
-                <X size={13} />Submit rejection
+                {isRejecting ? <><Loader2 size={13} className="spin" />Rejecting…</> : <><X size={13} />Submit rejection</>}
               </button>
             </>
           }
@@ -1306,6 +1393,90 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
             />
           </Field>
         </Modal>
+      )}
+
+      {/* ── Comment Drawer ── */}
+      {commentDrawerOpen && (
+        <>
+          <div
+            style={{ position: 'fixed', inset: 0, zIndex: 49, background: 'rgba(0,0,0,0.35)' }}
+            onClick={() => setCommentDrawerOpen(false)}
+            aria-hidden="true"
+          />
+          <aside
+            style={{
+              position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 50,
+              width: 420, background: T.g25, boxShadow: '-4px 0 24px rgba(0,0,0,0.12)',
+              display: 'flex', flexDirection: 'column',
+            }}
+            data-test-id="comment-drawer"
+            aria-label="Add comment"
+          >
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px 16px', borderBottom: `1px solid ${T.g200}` }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <MessageSquare size={16} />
+                <span style={{ fontWeight: 700, fontSize: 15 }}>Add a comment</span>
+              </div>
+              <button className="btn gh sm" onClick={() => setCommentDrawerOpen(false)} aria-label="Close" data-test-id="comment-drawer-close">
+                <X size={14} />
+              </button>
+            </div>
+
+            {/* Past comments trail */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {(eco.comments ?? []).length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '32px 0', color: T.g400, fontSize: 13 }}>
+                  No comments yet — be the first to leave a note.
+                </div>
+              ) : (
+                [...(eco.comments ?? [])].reverse().map((c) => (
+                  <div key={c.id} style={{ padding: '12px 14px', background: T.g50, borderRadius: 8, border: `1px solid ${T.g200}` }} data-test-id={`comment-item-${c.id}`}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                      <span style={{ fontWeight: 700, fontSize: 13 }}>{c.author}</span>
+                      <span className="sub" style={{ fontSize: 11 }}>{c.timestamp}</span>
+                    </div>
+                    <div style={{ fontSize: 13, lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>{c.message}</div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Input area */}
+            <div style={{ borderTop: `1px solid ${T.g200}`, padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <Field label="Your name">
+                <input
+                  className="inp"
+                  value={commentAuthor}
+                  onChange={(e) => setCommentAuthor(e.target.value)}
+                  placeholder="Your name"
+                  data-test-id="comment-author-input"
+                />
+              </Field>
+              <Field label="Comment">
+                <textarea
+                  className="inp"
+                  rows={4}
+                  value={commentText}
+                  onChange={(e) => setCommentText(e.target.value)}
+                  placeholder={`Leave a note on ${eco.id}…`}
+                  data-test-id="comment-text-input"
+                />
+              </Field>
+              <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                <button className="btn" onClick={() => setCommentDrawerOpen(false)} data-test-id="comment-cancel-btn">Cancel</button>
+                <button
+                  className="btn pri"
+                  disabled={!commentText.trim() || !commentAuthor.trim() || isSavingComment}
+                  onClick={handleSaveComment}
+                  data-test-id="comment-save-btn"
+                >
+                  {isSavingComment ? <><Loader2 size={13} className="spin" />Saving…</> : <>Post comment</>}
+                </button>
+              </div>
+            </div>
+          </aside>
+        </>
       )}
     </div>
   );

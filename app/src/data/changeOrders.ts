@@ -52,12 +52,46 @@ export type ChangeOrder = {
   completedDate: string
   approvals: ApprovalEntry[]  // parsed from approvalsJson — real per-role decisions
   currentStageNum: number     // active approval stage: 0 = not in approval, 1 or 2
+  ecoItems: EcoItemRecord[]   // parsed from ecoItemsJson — kits + BOM edits from creation
+  comments: EcoComment[]      // parsed from commentsJson — comment trail
+}
+
+/** One kit/assembly added to the ECO during creation, with its BOM edits. */
+export type EcoBomEdit = {
+  id: string
+  type: 'ADD' | 'DELETE' | 'UPDATE_DESC' | 'UPDATE_QTY'
+  pn: string
+  name: string
+  qty: string
+  newValue: string
+  warn?: string
+}
+
+export type EcoItemRecord = {
+  pn: string
+  name: string
+  rev: string
+  cat: string
+  currentRev: string
+  newRev: string
+  bomEdits: EcoBomEdit[]
+}
+
+export type EcoComment = {
+  id: string
+  author: string
+  message: string
+  timestamp: string
 }
 
 export type NewChangeOrder = Omit<ChangeOrder, 'id'>
 
-// Payload shape sent to the backend — approvals serialised to JSON string
-type CoPayload = Omit<NewChangeOrder, 'approvals'> & { approvalsJson: string }
+// Payload shape sent to the backend — complex fields serialised to JSON strings
+type CoPayload = Omit<NewChangeOrder, 'approvals' | 'ecoItems' | 'comments'> & {
+  approvalsJson: string
+  ecoItemsJson: string
+  commentsJson: string
+}
 
 // ECOs go directly into Approval when created — no Open or Submit holding states in practice
 export const CO_STAGES = ['Approval', 'Effective', 'Complete', 'Rejected'] as const
@@ -104,6 +138,8 @@ function flatten(raw: any): ChangeOrder {
     completedDate: p.completedDate ?? '',
     approvals: parseJsonSafe<ApprovalEntry[]>(p.approvalsJson, []),
     currentStageNum: typeof p.currentStageNum === 'number' ? p.currentStageNum : Number(p.currentStageNum ?? 0),
+    ecoItems: parseJsonSafe<EcoItemRecord[]>(p.ecoItemsJson, []),
+    comments: parseJsonSafe<EcoComment[]>(p.commentsJson, []),
   }
 }
 
@@ -168,8 +204,13 @@ export function useChangeOrdersAwaitingMe() {
 // ─── Writes ──────────────────────────────────────────────────────────────────
 
 function toPayload(co: NewChangeOrder): CoPayload {
-  const { approvals, ...rest } = co
-  return { ...rest, approvalsJson: JSON.stringify(approvals ?? []) }
+  const { approvals, ecoItems, comments, ...rest } = co
+  return {
+    ...rest,
+    approvalsJson: JSON.stringify(approvals ?? []),
+    ecoItemsJson: JSON.stringify(ecoItems ?? []),
+    commentsJson: JSON.stringify(comments ?? []),
+  }
 }
 
 export function useCreateChangeOrder() {
