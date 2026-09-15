@@ -69,7 +69,6 @@ export type EcoBomEdit = {
   name: string
   qty: string
   newValue: string
-  warn?: string
 }
 
 export type EcoItemRecord = {

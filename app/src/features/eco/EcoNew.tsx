@@ -34,7 +34,7 @@ type BomEdit = {
   name: string;
   qty: string;
   newValue: string; // new description or new qty string
-  warn?: string;   // validation warning — PN not found in catalogue, etc.
+
 };
 type KitItem = {
   pn: string;
@@ -101,9 +101,7 @@ function parseBomExcel(
     const name = col(row, 'Part Name', 'PartName', 'Item Name', 'Description', 'Name')
     const qty = col(row, 'Qty', 'Quantity', 'QTY')
     const newValue = col(row, 'Notes', 'New Value', 'NewValue', 'Value', 'Note')
-    const inCatalog = catalogPns.has(pn.toUpperCase())
-    const warn = inCatalog ? undefined : `Part number "${pn}" not found in the catalogue — verify before submitting`
-    edits.push({ id: `file-${idx}-${Date.now()}`, type, pn, name, qty, newValue, warn })
+    edits.push({ id: `file-${idx}-${Date.now()}`, type, pn, name, qty, newValue })
   })
 
   if (edits.length === 0) return { edits: [], parseError: 'No valid rows found. Check the column headers match the expected format.' }
@@ -305,16 +303,9 @@ function EcoNew({
       };
 
       if (result.kitNumber) {
-        const catalog: any[] = allBackendItems ?? [...ITEMS, ...ASSEMBLIES];
-        const catalogPns = new Set<string>(catalog.map((it: any) => String(it.pn ?? '').toUpperCase()));
-
-        // Warn if the kit itself isn't in the catalogue
-        if (!catalogPns.has(result.kitNumber.toUpperCase())) {
-          toast.warning(`Kit "${result.kitNumber}" was not found in the catalogue — it will be added as-is. Verify the kit number before submitting.`);
-        }
         addKit(kitRecord);
 
-        // Add each extracted item as a BOM edit on the kit, flagging unknown PNs
+        // Add each extracted item as a BOM edit on the kit
         result.items.forEach((item) => {
           const rawType = (item.type ?? 'add').toLowerCase();
           const editType: BomEditType =
@@ -323,7 +314,6 @@ function EcoNew({
             : rawType === 'update_desc' ? 'UPDATE_DESC'
             : 'ADD';
           const pn = item.pn ?? '';
-          const inCatalog = pn ? catalogPns.has(pn.toUpperCase()) : true;
           const bomEdit: BomEdit = {
             id: `${result.kitNumber}-${Date.now()}-${Math.random()}`,
             type: editType,
@@ -331,7 +321,6 @@ function EcoNew({
             name: item.name ?? '',
             qty: item.qty ?? '',
             newValue: item.newValue ?? '',
-            warn: inCatalog || !pn ? undefined : `Part number "${pn}" not found in the catalogue — verify before submitting`,
           };
           addBomEdit(kitRecord.pn, bomEdit);
         });
@@ -1173,14 +1162,13 @@ function EcoNew({
                                     <tbody>
                                       {kit.bomEdits.map((edit) => (
                                         <React.Fragment key={edit.id}>
-                                          <tr data-test-id={`eco-kit-edit-row-${edit.id}`} style={edit.warn ? { background: T.warnBg } : undefined}>
+                                          <tr data-test-id={`eco-kit-edit-row-${edit.id}`}>
                                             <td>
                                               {edit.type === "ADD" && <Chip k="ok">Add</Chip>}
                                               {edit.type === "DELETE" && <Chip k="bad">Delete</Chip>}
                                               {(edit.type === "UPDATE_DESC" || edit.type === "UPDATE_QTY") && <Chip k="warn">Update</Chip>}
                                             </td>
                                             <td className="pn" style={{ fontFamily: 'ui-monospace,"SF Mono",Menlo,Consolas,monospace', fontSize: 12 }}>
-                                              {edit.warn && <AlertCircle size={11} style={{ color: T.warn, marginRight: 4, verticalAlign: 'middle' }} />}
                                               {edit.pn}
                                             </td>
                                             <td style={{ maxWidth: 240, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{edit.name}</td>
@@ -1195,16 +1183,6 @@ function EcoNew({
                                               </button>
                                             </td>
                                           </tr>
-                                          {edit.warn && (
-                                            <tr data-test-id={`eco-kit-edit-warn-${edit.id}`}>
-                                              <td colSpan={5} style={{ padding: '4px 10px 8px', background: T.warnBg }}>
-                                                <div className="row" style={{ gap: 6, color: T.warn, fontSize: 11 }}>
-                                                  <AlertCircle size={11} />
-                                                  {edit.warn}
-                                                </div>
-                                              </td>
-                                            </tr>
-                                          )}
                                         </React.Fragment>
                                       ))}
                                     </tbody>
