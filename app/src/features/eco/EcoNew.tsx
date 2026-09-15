@@ -319,7 +319,11 @@ function EcoNew({
   return (
     <div className="stack" data-test-id="eco-new-page">
       <div className="bet">
-        <div><div className="crumb"><button type="button" className="crumb-link" onClick={() => go({ page: "home" })} data-test-id="eco-new-breadcrumb-home">Changes</button> › New</div><h1>Create change order</h1></div>
+        <div>
+          <div className="crumb"><button type="button" className="crumb-link" onClick={() => go({ page: "home" })} data-test-id="eco-new-breadcrumb-home">Changes</button> › New</div>
+          <h1>Create change order</h1>
+          <div className="sub" style={{ marginTop: 4 }}>Start a new change request — fill in the details, add affected items, and route for approval</div>
+        </div>
         <div className="row">
           <button className="btn gh" onClick={() => go({ page: "ecos" })}><X size={14} strokeWidth={2} />Cancel</button>
           {renderHeaderActions?.()}

@@ -40,8 +40,11 @@ function ItemList({ go, railOpen = false, renderHeaderActions }: { go: any; rail
   return (
     <div className="stack" data-test-id="item-list-page">
       <div className="bet">
-        <div><div className="crumb">Items</div><h1>Items</h1>
-          <div className="sub" style={{ marginTop: 4 }}>{loading ? "Loading…" : `${items.length} part numbers · master data lives here and writes through to SAP`}</div></div>
+        <div>
+          <div className="crumb">Items</div>
+          <h1>Items</h1>
+          <div className="sub" style={{ marginTop: 4 }}>Part number master data — every item tracked here syncs through to SAP</div>
+        </div>
         <div className="row">
           <button className="btn" onClick={() => downloadFile("topcon-items.csv",
             "Item number,Revision,Item name,Category,Phase,Material status,Plant,Owner\n" +

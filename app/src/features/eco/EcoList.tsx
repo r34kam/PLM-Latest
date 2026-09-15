@@ -121,9 +121,11 @@ function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, 
         <div>
           <div className="crumb">Changes</div>
           <h1>{isApproverRole ? "My changes" : "Change orders"}</h1>
-          {isApproverRole && (
-            <div className="sub" style={{ marginTop: 4 }}>Changes in your approval queue — awaiting your review</div>
-          )}
+          <div className="sub" style={{ marginTop: 4 }}>
+            {isApproverRole
+              ? "Changes in your approval queue — awaiting your review"
+              : "Track and manage engineering change orders across all product lines"}
+          </div>
         </div>
         <div className="row">
           {/* Only DCs (and unknown/dev) can create new change orders */}

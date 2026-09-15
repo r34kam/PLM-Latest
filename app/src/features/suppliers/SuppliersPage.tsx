@@ -29,8 +29,11 @@ function Suppliers({ railOpen = false, renderHeaderActions }: { railOpen?: boole
   return (
     <div className="stack" data-test-id="suppliers-page">
       <div className="bet">
-        <div><div className="crumb">Suppliers</div><h1>Suppliers and supplier items</h1>
-          <div className="sub" style={{ marginTop: 4 }}>{list.length} supplier accounts · {list.filter((r: any) => r.portal).length} with portal access</div></div>
+        <div>
+          <div className="crumb">Suppliers</div>
+          <h1>Suppliers</h1>
+          <div className="sub" style={{ marginTop: 4 }}>Manage supplier accounts, portal access, and shared item visibility</div>
+        </div>
         <div className="row">
           <button className="btn pri" onClick={() => { setSent(false); setModal({ n: "", e: "", c: "", site: "", portal: true, notify: "Change complete", access: "View items shared with them" }); }}>
             <Plus size={13} strokeWidth={2} />Add supplier</button>

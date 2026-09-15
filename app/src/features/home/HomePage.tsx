@@ -95,7 +95,7 @@ function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = ''
       <div className="bet">
         <div>
           <h1 data-test-id="home-greeting">{greeting}</h1>
-          <div className="sub" style={{ marginTop: 4 }} data-test-id="home-greeting-sub">{subLine}</div>
+          <div className="sub" style={{ marginTop: 4 }} data-test-id="home-greeting-sub">Your change order activity and open actions at a glance · {subLine}</div>
         </div>
         <div className="row">
           <button className="btn" onClick={() => go({ page: "reports" })}><FileText size={13} />Build a report</button>

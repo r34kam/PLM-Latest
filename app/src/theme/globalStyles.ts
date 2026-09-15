@@ -78,19 +78,23 @@ html,body,#root{margin:0;padding:0;background:${T.brand};min-height:100vh}
   border-radius:10px 10px 0 0}
 .card>.cb{padding:16px 20px}
 
-/* ---- buttons ---- */
+/* ---- buttons ----
+   Primary (.btn.pri) = brand blue — the main call to action on every page.
+   Default (.btn)     = white with a subtle shadow — secondary actions.
+   Ghost (.btn.gh)    = borderless white — low-emphasis actions (row actions, etc).
+   ---- */
 .btn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:10px;
-  font-size:13px;font-weight:600;border:none;background:#ffffff;color:#0a2233;white-space:nowrap;box-shadow:0 1px 2px rgba(2,42,66,.08);
-  transition:background .1s,box-shadow .1s}
-.btn:hover{background:#ffffff;box-shadow:0 1px 3px rgba(2,42,66,.12)}
-.btn.pri{background:${T.brand};border:none;color:#ffffff;box-shadow:0 1px 2px rgba(2,42,66,.12)}
-.btn.pri:hover{background:${T.b700}}
-.btn.dan{background:#ffffff;border:none;color:${T.bad};box-shadow:0 1px 2px rgba(2,42,66,.08)}
-.btn.dan:hover{background:#ffffff;color:${T.bad};box-shadow:0 1px 3px rgba(2,42,66,.12)}
-.btn.ok{background:${T.brand};border:none;color:#ffffff;box-shadow:0 1px 2px rgba(2,42,66,.12)}
-.btn.ok:hover{background:${T.b700}}
-.btn.gh{border:none;background:#ffffff;color:#486581;box-shadow:0 1px 2px rgba(2,42,66,.08)}
-.btn.gh:hover{background:#ffffff;color:#0a2233;box-shadow:0 1px 3px rgba(2,42,66,.12)}
+  font-size:13px;font-weight:600;border:1px solid #d4dee9;background:#ffffff;color:#0a2233;white-space:nowrap;
+  box-shadow:0 1px 2px rgba(2,42,66,.06);transition:background .1s,box-shadow .1s,border-color .1s}
+.btn:hover{background:#f8fafc;border-color:#b6c6d8;box-shadow:0 1px 3px rgba(2,42,66,.10)}
+.btn.pri{background:${T.brand};border-color:${T.brand};color:#ffffff;box-shadow:0 1px 2px rgba(0,95,168,.20)}
+.btn.pri:hover{background:${T.b700};border-color:${T.b700};box-shadow:0 2px 4px rgba(0,95,168,.28)}
+.btn.dan{background:#ffffff;border-color:#f2c5c0;color:${T.bad};box-shadow:0 1px 2px rgba(2,42,66,.06)}
+.btn.dan:hover{background:#fcebe9;border-color:${T.bad};box-shadow:0 1px 3px rgba(2,42,66,.10)}
+.btn.ok{background:${T.brand};border-color:${T.brand};color:#ffffff;box-shadow:0 1px 2px rgba(0,95,168,.20)}
+.btn.ok:hover{background:${T.b700};border-color:${T.b700}}
+.btn.gh{border:none;background:transparent;color:#486581;box-shadow:none}
+.btn.gh:hover{background:#f0f4f8;color:#0a2233;box-shadow:none}
 .btn.sm{height:28px;padding:0 9px;font-size:11px;border-radius:10px}
 .btn.lg{height:36px;padding:0 16px;font-size:13px;border-radius:10px}
 .btn:disabled{opacity:.42;cursor:not-allowed}
@@ -233,16 +237,22 @@ textarea.inp{height:auto;padding:8px 10px;line-height:1.5;resize:vertical}
 .kpi .v{font-size:28px;font-weight:700;letter-spacing:-.03em;line-height:1;color:#0a2233;font-variant-numeric:tabular-nums}
 .kpi .kpi-extra{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600}
 
-/* segmented control — replaces rows of loose pill buttons */
+/* segmented control / filter pills
+   Inactive: white pill with a border (secondary surface, clearly clickable).
+   Active:   brand colour — consistent with primary buttons so the active filter
+             reads as the same vocabulary as a primary action.
+   Count badges (.n) are hidden — labels alone are sufficient. */
 .seg{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;background:transparent;padding:0}
 .seg button{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:10px;
-  font-size:11px;font-weight:600;color:#486581;background:#ffffff;border:none;white-space:nowrap;cursor:pointer;
-  box-shadow:0 1px 2px rgba(2,42,66,.06);transition:all .12s ease}
-.seg button:hover{background:#ffffff;color:#0a2233;box-shadow:0 1px 3px rgba(2,42,66,.12)}
-.seg button.on{background:#005fa8;color:#ffffff;box-shadow:0 1px 2px rgba(2,42,66,.12)}
-.seg button .n{font-size:10px;font-weight:700;font-variant-numeric:tabular-nums;background:#f0f4f8;color:#486581;border-radius:6px;padding:1px 5px;min-width:18px;text-align:center}
-.seg button.on .n{background:rgba(255,255,255,.24);color:#ffffff}
+  font-size:11px;font-weight:600;color:#486581;background:#ffffff;border:1px solid #d4dee9;white-space:nowrap;cursor:pointer;
+  transition:all .12s ease}
+.seg button:hover{background:#f8fafc;color:#0a2233;border-color:#b6c6d8}
+.seg button.on{background:${T.brand};color:#ffffff;border-color:${T.brand}}
+.seg button.on:hover{background:${T.b700};border-color:${T.b700}}
+.seg button .n{display:none}
+/* toolbar: left side = filter pills / selects; search + actions pushed to the right */
 .toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:14px 20px;border:none}
+.toolbar-right{display:flex;align-items:center;gap:8px;margin-left:auto}
 .srch{position:relative;display:flex;align-items:center}
 .srch input{padding-left:30px;height:32px;border-radius:10px;width:250px;border:1px solid #D4DEE9;outline:none;background:#fff;transition:border-color .12s,box-shadow .12s}
 .srch input:hover{border-color:#B6C6D8}

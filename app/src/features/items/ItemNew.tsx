@@ -127,7 +127,10 @@ function ItemNew({ go, renderHeaderActions }: { go: any; renderHeaderActions?: (
       <div>
         <div className="crumb"><a onClick={() => go({ page: "items" })}>Items</a><ChevronRight size={11} strokeWidth={2} />New</div>
         <div className="bet">
-          <h1>Create item</h1>
+          <div>
+            <h1>Create item</h1>
+            <div className="sub" style={{ marginTop: 4 }}>Define a new part number — it will be created in Design phase until promoted by a change order</div>
+          </div>
           <div className="row">{renderHeaderActions?.()}</div>
         </div>
       </div>
