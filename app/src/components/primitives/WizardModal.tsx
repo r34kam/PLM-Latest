@@ -22,9 +22,18 @@ import React from 'react'
  *   </WizardModal>
  */
 
+type SubItem = {
+  key: string
+  label: string
+  status?: 'done' | 'pending' | 'none'
+  onClick: () => void
+  active: boolean
+}
+
 type Step = {
   label: string
   sub?: string
+  subItems?: SubItem[]
 }
 
 type WizardModalProps = {
@@ -84,23 +93,50 @@ export function WizardModal({
               const isDone = idx < currentStep
               const isActive = idx === currentStep
               return (
-                <button
-                  key={idx}
-                  type="button"
-                  className={`modal-wizard-step${isActive ? ' active' : ''}${isDone ? ' done' : ''}`}
-                  onClick={() => isDone && onStepClick?.(idx)}
-                  aria-current={isActive ? 'step' : undefined}
-                  data-test-id={`wizard-step-${idx}`}
-                  style={{ cursor: isDone && onStepClick ? 'pointer' : 'default' }}
-                >
-                  <span className="mws-num" aria-hidden="true">
-                    {isDone ? <Check size={13} strokeWidth={3} /> : idx + 1}
-                  </span>
-                  <span>
-                    <div className="mws-label">{step.label}</div>
-                    {step.sub && <div className="mws-sub">{step.sub}</div>}
-                  </span>
-                </button>
+                <React.Fragment key={idx}>
+                  <button
+                    type="button"
+                    className={`modal-wizard-step${isActive ? ' active' : ''}${isDone ? ' done' : ''}`}
+                    onClick={() => isDone && onStepClick?.(idx)}
+                    aria-current={isActive ? 'step' : undefined}
+                    data-test-id={`wizard-step-${idx}`}
+                    style={{ cursor: isDone && onStepClick ? 'pointer' : 'default' }}
+                  >
+                    <span className="mws-num" aria-hidden="true">
+                      {isDone ? <Check size={13} strokeWidth={3} /> : idx + 1}
+                    </span>
+                    <span>
+                      <div className="mws-label">{step.label}</div>
+                      {step.sub && !isActive && <div className="mws-sub">{step.sub}</div>}
+                    </span>
+                  </button>
+
+                  {/* Sub-items — shown as indented children when step is active */}
+                  {isActive && step.subItems && step.subItems.length > 0 && (
+                    <div className="mws-subitems" data-test-id={`wizard-step-${idx}-subitems`}>
+                      {step.subItems.map((item) => (
+                        <button
+                          key={item.key}
+                          type="button"
+                          className={`mws-subitem${item.active ? ' active' : ''}`}
+                          onClick={item.onClick}
+                          data-test-id={`wizard-subitem-${item.key}`}
+                        >
+                          <span className="mws-subitem-dot" aria-hidden="true" />
+                          <span className="mws-subitem-label">{item.label}</span>
+                          {item.status === 'done' && (
+                            <span className="mws-subitem-check" aria-label="Complete">
+                              <Check size={10} strokeWidth={3} />
+                            </span>
+                          )}
+                          {item.status === 'pending' && (
+                            <span className="mws-subitem-pending" aria-label="Incomplete" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </React.Fragment>
               )
             })}
           </nav>
