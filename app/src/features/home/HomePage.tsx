@@ -7,7 +7,7 @@ import type { PlmAiInsight, PlmUser } from '@/data/admin'
 import { useAllChangeOrders, deriveCoKpis } from '@/data/changeOrders'
 import { T } from '@/theme/tokens'
 import { differenceInDays, format, parse } from 'date-fns'
-import { AlertTriangle, ArrowRight, Boxes, ChevronDown, ChevronUp, Clock, FileText, Pencil, Plus, Send, Sparkles } from 'lucide-react'
+import { AlertTriangle, Boxes, ChevronDown, ChevronUp, Clock, FileText, Pencil, Plus, Send, Sparkles } from 'lucide-react'
 import React, { useMemo, useState } from 'react'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -182,15 +182,7 @@ function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = ''
                 );
               })}
             </div>
-            <div className="toolbar-right">
-              <button
-                className="btn sm gh"
-                onClick={() => go({ page: "ecos", filter: activeStageObj.key === "Awaiting me" ? "Approval" : activeStageObj.key })}
-                data-test-id="home-view-in-changes-btn"
-              >
-                View in Changes ({activeStageObj.count}) <ArrowRight size={12} />
-              </button>
-            </div>
+
           </div>
 
           <Card
