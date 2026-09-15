@@ -127,7 +127,10 @@ function PartsList({ renderHeaderActions }: { renderHeaderActions?: () => React.
         <div className="row">
           <button
             className="btn"
-            onClick={() => runExport('item')}
+            onClick={() => {
+              const win = window.open('about:blank', '_blank')
+              runExport('item', win)
+            }}
             data-test-id="export-parts-btn"
             disabled={exporting}
           >

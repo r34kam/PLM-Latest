@@ -142,7 +142,10 @@ function KitList({ go, renderHeaderActions }: { go: any; renderHeaderActions?: (
         <div className="row">
           <button
             className="btn"
-            onClick={() => runExport('bom_item')}
+            onClick={() => {
+              const win = window.open('about:blank', '_blank')
+              runExport('bom_item', win)
+            }}
             data-test-id="export-kits-btn"
             disabled={exporting}
           >

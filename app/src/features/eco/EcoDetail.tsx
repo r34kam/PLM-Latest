@@ -20,12 +20,12 @@ import { downloadFile } from '@/lib/download'
 import { toast } from 'sonner'
 import { initials } from '@/lib/prng'
 import { T } from '@/theme/tokens'
-import { AlertTriangle, Ban, Bell, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, Clock, CornerUpLeft, Database, Download, FileText, Info, Layers, Link2, Loader2, Plus, RefreshCw, Send, Sparkles, Trash2, Upload, Users, X } from 'lucide-react'
+import { AlertTriangle, Ban, Bell, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, Clock, CornerUpLeft, Database, Download, FileText, Info, Layers, Link2, Plus, RefreshCw, Send, Sparkles, Trash2, Upload, Users, X } from 'lucide-react'
 import React, { useState } from 'react'
 
 function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', currentUserName = '' }: { id: any; go: any; initialTab?: string; renderHeaderActions?: () => React.ReactNode; role?: string; currentUserName?: string }) {
   const isApproverRole = role === 'approver'
-  const { sendReminder, isPending: reminderPending } = useSendReminder()
+  const { sendReminder } = useSendReminder()
   // Try static domain first; then overlay with backend data for backend-created COs
   const { data: allBackendOrders } = useAllChangeOrders();
   const backendCo = allBackendOrders.find((o) => o.coId === id);
@@ -954,15 +954,13 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                                   <button
                                     className="btn sm"
                                     data-test-id={`remind-btn-${m.n}`}
-                                    disabled={reminderPending}
                                     onClick={() => {
                                       sendReminder(eco.id, m.n)
                                         .then(() => toast.success(`Reminder sent to ${m.n}`))
                                         .catch(() => toast.error(`Failed to send reminder to ${m.n}`))
                                     }}
                                   >
-                                    {reminderPending ? <Loader2 size={12} className="animate-spin" /> : <Bell size={12} />}
-                                    Remind
+                                    <Bell size={12} />Remind
                                   </button>
                                 )}
                               </td>

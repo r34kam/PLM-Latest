@@ -15,32 +15,40 @@ export type ExportDataType = 'bom_item' | 'item'
 export function useExportData() {
   const { mutateAsync, isPending, error, reset } = useExecuteWorkflowNodeMutation()
 
-  async function runExport(dataType: ExportDataType): Promise<void> {
-    const result = await mutateAsync({
-      data: {
-        context: {
-          appName: 'callables',
-          resourceName: 'callables_call_automation',
-          resourceVersion: RESOURCE_VERSION,
-        },
-        id: DATA_SOURCE_ID,
-        inputs: {
-          automationId: AUTOMATION_ID,
-          version: '-1',
-          runtimeConnections: {},
-          parameters: {
-            __internals__: { m: 'BUILDER', s: PAGE_SLUG, c: 'PLATFORM', p: 'browser' },
-            dataType,
+  // `targetWindow` must be opened synchronously in the click handler BEFORE this
+  // async call — browsers block window.open() inside async callbacks as a popup.
+  async function runExport(dataType: ExportDataType, targetWindow: Window | null): Promise<void> {
+    try {
+      const result = await mutateAsync({
+        data: {
+          context: {
+            appName: 'callables',
+            resourceName: 'callables_call_automation',
+            resourceVersion: RESOURCE_VERSION,
           },
-          synchronous: true,
+          id: DATA_SOURCE_ID,
+          inputs: {
+            automationId: AUTOMATION_ID,
+            version: '-1',
+            runtimeConnections: {},
+            parameters: {
+              __internals__: { m: 'BUILDER', s: PAGE_SLUG, c: 'PLATFORM', p: 'browser' },
+              dataType,
+            },
+            synchronous: true,
+          },
+          options: {},
         },
-        options: {},
-      },
-    })
+      })
 
-    const fileUrl = (result?.response as { fileUrl?: string } | undefined)?.fileUrl
-    if (fileUrl) {
-      window.open(fileUrl, '_blank', 'noopener,noreferrer')
+      const fileUrl = (result?.response as { fileUrl?: string } | undefined)?.fileUrl
+      if (fileUrl && targetWindow) {
+        targetWindow.location.href = fileUrl
+      } else if (!fileUrl) {
+        targetWindow?.close()
+      }
+    } catch {
+      targetWindow?.close()
     }
   }
 
