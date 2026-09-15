@@ -494,7 +494,7 @@ function EcoNew({
           id: `h-${Date.now()}`,
           timestamp: new Date().toISOString(),
           who: ME.name,
-          action: `Change created — submitted to ${routing} approval flow`,
+          action: `Change order created by ${ME.name} and submitted to approval — ${initialApprovals.length} approver role${initialApprovals.length !== 1 ? 's' : ''} notified`,
         }] as CoHistoryEntry[],
       });
       toast.success(`${coId} submitted to ${routing} approval flow`);
