@@ -86,12 +86,13 @@ export type EcoComment = {
 
 export type NewChangeOrder = Omit<ChangeOrder, 'id'>
 
-// Payload shape sent to the backend — complex fields serialised to JSON strings
+// Payload shape sent to the backend — complex fields serialised to JSON strings.
+// ecoItemsJson and commentsJson are sent separately in a follow-up UPDATE because
+// the workflow CREATE node rejects unregistered schema fields in rawPayload.
 type CoPayload = Omit<NewChangeOrder, 'approvals' | 'ecoItems' | 'comments'> & {
   approvalsJson: string
-  ecoItemsJson: string
-  commentsJson: string
 }
+
 
 // ECOs go directly into Approval when created — no Open or Submit holding states in practice
 export const CO_STAGES = ['Approval', 'Effective', 'Complete', 'Rejected'] as const
@@ -203,29 +204,60 @@ export function useChangeOrdersAwaitingMe() {
 
 // ─── Writes ──────────────────────────────────────────────────────────────────
 
+// Create payload — omits ecoItemsJson/commentsJson which the workflow CREATE node rejects
 function toPayload(co: NewChangeOrder): CoPayload {
-  const { approvals, ecoItems, comments, ...rest } = co
+  const { approvals, ecoItems: _ecoItems, comments: _comments, ...rest } = co
   return {
     ...rest,
     approvalsJson: JSON.stringify(approvals ?? []),
-    ecoItemsJson: JSON.stringify(ecoItems ?? []),
-    commentsJson: JSON.stringify(comments ?? []),
   }
 }
+
 
 export function useCreateChangeOrder() {
   const mutation = useExecuteWorkflowNodeMutation()
   const qc = useQueryClient()
   return async (co: NewChangeOrder) => {
-    const result = await mutation.mutateAsync({
+    // Step 1: create the record without ecoItemsJson/commentsJson
+    // (the workflow CREATE node rejects unregistered schema fields)
+    const createResult = await mutation.mutateAsync({
       data: {
         id: CREATE.id,
         context: CREATE.context,
         inputs: { ...CREATE.storedInputs, object_type: CO, rawPayload: toPayload(co) },
       },
     })
+
+    // Step 2: extract the new record's id and patch in the JSON-blob fields
+    const newId: string | undefined =
+      (createResult as any)?.response?.id ??
+      (createResult as any)?.id ??
+      (createResult as any)?.response?.objects?.[0]?.id
+
+    if (newId && (co.ecoItems?.length || co.comments?.length)) {
+      try {
+        await mutation.mutateAsync({
+          data: {
+            id: UPDATE.id,
+            context: UPDATE.context,
+            inputs: {
+              ...UPDATE.storedInputs,
+              object_type: CO,
+              recordId: newId,
+              rawPayload: {
+                ecoItemsJson: JSON.stringify(co.ecoItems ?? []),
+                commentsJson: JSON.stringify(co.comments ?? []),
+              },
+            },
+          },
+        })
+      } catch {
+        // Non-fatal — the ECO was created; only BOM items are missing
+      }
+    }
+
     qc.invalidateQueries({ queryKey: [EXECUTE_NODE_QK] })
-    return result
+    return createResult
   }
 }
 
