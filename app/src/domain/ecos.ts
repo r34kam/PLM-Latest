@@ -333,7 +333,7 @@ const ECO_010870_ITEMS = (() => {
 })();
 /* =========================== ECO DETAIL ============================= */
 
-const LC = ["Open", "Submit", "Approval", "Effective", "Complete"];
+const LC = ["Open", "Submit", "Approval", "Document Control", "Effective", "Complete"];
 
 export { STAGES, CAT_BY_PREFIX, TITLE_VERBS, ECOS, ecoById, historyFor, UNIQUE_TREE, CHECKS, EXCEL_ROWS, AI_SUGGEST, ECO_010870_ITEMS, LC }
 

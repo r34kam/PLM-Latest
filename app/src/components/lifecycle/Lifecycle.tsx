@@ -1,25 +1,24 @@
-import { Check, X } from 'lucide-react'
+// Sub-labels shown beneath certain stage names
+const STAGE_SUB: Record<string, string> = {
+  'Approval': 'Approvers',
+}
 
 const BRAND       = '#0A4F8F'
 const REJECTED_BG = '#C0616A'
-const TODO_BG     = '#E3EAF2'
 
-// Sub-states shown beneath the Approval milestone
-const APPROVAL_SUB = ['Approvers', 'Doc control'] as const
-
-const Lifecycle = ({ stages, current, rejected, sub = [60, 0] }: {
+const Lifecycle = ({ stages, current, rejected }: {
   stages: string[]
   current: string
   rejected?: boolean
-  sub?: number[]
+  sub?: number[]  // kept for API compat, unused now stages are discrete
 }) => {
   const currentIdx = stages.indexOf(current)
+  const n = stages.length
 
   return (
-    // Grid: one equal column per stage, so spacing is always even
     <div
       className="lcx"
-      style={{ display: 'grid', gridTemplateColumns: `repeat(${stages.length}, 1fr)`, width: '100%', alignItems: 'start' }}
+      style={{ display: 'grid', gridTemplateColumns: `repeat(${n}, 1fr)`, width: '100%', alignItems: 'start' }}
       data-test-id="lifecycle-tracker"
     >
       {stages.map((stage, k) => {
@@ -27,79 +26,76 @@ const Lifecycle = ({ stages, current, rejected, sub = [60, 0] }: {
         const isCurrent  = k === currentIdx
         const isRejected = isCurrent && Boolean(rejected)
         const isUpcoming = k > currentIdx
-        const isApproval = stage === 'Approval'
+        const numLabel   = String(k + 1).padStart(2, '0')
+        const subLabel   = STAGE_SUB[stage]
 
-        const nodeBg   = isDone ? BRAND : isRejected ? REJECTED_BG : isCurrent ? BRAND : TODO_BG
-        const nodeSize = isCurrent ? 26 : 20
-
-        // For Approval sub-states: first sub done if approvers approved
-        const approversPct  = sub[0] ?? 0
-        const docControlPct = sub[1] ?? 0
+        // Connector colours: segment left of this node is done-coloured if this or a prior step is active
+        const leftDone  = k > 0 && (isDone || isCurrent)
+        const rightDone = k < n - 1 && isDone
 
         return (
-          <div key={stage} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }} data-test-id={`lifecycle-stage-${k}`}>
+          <div key={stage} style={{ display: 'flex', flexDirection: 'column' }} data-test-id={`lifecycle-stage-${k}`}>
 
-            {/* ── Row with connector + node ── */}
-            <div style={{ display: 'flex', alignItems: 'center', width: '100%', position: 'relative' }}>
-              {/* Left half-connector */}
-              <div style={{ flex: 1, height: 0, borderTop: `2px dashed ${k === 0 ? 'transparent' : (isDone || isCurrent) ? BRAND : '#CBD5E1'}` }} aria-hidden="true" />
+            {/* ── Number + solid line row ── */}
+            <div style={{ display: 'flex', alignItems: 'center', width: '100%', height: 28 }}>
+              {/* Left connector */}
+              <div style={{
+                flex: 1, height: 2,
+                background: k === 0 ? 'transparent' : leftDone ? BRAND : '#E2E8F0',
+                transition: 'background .3s',
+              }} aria-hidden="true" />
 
-              {/* Node */}
-              <div
-                style={{
-                  width: nodeSize, height: nodeSize, borderRadius: '50%',
-                  background: nodeBg,
-                  display: 'grid', placeItems: 'center', flexShrink: 0,
-                  boxShadow: isCurrent ? `0 0 0 4px ${BRAND}26` : undefined,
-                  transition: 'all .2s ease',
-                  border: isUpcoming ? '2px solid #CBD5E1' : 'none',
-                }}
-              >
-                {isDone     && <Check size={10} color="#fff" strokeWidth={3.5} />}
-                {isRejected && <X    size={10} color="#fff" strokeWidth={3.5} />}
-                {isCurrent && !isRejected && (
-                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#fff' }} />
+              {/* Number badge */}
+              {isCurrent ? (
+                <div style={{
+                  padding: '2px 8px', borderRadius: 6,
+                  background: BRAND, color: '#fff',
+                  fontSize: 11, fontWeight: 700, letterSpacing: '0.04em',
+                  flexShrink: 0, lineHeight: '18px',
+                }}>
+                  {numLabel}
+                </div>
+              ) : (
+                <div style={{
+                  fontSize: 11, fontWeight: 700, letterSpacing: '0.04em',
+                  color: isDone ? BRAND : '#CBD5E1',
+                  flexShrink: 0, lineHeight: '18px',
+                  minWidth: 20, textAlign: 'center',
+                }}>
+                  {numLabel}
+                </div>
+              )}
+
+              {/* Right connector */}
+              <div style={{
+                flex: 1, height: 2,
+                background: k === n - 1 ? 'transparent' : rightDone ? BRAND : '#E2E8F0',
+                transition: 'background .3s',
+              }} aria-hidden="true" />
+            </div>
+
+            {/* ── Label row ── */}
+            <div style={{ paddingTop: 8, paddingLeft: 0 }}>
+              <div style={{
+                fontSize: 13,
+                fontWeight: isCurrent ? 700 : isDone ? 600 : 400,
+                color: isUpcoming ? '#94a3b8' : '#0a2233',
+                whiteSpace: 'nowrap',
+              }}>
+                {stage}
+                {isRejected && (
+                  <span style={{ fontSize: 10, color: REJECTED_BG, fontWeight: 600, marginLeft: 6 }}>Rejected</span>
                 )}
               </div>
-
-              {/* Right half-connector */}
-              <div style={{ flex: 1, height: 0, borderTop: `2px dashed ${k === stages.length - 1 ? 'transparent' : isDone ? BRAND : '#CBD5E1'}` }} aria-hidden="true" />
-            </div>
-
-            {/* ── Stage label ── */}
-            <div style={{
-              fontSize: 12, marginTop: 6, textAlign: 'center', whiteSpace: 'nowrap',
-              fontWeight: isCurrent ? 700 : isDone ? 500 : 400,
-              color: isCurrent ? '#0a2233' : isDone ? '#334E68' : '#94a3b8',
-            }}>
-              {stage}
-              {isRejected && (
-                <div style={{ fontSize: 10, color: REJECTED_BG, fontWeight: 600, marginTop: 1 }}>Rejected</div>
+              {subLabel && (
+                <div style={{
+                  fontSize: 11, marginTop: 1,
+                  color: isUpcoming ? '#cbd5e1' : '#64748b',
+                }}>
+                  {subLabel}
+                </div>
               )}
             </div>
-
-            {/* ── Approval sub-states ── */}
-            {isApproval && (
-              <div style={{ display: 'flex', gap: 6, marginTop: 8, width: '90%' }}>
-                {APPROVAL_SUB.map((label, j) => {
-                  const pct     = j === 0 ? approversPct : docControlPct
-                  const subDone = isDone || pct === 100
-                  const subActive = isCurrent && pct > 0 && pct < 100
-                  const subColor = subDone ? BRAND : subActive ? BRAND : '#CBD5E1'
-                  return (
-                    <div key={label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-                      {/* Mini progress bar */}
-                      <div style={{ width: '100%', height: 3, borderRadius: 2, background: '#E3EAF2', overflow: 'hidden' }}>
-                        <div style={{ width: `${isDone ? 100 : pct}%`, height: '100%', background: subColor, borderRadius: 2, transition: 'width .4s ease' }} />
-                      </div>
-                      <div style={{ fontSize: 10, color: subDone ? '#334E68' : '#94a3b8', fontWeight: subDone ? 600 : 400, whiteSpace: 'nowrap' }}>
-                        {label}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
 
           </div>
         )
