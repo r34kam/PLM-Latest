@@ -118,7 +118,6 @@ function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = ''
             <Kpi
               label="Open / Submit"
               value={kpis.open + kpis.submit}
-              note="Being worked"
               icon={Pencil}
               onClick={() => go({ page: "ecos", filter: "Open" })}
               data-test-id="home-kpi-open"
@@ -126,7 +125,6 @@ function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = ''
             <Kpi
               label="In approval"
               value={kpis.approval}
-              note={`${kpis.awaitingMe} awaiting me`}
               icon={Clock}
               onClick={() => go({ page: "ecos", filter: "Approval" })}
               data-test-id="home-kpi-awaiting"
@@ -134,7 +132,6 @@ function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = ''
             <Kpi
               label="Effective / Complete"
               value={kpis.effective + kpis.complete}
-              note="Synced to SAP"
               icon={Send}
               onClick={() => go({ page: "ecos", filter: "Effective" })}
               data-test-id="home-kpi-submit"
@@ -142,7 +139,6 @@ function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = ''
             <Kpi
               label="Rejected"
               value={kpis.rejected}
-              note="Held by document control"
               icon={AlertTriangle}
               onClick={() => go({ page: "ecos", filter: "Rejected" })}
               data-test-id="home-kpi-rejected"

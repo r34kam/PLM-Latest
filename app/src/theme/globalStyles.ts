@@ -16,7 +16,7 @@ html,body,#root{margin:0;padding:0;background:${T.brand};min-height:100vh}
 .mut{color:#7993a8}
 .mini{font-size:11px;color:#7993a8}
 .hr{height:1px;background:#d9e2ec;border:0;margin:0}
-.stack{display:flex;flex-direction:column;gap:16px}
+.stack{display:flex;flex-direction:column;gap:12px}
 .row{display:flex;align-items:center;gap:8px}
 .bet{display:flex;align-items:center;justify-content:space-between;gap:10px;border:none}
 .scrollx{overflow-x:auto}
@@ -116,7 +116,7 @@ html,body,#root{margin:0;padding:0;background:${T.brand};min-height:100vh}
    only the white tbody rows sit inside the card's white surface. */
 table.tbl{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
 .tbl th{text-align:left;font-size:11px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:0.04em;text-transform:uppercase;color:#7993a8;padding:12px 20px;
-  border-bottom:none;background:#EEF2F7;white-space:nowrap}
+  border-bottom:none;background:#F4F7FA;white-space:nowrap}
 .tbl.inactivate-tbl th{padding:14px 20px}
 .tbl th:first-child{padding-left:20px}
 .tbl th:last-child{padding-right:20px}
@@ -252,7 +252,7 @@ textarea.inp{height:auto;padding:8px 10px;line-height:1.5;resize:vertical}
 .seg button .n{display:none}
 /* toolbar: floats above the table card on the page background — no card, no white bg.
    Left: filter pills / selects. Right edge: search + actions. */
-.toolbar{display:flex;align-items:center;gap:12px;padding:0 0 12px;border:none;min-width:0;background:transparent}
+.toolbar{display:flex;align-items:center;gap:12px;padding:0 0 6px;border:none;min-width:0;background:transparent}
 .toolbar-right{display:flex;align-items:center;gap:8px;margin-left:auto;flex-shrink:0}
 .srch{position:relative;display:flex;align-items:center;flex-shrink:0}
 .srch input{padding-left:30px;padding-right:10px;height:32px;border-radius:10px;width:240px;border:1px solid #D4DEE9;outline:none;background:#fff;font:inherit;font-size:13px;color:#0a2233;transition:border-color .12s,box-shadow .12s}

@@ -130,13 +130,13 @@ function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, 
             </>
           ) : (
             <>
-              <Kpi label="Open / Submit" value={kpis.open + kpis.submit} note="Being worked" icon={Pencil} tint={T.slateBg} bd={T.slateBd} tone={T.slate}
+              <Kpi label="Open / Submit" value={kpis.open + kpis.submit} icon={Pencil} tint={T.slateBg} bd={T.slateBd} tone={T.slate}
                 onClick={() => { setF("All"); setSelectedStages(["Open", "Submit"]); }} data-test-id="eco-kpi-open" />
-              <Kpi label="In approval" value={kpis.approval} note={`${kpis.awaitingMe} awaiting me`} icon={Clock} tint={T.warnBg} bd={T.warnBd} tone={T.warn}
+              <Kpi label="In approval" value={kpis.approval} icon={Clock} tint={T.warnBg} bd={T.warnBd} tone={T.warn}
                 onClick={() => { setF("All"); setSelectedStages(["Approval"]); }} data-test-id="eco-kpi-approval" />
-              <Kpi label="Effective / Complete" value={kpis.effective + kpis.complete} note="Synced to SAP" icon={Database} tint={T.vioBg} bd={T.vioBd} tone={T.vio}
+              <Kpi label="Effective / Complete" value={kpis.effective + kpis.complete} icon={Database} tint={T.vioBg} bd={T.vioBd} tone={T.vio}
                 onClick={() => { setF("All"); setSelectedStages(["Effective", "Complete"]); }} data-test-id="eco-kpi-effective" />
-              <Kpi label="Rejected" value={kpis.rejected} note="Held by document control" icon={AlertTriangle} tint={T.badBg} bd={T.badBd} tone={T.bad}
+              <Kpi label="Rejected" value={kpis.rejected} icon={AlertTriangle} tint={T.badBg} bd={T.badBd} tone={T.bad}
                 onClick={() => { setF("All"); setSelectedStages(["Rejected"]); }} data-test-id="eco-kpi-rejected" />
             </>
           )}
