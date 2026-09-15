@@ -2,7 +2,7 @@ import { NAV } from '@/domain/navigation'
 import { ME } from '@/domain/session'
 import type { AppRole } from '@/lib/useAppRole'
 import { useLogout } from '@unifyapps/app-builder-sdk/hooks/auth'
-import { ChevronDown, ChevronRight, LogOut, PanelLeft, User } from 'lucide-react'
+import { ChevronDown, ChevronRight, LogOut, PanelLeft } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
@@ -43,7 +43,7 @@ function Nav({
   const [brandHover, setBrandHover] = useState(false);
   const [adminMenuOpen, setAdminMenuOpen] = useState(page === "admin");
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const userMenuRef = useRef<HTMLDivElement>(null);
+  const userBtnRef = useRef<HTMLButtonElement>(null);
   const logout = useLogout();
 
   function handleLogout() {
@@ -52,6 +52,19 @@ function Nav({
       onSuccess: () => navigate('/login'),
       onError: () => navigate('/login'),
     });
+  }
+
+  // Compute popover position from button rect so it works in both expanded + collapsed
+  function getPopoverStyle(): React.CSSProperties {
+    const rect = userBtnRef.current?.getBoundingClientRect();
+    if (!rect) return { display: 'none' };
+    return {
+      position: 'fixed',
+      bottom: `calc(100vh - ${rect.top}px + 8px)`,
+      left: mini ? rect.right + 8 : rect.left,
+      width: mini ? 220 : Math.max(rect.width, 220),
+      zIndex: 9999,
+    };
   }
 
   const Item = ({ k, label, icon: Ic, onClick, active, count, hasChevron, chevronOpen }: {
@@ -226,72 +239,75 @@ function Nav({
         )}
       </nav>
 
-      <div className="sidefoot" style={{ position: 'relative' }} ref={userMenuRef}>
-        {/* User menu popover */}
+      <div className="sidefoot">
+        {/* Click-outside backdrop */}
+        {userMenuOpen && (
+          <div
+            aria-hidden="true"
+            style={{ position: 'fixed', inset: 0, zIndex: 9998 }}
+            onClick={() => setUserMenuOpen(false)}
+          />
+        )}
+
+        {/* User menu popover — fixed-positioned so it always escapes the sidebar */}
         {userMenuOpen && (
           <div
             role="menu"
             data-test-id="sidebar-user-menu"
             style={{
-              position: 'absolute',
-              bottom: 'calc(100% + 8px)',
-              left: 8,
-              right: 8,
-              background: '#fff',
-              borderRadius: 10,
-              border: '1px solid #E2E8F0',
-              boxShadow: '0 8px 24px rgba(2,42,66,.14)',
-              padding: '6px 0',
-              zIndex: 200,
+              ...getPopoverStyle(),
+              background: '#ffffff',
+              borderRadius: 12,
+              border: '1px solid rgba(0,0,0,.08)',
+              boxShadow: '0 4px 6px -1px rgba(0,0,0,.06), 0 12px 24px -4px rgba(0,0,0,.12)',
+              overflow: 'hidden',
+              animation: 'fadeSlideUp .14s ease',
             }}
           >
-            {/* User identity header */}
-            <div style={{ padding: '10px 14px 8px', borderBottom: '1px solid #F0F4F8' }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: '#0a2233', marginBottom: 1 }}>
-                {userName || ME.name}
+            {/* Avatar + identity */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 14px', borderBottom: '1px solid #f1f5f9' }}>
+              <div style={{
+                width: 34, height: 34, borderRadius: 8,
+                background: 'linear-gradient(135deg,#0A4F8F,#1a73c8)',
+                display: 'grid', placeItems: 'center',
+                fontSize: 14, fontWeight: 700, color: '#fff', flexShrink: 0,
+              }}>
+                {(userName || ME.name).charAt(0).toUpperCase()}
               </div>
-              <div style={{ fontSize: 11, color: '#627d98' }}>
-                {userRole || ME.role}
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {userName || ME.name}
+                </div>
+                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>
+                  {userRole || ME.role}
+                </div>
               </div>
             </div>
-            {/* Sign out */}
+
+            {/* Sign out row */}
             <button
               role="menuitem"
-              className="sideuser-menu-item"
               onClick={handleLogout}
               disabled={logout.isPending}
               data-test-id="sidebar-signout-btn"
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                width: '100%',
-                padding: '9px 14px',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                fontSize: 13,
-                color: '#c0392b',
-                fontWeight: 500,
-                textAlign: 'left',
+                display: 'flex', alignItems: 'center', gap: 8,
+                width: '100%', padding: '10px 14px',
+                background: 'none', border: 'none', cursor: logout.isPending ? 'wait' : 'pointer',
+                fontSize: 13, color: '#64748b', fontWeight: 500, textAlign: 'left',
+                transition: 'background .12s, color .12s',
               }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#fef2f2'; e.currentTarget.style.color = '#dc2626'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = '#64748b'; }}
             >
-              <LogOut size={14} />
+              <LogOut size={14} strokeWidth={2} />
               {logout.isPending ? 'Signing out…' : 'Sign out'}
             </button>
           </div>
         )}
 
-        {/* Click-outside overlay */}
-        {userMenuOpen && (
-          <div
-            aria-hidden="true"
-            style={{ position: 'fixed', inset: 0, zIndex: 199 }}
-            onClick={() => setUserMenuOpen(false)}
-          />
-        )}
-
         <button
+          ref={userBtnRef}
           className="sideuser"
           title={`${userName || ME.name} — ${userRole || ME.role}`}
           onClick={() => setUserMenuOpen((v) => !v)}
@@ -299,19 +315,14 @@ function Nav({
           aria-expanded={userMenuOpen}
           data-test-id="sidebar-user-btn"
         >
-          <div className="avatar" style={{ position: 'relative', zIndex: 201 }}>
-            {(userName || ME.name).charAt(0).toUpperCase()}
-          </div>
+          <div className="avatar">{(userName || ME.name).charAt(0).toUpperCase()}</div>
           {!mini && (
             <div className="lbl" style={{ lineHeight: 1.35, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: "#FFFFFF" }}>
+              <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: '#FFFFFF' }}>
                 {userName || ME.name}
               </div>
-              <div style={{ fontSize: 11, color: "#B9DCFF" }}>{userRole || ME.role}</div>
+              <div style={{ fontSize: 11, color: '#B9DCFF' }}>{userRole || ME.role}</div>
             </div>
-          )}
-          {!mini && (
-            <User size={13} style={{ marginLeft: 'auto', flexShrink: 0, color: '#B9DCFF', opacity: 0.7 }} />
           )}
         </button>
       </div>

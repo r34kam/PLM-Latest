@@ -494,6 +494,8 @@ textarea.inp{height:auto;padding:8px 10px;line-height:1.5;resize:vertical}
 .emptyslot{border:none;box-shadow:0 1px 2px rgba(2,42,66,.05);border-radius:10px;padding:18px;text-align:center;font-size:11px;color:#7993a8;background:#ffffff}
 @media(max-width:1150px){.fb{grid-template-columns:1fr !important}}
 @keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeSlideUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
 .spin{animation:spin 0.8s linear infinite}
 @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
 
