@@ -432,7 +432,7 @@ textarea.inp{height:auto;padding:8px 10px;line-height:1.5;resize:vertical}
 @media(max-width:900px){.approval-choices-grid{grid-template-columns:1fr}}
 /* Approval method cards — radio-style, subtle, matching reference */
 .approval-choice-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
-.approval-choice-card{position:relative;display:flex;flex-direction:column;padding:16px;background:#ffffff;border:1.5px solid #e2e8f0;border-radius:10px;cursor:pointer;transition:border-color .14s,box-shadow .14s;outline:none;width:100%;text-align:left}
+.approval-choice-card{position:relative;display:flex;flex-direction:column;padding:16px;background:#ffffff;border:2px solid #c8d8e8;border-radius:10px;cursor:pointer;transition:border-color .14s,box-shadow .14s;outline:none;width:100%;text-align:left}
 .approval-choice-card:hover{border-color:#94a3b8;box-shadow:0 2px 8px rgba(2,42,66,.06)}
 .approval-choice-card.selected{border-color:#0A4F8F;box-shadow:0 0 0 2px rgba(10,79,143,.12)}
 .approval-choice-radio{position:absolute;top:14px;right:14px;width:18px;height:18px;border-radius:50%;border:1.5px solid #cbd5e1;background:#fff;display:grid;place-items:center;flex-shrink:0;transition:border-color .12s}
@@ -487,6 +487,10 @@ textarea.inp{height:auto;padding:8px 10px;line-height:1.5;resize:vertical}
 .emptyslot{border:none;box-shadow:0 1px 2px rgba(2,42,66,.05);border-radius:10px;padding:18px;text-align:center;font-size:11px;color:#7993a8;background:#ffffff}
 @media(max-width:1150px){.fb{grid-template-columns:1fr !important}}
 @keyframes spin{to{transform:rotate(360deg)}}
+.choice-centered-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;min-height:320px;padding:40px 0;text-align:center}
+.item-choice-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;width:100%;max-width:560px}
+.item-choice-card{min-height:110px}
+.item-choice-card:disabled{opacity:.5;cursor:not-allowed;pointer-events:none}
 .eco-info-tip{position:relative;display:inline-flex;align-items:center;color:#94a3b8;cursor:default;line-height:0}
 .eco-info-tip:hover{color:#64748b}
 .eco-info-tip-bubble{visibility:hidden;opacity:0;pointer-events:none;position:absolute;left:calc(100% + 8px);top:50%;transform:translateY(-50%);background:#1e293b;color:#f1f5f9;font-size:12px;font-weight:400;line-height:1.5;padding:7px 10px;border-radius:6px;white-space:normal;width:200px;z-index:9999;box-shadow:0 4px 12px rgba(0,0,0,.2);transition:opacity .12s ease,visibility .12s ease}
