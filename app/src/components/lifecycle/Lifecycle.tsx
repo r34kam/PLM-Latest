@@ -1,48 +1,71 @@
 import { T } from '@/theme/tokens'
 import { Check, X } from 'lucide-react'
 
-const Lifecycle = ({ stages, current, rejected, sub = [60, 0] }: any) => {
-  const i = stages.indexOf(current);
+const BRAND = '#0A4F8F'
+const DONE_BG = BRAND
+const CURR_BG = BRAND
+const TODO_BG = '#E3EAF2'
+const REJECTED_BG = '#C0616A'
+
+const Lifecycle = ({ stages, current, rejected }: { stages: string[]; current: string; rejected?: boolean; sub?: number[] }) => {
+  const currentIdx = stages.indexOf(current);
+
   return (
     <div className="lcx" data-test-id="lifecycle-tracker">
-      {stages.map((st: any, k: any) => {
-        const state = k < i ? "done" : k === i ? "now" : "";
-        const isDone = k < i;
-        const isCurrent = k === i;
+      {stages.map((stage, k) => {
+        const isDone = k < currentIdx;
+        const isCurrent = k === currentIdx;
         const isRejected = isCurrent && Boolean(rejected);
-        const bg = isDone ? T.brand : isRejected ? "#C0616A" : isCurrent ? T.brand : "#E3EAF2";
-        const segs = st === "Approval" ? 2 : 1;
+        const isUpcoming = k > currentIdx;
+
+        const nodeBg = isDone ? DONE_BG : isRejected ? REJECTED_BG : isCurrent ? CURR_BG : TODO_BG;
+        const nodeSize = isCurrent ? 26 : 20;
+
         return (
-          <div key={st} className={`lcs ${state}`}>
-            <div className="top">
-              <span className="lbl2">{st}</span>
-              <span
-                className="circ"
+          <div key={stage} className="lc-milestone" data-test-id={`lifecycle-stage-${k}`}>
+            {/* Connector line before this node (except first) */}
+            {k > 0 && (
+              <div className="lc-connector" aria-hidden="true">
+                <div className={`lc-line ${isDone || isCurrent ? 'lc-line-done' : ''}`} />
+              </div>
+            )}
+
+            {/* Node + label */}
+            <div className="lc-node-wrap">
+              <div
+                className="lc-node"
                 style={{
-                  width: 21,
-                  height: 21,
-                  borderRadius: "50%",
-                  display: "grid",
-                  placeItems: "center",
-                  flex: "none",
-                  backgroundColor: bg,
-                  background: bg,
-                  border: "none",
+                  width: nodeSize,
+                  height: nodeSize,
+                  borderRadius: '50%',
+                  background: nodeBg,
+                  display: 'grid',
+                  placeItems: 'center',
+                  flexShrink: 0,
+                  boxShadow: isCurrent ? `0 0 0 4px ${BRAND}26` : undefined,
+                  transition: 'all .2s ease',
+                  border: isUpcoming ? '2px solid #CBD5E1' : 'none',
                 }}
               >
-                {isDone && <Check size={11} color="#fff" strokeWidth={4} />}
-                {isRejected && <X size={11} color="#fff" strokeWidth={4} />}
-              </span>
+                {isDone && <Check size={10} color="#fff" strokeWidth={3.5} />}
+                {isRejected && <X size={10} color="#fff" strokeWidth={3.5} />}
+                {isCurrent && !isRejected && (
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#fff' }} />
+                )}
+              </div>
+              <div className="lc-label" style={{
+                fontSize: 12,
+                fontWeight: isCurrent ? 700 : isDone ? 500 : 400,
+                color: isCurrent ? '#0a2233' : isDone ? '#334E68' : '#94a3b8',
+                marginTop: 6,
+                whiteSpace: 'nowrap',
+              }}>
+                {stage}
+                {isRejected && (
+                  <div style={{ fontSize: 10, color: REJECTED_BG, fontWeight: 600, marginTop: 1 }}>Rejected</div>
+                )}
+              </div>
             </div>
-            <div className="bars">
-              {Array.from({ length: segs }).map((_: any, j: any) => {
-                const fill = k < i ? 100 : k > i ? 0 : segs === 2 ? sub[j] : 50;
-                return <span key={j} className="bseg"><i style={{ width: `${fill}%`, background: T.brand }} /></span>;
-              })}
-            </div>
-            {st === "Approval" && k === i && (
-              <div className="submarks"><span>Approvers</span><span>Document control</span></div>
-            )}
           </div>
         );
       })}
