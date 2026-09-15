@@ -84,8 +84,9 @@ function HeroPanelSvg() {
       {[150, 300, 450, 600].map((x) => (
         <line key={x} x1={x} y1="0" x2={x} y2="800" stroke="#1e3a52" strokeWidth="1" strokeDasharray="4 6" />
       ))}
-      {/* Main curve */}
+      {/* Main curve — id referenced by animateMotion mpath */}
       <path
+        id="hero-curve"
         d="M -20 600 C 80 590, 160 560, 230 510 C 310 450, 360 400, 440 310 C 510 230, 580 150, 760 40"
         stroke="#4a9fd4"
         strokeWidth="2.5"
@@ -94,11 +95,35 @@ function HeroPanelSvg() {
       {/* Milestone dots */}
       <circle cx="160" cy="548" r="5" fill="#4a9fd4" />
       <circle cx="232" cy="500" r="5" fill="#4a9fd4" />
-      {/* Current milestone — larger, with ring */}
-      <circle cx="440" cy="310" r="14" stroke="#4a9fd4" strokeWidth="2" fill="#0d2137" />
-      <circle cx="440" cy="310" r="6" fill="#4a9fd4" />
-      {/* Vertical dashed drop line from current dot */}
-      <line x1="440" y1="324" x2="440" y2="800" stroke="#4a9fd4" strokeWidth="1" strokeDasharray="4 6" opacity="0.5" />
+      {/* Animated dot — travels the full path and loops */}
+      <g>
+        {/* Outer ring */}
+        <circle r="14" stroke="#4a9fd4" strokeWidth="2" fill="#0d2137">
+          <animateMotion
+            dur="5s"
+            repeatCount="indefinite"
+            rotate="none"
+            calcMode="spline"
+            keyTimes="0;1"
+            keySplines="0.4 0 0.6 1"
+          >
+            <mpath href="#hero-curve" />
+          </animateMotion>
+        </circle>
+        {/* Inner filled dot */}
+        <circle r="6" fill="#4a9fd4">
+          <animateMotion
+            dur="5s"
+            repeatCount="indefinite"
+            rotate="none"
+            calcMode="spline"
+            keyTimes="0;1"
+            keySplines="0.4 0 0.6 1"
+          >
+            <mpath href="#hero-curve" />
+          </animateMotion>
+        </circle>
+      </g>
       {/* Data labels */}
       <text x="200" y="378" fill="#a0c4e0" fontSize="12" fontFamily="monospace" letterSpacing="1">REV A</text>
       <text x="456" y="258" fill="#ffffff" fontSize="11" fontFamily="monospace" letterSpacing="1">● REV C // CCB APPROVED</text>
