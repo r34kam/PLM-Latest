@@ -1361,7 +1361,12 @@ function EcoNew({
                   className="approval-choice-card"
                   onClick={() => setMode("routing")}
                   data-test-id="approval-choice-routing"
-                >
+                  style={{
+                    borderWidth: "1px",
+                    borderStyle: "solid",
+                    borderColor: "#d1d5db",
+                    backgroundColor: "#f9fafc"
+                  }}>
                   <span className="approval-choice-radio" aria-hidden="true"><span className="approval-choice-radio-dot" /></span>
                   <div className="approval-choice-title">Predefined routing</div>
                   <div className="approval-choice-desc">
@@ -1374,7 +1379,11 @@ function EcoNew({
                   className="approval-choice-card"
                   onClick={() => { setMode("ai"); setAiState("idle"); setAiSuggestions([]); aiReset(); }}
                   data-test-id="approval-choice-ai"
-                >
+                  style={{
+                    borderWidth: "1px",
+                    borderStyle: "solid",
+                    borderColor: "#d1d5db"
+                  }}>
                   <span className="approval-choice-radio" aria-hidden="true"><span className="approval-choice-radio-dot" /></span>
                   <div className="approval-choice-title">Assistant suggestion</div>
                   <div className="approval-choice-desc">
@@ -1387,7 +1396,11 @@ function EcoNew({
                   className="approval-choice-card"
                   onClick={() => setMode("manual")}
                   data-test-id="approval-choice-manual"
-                >
+                  style={{
+                    borderWidth: "1px",
+                    borderStyle: "solid",
+                    borderColor: "#d1d5db"
+                  }}>
                   <span className="approval-choice-radio" aria-hidden="true"><span className="approval-choice-radio-dot" /></span>
                   <div className="approval-choice-title">Build manually</div>
                   <div className="approval-choice-desc">
