@@ -460,7 +460,13 @@ function ItemNew({ go, renderHeaderActions, isModal = false, onClose }: {
           {addBomDraftModal && (() => {
             const allCat = (newItemCatalogue ?? []).concat(ITEMS as any[]);
             const seen = new Set<string>();
-            const pickerPool = allCat.filter((i: any) => { if (seen.has(i.pn)) return false; seen.add(i.pn); return true; });
+            // Exclude kit-type categories — BOM components should be leaf-level items
+            const KIT_CATS = new Set(['KIT', 'ASSEMBLY', 'PCB']);
+            const pickerPool = allCat.filter((i: any) => {
+              if (seen.has(i.pn)) return false;
+              seen.add(i.pn);
+              return !KIT_CATS.has((i.cat ?? '').toUpperCase());
+            });
             const dq = addBomDraftModal.pickerQuery.toLowerCase();
             const dFiltered = dq
               ? pickerPool.filter((i: any) => (i.pn + " " + i.name).toLowerCase().includes(dq)).slice(0, 16)
