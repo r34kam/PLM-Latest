@@ -1407,16 +1407,67 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
           })()}
 
           {tab === "History" && (() => {
-            // Always use backend-persisted history for real COs.
-            // Static demo ECOs (no backendCo) fall back to the derived static list.
-            const historyRows: CoHistoryEntry[] = backendCo
-              ? (backendCo.history ?? [])
-              : HISTORY.map((h: any, k: number) => ({
-                  id: `static-${k}`,
-                  timestamp: new Date().toISOString(),
-                  who: h.w,
-                  action: h.a,
-                }))
+            // Build the history rows from available data sources:
+            //   1. Persisted historyJson (for COs that had it saved successfully)
+            //   2. Synthesised from schema-registered fields (creator, created, routing,
+            //      plus any decided approvals) — this always works even when historyJson
+            //      is empty because the field isn't in the backend schema yet.
+            //   3. Static derived list for demo ECOs without a backend record.
+            let historyRows: CoHistoryEntry[]
+            if (backendCo) {
+              const stored = backendCo.history ?? []
+              if (stored.length > 0) {
+                // Trust the persisted audit trail
+                historyRows = stored
+              } else {
+                // Synthesise from structured fields always present on the record
+                const synthesised: CoHistoryEntry[] = []
+
+                // Creation entry — always first
+                synthesised.push({
+                  id: 'synth-created',
+                  timestamp: (() => {
+                    // created is MM/DD/YYYY — convert to a sortable ISO string (start of day)
+                    const parts = (backendCo.created ?? '').split('/')
+                    if (parts.length === 3) {
+                      const [m, d, y] = parts
+                      return new Date(`${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}T00:00:00`).toISOString()
+                    }
+                    return new Date().toISOString()
+                  })(),
+                  who: backendCo.creator ?? 'Unknown',
+                  action: `Change order created and submitted to ${backendCo.routing ?? 'approval'} — ${backendCo.approvals?.length ?? 0} approver role${(backendCo.approvals?.length ?? 0) !== 1 ? 's' : ''} notified`,
+                })
+
+                // One entry per completed (non-pending) approval
+                for (const a of (backendCo.approvals ?? [])) {
+                  if (a.status === 'pending') continue
+                  const label =
+                    a.status === 'approved' ? 'Approved' :
+                    a.status === 'rejected' ? 'Rejected' :
+                    a.status === 'comments' ? 'Commented' : a.status
+                  synthesised.push({
+                    id: `synth-approval-${a.role}`,
+                    timestamp: (() => {
+                      if (!a.signedAt) return new Date().toISOString()
+                      // signedAt format: MM/DD/YYYY HH:MM AM/PM
+                      try { return new Date(a.signedAt).toISOString() } catch { return new Date().toISOString() }
+                    })(),
+                    who: a.approver,
+                    action: `${label} — Stage ${a.stage}, ${a.role}${a.comment ? `: "${a.comment}"` : ''}`,
+                  })
+                }
+
+                historyRows = synthesised
+              }
+            } else {
+              historyRows = HISTORY.map((h: any, k: number) => ({
+                id: `static-${k}`,
+                timestamp: new Date().toISOString(),
+                who: h.w,
+                action: h.a,
+              }))
+            }
             return (
               <div className="card" style={{ overflow: "hidden" }}>
                 <table className="tbl">
