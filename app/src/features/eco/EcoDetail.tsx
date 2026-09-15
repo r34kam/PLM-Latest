@@ -472,14 +472,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                     <button key={x} className={itemSub === x ? "on" : ""} onClick={() => setItemSub(x)}>{x}</button>
                   ))}
                 </div>
-                <div className="row">
-                  <button className="btn sm"><Upload size={12} />Bulk import</button>
-                  <button
-                    className="btn sm"
-                    style={{
-                      overflow: "hidden"
-                    }}><Plus size={12} />Add item</button>
-                </div>
+
               </div>
 
               {itemSub === "Modifications" && (() => {
