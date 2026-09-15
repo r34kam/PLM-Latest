@@ -1097,13 +1097,17 @@ function EcoNew({
 
                             {/* HOW DO YOU WANT TO SPECIFY THE EDIT? */}
                             <div className="eco-kit-section-label" style={{ marginBottom: 10 }}>HOW DO YOU WANT TO SPECIFY THE EDIT?</div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: "20px" }}>
                               <button
                                 type="button"
                                 className={`eco-edit-mode-card${kit.editMode !== 'file' ? ' selected' : ''}`}
                                 onClick={() => updateKit(kit.pn, { editMode: 'inline' })}
                                 data-test-id={`eco-kit-mode-inline-${kit.pn}`}
-                              >
+                                style={{
+                                  borderWidth: "0.5px",
+                                  borderStyle: "solid",
+                                  borderColor: "#92a6b8"
+                                }}>
                                 <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>✏️ Edit inline</div>
                                 <div className="sub" style={{ fontSize: 12 }}>Add, remove, or change BOM lines directly here</div>
                               </button>
@@ -1112,7 +1116,11 @@ function EcoNew({
                                 className={`eco-edit-mode-card${kit.editMode === 'file' ? ' selected' : ''}`}
                                 onClick={() => updateKit(kit.pn, { editMode: 'file' })}
                                 data-test-id={`eco-kit-mode-file-${kit.pn}`}
-                              >
+                                style={{
+                                  borderWidth: "0.5px",
+                                  borderStyle: "solid",
+                                  borderColor: "#b5c3cf"
+                                }}>
                                 <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>↑ Upload redline file</div>
                                 <div className="sub" style={{ fontSize: 12 }}>Attach a marked-up BOM instead of typing edits</div>
                               </button>
