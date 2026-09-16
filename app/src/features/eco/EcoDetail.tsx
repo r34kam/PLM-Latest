@@ -727,35 +727,10 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                   </div>
                 </div>
               </div>
-              <button
-                className="btn dan sm"
-                type="button"
-                style={{ flexShrink: 0 }}
-                onClick={() => setAiReview(!aiReview)}
-              >
-                <Sparkles size={12} />
-                {aiReview ? "Close rework plan" : "Draft rework plan"}
-              </button>
             </div>
           ) : null
         }
       />
-      {aiReview && (
-        <Card title="Rework plan" sub="Drafted from the rejection notes on this change — edit before you act"
-          right={<button className="btn gh sm" onClick={() => setAiReview(false)}><X size={13} /></button>}>
-          <ol className="bulletlist" style={{ paddingLeft: 18 }}>
-            <li><b>Withdraw the change to Open.</b> Items cannot be edited in Approval.</li>
-            <li><b>Document control can close this one.</b> The missing item is an inspection report, not an engineering change — attach
-              INSP-2026-0448 to item 1002261-01 under Files. No engineer round-trip needed.</li>
-            <li><b>Notify the requester</b> Brian Johmann so the rejection email does not sit unanswered.</li>
-            <li><b>Re-submit to ECO Construction.</b> The five approvers who already signed will be asked again; their prior decisions are kept in History.</li>
-          </ol>
-          <div className="row" style={{ marginTop: 12 }}>
-            <button className="btn pri" onClick={() => setModal("withdraw")}>Withdraw and start rework</button>
-            <button className="btn">Email the requester</button>
-          </div>
-        </Card>
-      )}
       <Card pad={false}>
         <Tabs tabs={TABS} active={tab} onChange={setTab} />
         <div style={{ padding: 16 }}>
@@ -1614,19 +1589,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                   );
                 })()}
 
-                <div className="aibox">
-                  <div className="bet">
-                    <div className="row"><Sparkles size={15} color={T.vio} />
-                      <div><b>Pre-approval analysis</b>
-                        <div className="sub" style={{ marginTop: 2 }}>
-                          Every check an approver would do by hand, run before they open the change. They confirm the analysis instead of
-                          repeating it — and can always disagree with it.
-                        </div>
-                      </div>
-                    </div>
-                    <button className="btn" onClick={() => setModal("analysis")}>Open analysis</button>
-                  </div>
-                </div>
+
               </div>
             );
           })()}
@@ -2006,50 +1969,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
           </div>
         </Modal>
       )}
-      {modal === "analysis" && (() => {
-        const isECO010870 = eco.id === "ECO-010870";
-        const rows = isECO010870
-          ? [
-              [true, "Obsolescence verification", "No TPS open demand found in last 90 days across all 129 items."],
-              [true, "Status transition", "All 129 items transition from In Production to Status 50 (Discontinued/Inactive)."],
-              [true, "Where used cascade", "Unique child components correctly scoped into this change; no parent outside the change is broken."],
-              [true, "Compliance & files", "Inactivation change order — drawing updates not required. Obsolescence notice attached."],
-              [false, "Downstream service impact", "Three service spare kits inherit discontinued status — verify no open warranty commitments."],
-              [true, "Duplicate changes", "No conflicting open changes found on these part numbers."],
-            ]
-          : [
-              [true, "Redline matches the description", "Description lists 2 additions and 1 deletion. Redline shows exactly those three lines."],
-              [true, "Revision roll is correct", "Rev B → C. Last production revision was B, no open revisions elsewhere."],
-              [true, "Compliance", "All BOM children are RoHS compliant, so the top level is compliant. No certificate required."],
-              [false, "Where used", "1003140-01 appears in 3 sales kits. Two of them still reference the removed tape 9060-1319 in their assembly instructions."],
-              [true, "Sourcing and files", "Sales BOM — no drawings or sourcing records expected."],
-              [false, "Cost", "Net component cost rises 1.8%. Description states no list price update is required — confirm with product management."],
-              [true, "Duplicate changes", "No other open change touches these items."],
-            ];
 
-        return (
-          <Modal title={`Pre-approval analysis — ${eco.id}`} onClose={() => setModal(null)} wide
-            foot={<><Chip k="vio">Advisory — approvers decide</Chip>
-              <button className="btn pri" style={{ marginLeft: "auto" }} onClick={() => setModal(null)}>Attach to change</button></>}>
-            <div className="card" style={{ overflow: "hidden" }}>
-              <table className="tbl">
-                <thead><tr><th style={{ width: 26 }}></th><th>Check</th><th>Finding</th></tr></thead>
-                <tbody>
-                  {rows.map(([ok, t, d]: any, k: any) => (
-                    <tr key={k}><td>{ok ? <Check size={13} color={T.ok} /> : <AlertTriangle size={13} color={T.warn} />}</td>
-                      <td style={{ fontWeight: 600 }}>{t}</td><td className="sub">{d}</td></tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="warnbox" style={{ marginTop: 12 }}>
-              {isECO010870
-                ? "One item needs a human: confirm service spare kits have no pending warranty back-orders. All other checks passed."
-                : "Two items need a human: the downstream work instructions and the cost note. Everything else is verified."}
-            </div>
-          </Modal>
-        );
-      })()}
       {/* Approver reject reason modal */}
       {rejectModal && (
         <Modal
