@@ -77,6 +77,7 @@ export type PlmForm = {
   sectionsJson: string  // JSON array of section name strings
   fieldsJson: string    // JSON array of field objects
   updatedAt: string
+  modifiedTime?: number | null  // epoch ms from the backend record (read-only, not sent in mutations)
 }
 
 // ─── Flatten helpers ─────────────────────────────────────────────────────────
@@ -139,6 +140,7 @@ function flattenForm(raw: any): PlmForm {
     sectionsJson: p.sectionsJson ?? '[]',
     fieldsJson: p.fieldsJson ?? '[]',
     updatedAt: p.updatedAt ?? '',
+    modifiedTime: typeof raw?.modifiedTime === 'number' ? raw.modifiedTime : null,
   }
 }
 

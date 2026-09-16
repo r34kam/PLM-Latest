@@ -13,6 +13,7 @@ import { GROUPS } from '@/domain/people'
 import { T } from '@/theme/tokens'
 import { useEcoFormStore, SEC_CHANGE_DETAILS, SEC_CONFIRMATIONS } from '@/lib/ecoFormStore'
 import { ArrowLeft, Check, CheckCircle2, ChevronDown, ChevronRight, ChevronUp, Database, Layers, Loader2, Pencil, Plus, ShieldCheck, Sliders, Trash2, Upload, Users, Zap } from 'lucide-react'
+import { format } from 'date-fns'
 import React, { useState } from 'react'
 import { toast } from 'sonner'
 
@@ -415,9 +416,12 @@ function Admin({
                                   {f.type.startsWith("ECO") && (
                                     <Chip k="ok"><Zap size={10} />Live — ECO Wizard</Chip>
                                   )}
-                                  {inUseCount > 0
-                                    ? <Chip k="blue">{inUseCount} routing{inUseCount !== 1 ? "s" : ""}</Chip>
-                                    : null}
+                                  {backendRoutings
+                                    .filter((r: any) => r.formId === f.id)
+                                    .map((r: any) => (
+                                      <Chip key={r.id} k="blue">{r.name}</Chip>
+                                    ))
+                                  }
                                   {!f.type.startsWith("ECO") && inUseCount === 0 && (
                                     <span className="mut">Not assigned</span>
                                   )}
@@ -425,7 +429,11 @@ function Admin({
                               </td>
                               <td><span style={{ fontSize: 13, color: "#0A2233", fontWeight: 500 }}>{sections.length} {sections.length === 1 ? "section" : "sections"}</span></td>
                               <td><span style={{ fontSize: 13, color: "#0A2233", fontWeight: 500 }}>{ffields.length} {ffields.length === 1 ? "field" : "fields"}</span></td>
-                              <td className="sub">{f.updatedAt}</td>
+                              <td className="sub">
+                                {f.modifiedTime
+                                  ? format(new Date(f.modifiedTime), 'MMM d, yyyy · h:mm a')
+                                  : (f.updatedAt || '—')}
+                              </td>
                               <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
                                 <div className="row" style={{ justifyContent: "flex-end", gap: 6 }}>
                                   <button type="button" className="btn sm" data-test-id={`edit-form-btn-${f.id}`} onClick={() => openFormEditor(f)}>
