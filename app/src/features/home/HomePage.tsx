@@ -90,9 +90,14 @@ function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = ''
     ];
   }, [allOrders]);
 
+  // Both roles get the full stage filter set; approver counts are scoped to their COs.
   const homeStages = useMemo(() => isApprover
     ? [
         { key: "Approval", label: "Approval", count: kpis.approval },
+        { key: "Effective", label: "Effective", count: kpis.effective },
+        { key: "Submit", label: "Submit", count: kpis.submit },
+        { key: "Open", label: "Open", count: kpis.open },
+        { key: "Complete", label: "Complete", count: kpis.complete },
         { key: "Rejected", label: "Rejected", count: kpis.rejected },
         { key: "All", label: "All", count: kpis.total },
       ]
