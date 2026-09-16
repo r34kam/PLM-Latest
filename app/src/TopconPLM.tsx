@@ -171,7 +171,7 @@ function TopconPLM({
   const [itemNewOpen, setItemNewOpen] = useState(false);
 
   // Pages Approvers are allowed to navigate to
-  const APPROVER_ALLOWED_PAGES = new Set(['home', 'ecos', 'eco', 'items', 'item', 'kits', 'parts', 'reports'])
+  const APPROVER_ALLOWED_PAGES = new Set(['home', 'ecos', 'eco', 'items', 'item', 'kits', 'parts', 'reports', 'inactivate'])
   const go = (next: any) => {
     // Approvers can only navigate to their allowed pages
     if (isApprover && next?.page && !APPROVER_ALLOWED_PAGES.has(next.page)) return
@@ -220,7 +220,7 @@ function TopconPLM({
     case "kits": body = <KitList go={go} renderHeaderActions={renderHeaderActions} />; break;
     case "parts": body = <PartsList renderHeaderActions={renderHeaderActions} />; break;
     case "item": body = <ItemDetail id={v.id} go={go} initialTab={v.tab} renderHeaderActions={renderHeaderActions} />; break;
-    case "inactivate": body = !isApprover ? <Inactivate go={go} id={v.id} renderHeaderActions={renderHeaderActions} /> : <HomePage go={go} renderHeaderActions={renderHeaderActions} />; break;
+    case "inactivate": body = <Inactivate go={go} id={v.id} renderHeaderActions={renderHeaderActions} />; break;
     case "admin": body = !isApprover ? <Admin initialTab={v.tab || "Users"} go={go} renderHeaderActions={renderHeaderActions} /> : <HomePage go={go} renderHeaderActions={renderHeaderActions} />; break;
     case "reports": body = <Reports renderHeaderActions={renderHeaderActions} />; break;
     case "suppliers": body = !isApprover ? <Suppliers railOpen={false} renderHeaderActions={renderHeaderActions} /> : <HomePage go={go} renderHeaderActions={renderHeaderActions} />; break;
@@ -261,7 +261,7 @@ function TopconPLM({
 
       {/* ── Creation modals — overlay the current page ───────────────── */}
       <Suspense fallback={null}>
-        {ecoNewOpen && !isApprover && (
+        {ecoNewOpen && (
           <EcoNew
             go={go}
             startStep={v.step !== undefined ? v.step : 0}
