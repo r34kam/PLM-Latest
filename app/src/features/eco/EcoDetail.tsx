@@ -145,12 +145,19 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
     try {
       const rejecterName = currentUserName || ME.name
       if (backendCo) {
+        const newHistoryEntry: CoHistoryEntry = {
+          id: `h-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          who: rejecterName,
+          action: `Rejected — ${dcRejectReason.trim()}${dcRejectNotes.trim() ? `: "${dcRejectNotes.trim()}"` : ''}`,
+        }
         await updateChangeOrder(backendCo.id, {
           stage: 'Rejected',
           approvals: backendCo?.approvals ?? [],
           rejectionReason: dcRejectReason.trim(),
           rejectionNotes: dcRejectNotes.trim(),
           rejectedBy: rejecterName,
+          history: [...(backendCo.history ?? []), newHistoryEntry],
         })
       }
       setModal(null)
@@ -176,12 +183,19 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
     try {
       const rejecterName = currentUserName || ME.name
       if (backendCo) {
+        const newHistoryEntry: CoHistoryEntry = {
+          id: `h-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          who: rejecterName,
+          action: `Rejected — ${rejectReason.trim()}${rejectNotes.trim() ? `: "${rejectNotes.trim()}"` : ''}`,
+        }
         await updateChangeOrder(backendCo.id, {
           stage: 'Rejected',
           approvals: backendCo?.approvals ?? [],
           rejectionReason: rejectReason.trim(),
           rejectionNotes: rejectNotes.trim(),
           rejectedBy: rejecterName,
+          history: [...(backendCo.history ?? []), newHistoryEntry],
         })
       }
       setApprovalDone('rejected')
@@ -601,22 +615,34 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
 
               {itemSub === "Modifications" && (() => {
                 const isECO010870 = eco.id === "ECO-010870";
-                // For backend-created COs, build item rows from pnsJson
-                const backendItemsList = backendCo && eco.pns && eco.pns.length > 0
-                  ? eco.pns.map((pn: string, idx: number) => ({
-                      pn,
-                      name: `Part ${pn}`,
-                      phase: "In Production",
-                      newPhase: "In Production",
-                      rev: "A",
-                      newRev: "B",
-                      bom: idx === 0 ? "1 add" : null,
-                      bomCount: idx === 0 ? 1 : 0,
-                      specs: true,
+                // Build item rows from ecoItems (now always stored on backend records).
+                // Fall back to pnsJson-derived rows for records that predate ecoItemsJson.
+                const ecoItemsList = backendCo && eco.ecoItems && eco.ecoItems.length > 0
+                  ? eco.ecoItems.map((ki: any) => {
+                      const adds = (ki.bomEdits ?? []).filter((e: any) => e.type === 'ADD').length;
+                      const dels = (ki.bomEdits ?? []).filter((e: any) => e.type === 'DELETE').length;
+                      const upds = (ki.bomEdits ?? []).filter((e: any) => e.type === 'UPDATE_DESC' || e.type === 'UPDATE_QTY').length;
+                      const parts = [adds > 0 ? `${adds} add` : '', dels > 0 ? `${dels} delete` : '', upds > 0 ? `${upds} update` : ''].filter(Boolean);
+                      return {
+                        pn: ki.pn,
+                        name: ki.name ?? `Part ${ki.pn}`,
+                        phase: "In Production",
+                        newPhase: "In Production",
+                        rev: ki.currentRev ?? ki.rev ?? 'A',
+                        newRev: ki.newRev ?? 'B',
+                        bom: parts.length > 0 ? parts.join(' · ') : null,
+                        bomCount: (ki.bomEdits ?? []).length,
+                        specs: true,
+                      };
+                    })
+                  : backendCo && eco.pns && eco.pns.length > 0
+                  ? eco.pns.map((pn: string) => ({
+                      pn, name: `Part ${pn}`, phase: "In Production", newPhase: "In Production",
+                      rev: "A", newRev: "B", bom: null, bomCount: 0, specs: true,
                     }))
                   : null;
                 const itemsList = isECO010870 ? ECO_010870_ITEMS
-                  : backendItemsList ?? [
+                  : ecoItemsList ?? [
                       { pn: "1003140-01", name: "KIT, TS CG MOUNTING", phase: "In Production", newPhase: "In Production", rev: "B", newRev: "C", bom: "2 add · 1 delete", specs: true }
                     ];
                 const pageSize = 25;

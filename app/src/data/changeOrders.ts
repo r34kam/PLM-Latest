@@ -101,8 +101,9 @@ export type NewChangeOrder = Omit<ChangeOrder, 'id'>
 // Payload shape sent to the backend CREATE node — only schema-registered fields.
 // Fields added after the original object was provisioned are sent in a follow-up UPDATE
 // because the CREATE node rejects unregistered schema fields with additionalProperties errors.
-// Step-2-only fields: ecoItemsJson, commentsJson, historyJson, extraNotifyJson,
-//                     rejectionReason, rejectionNotes, rejectedBy, currentStageNum
+// Step-2-only fields (registered after original provisioning, sent in UPDATE after CREATE):
+//   ecoItemsJson, historyJson, extraNotifyJson, currentStageNum, rejectionReason/Notes/By
+// commentsJson is NOT used — comments go to the eco_comment object.
 type CoPayload = Omit<
   NewChangeOrder,
   | 'approvals' | 'ecoItems' | 'comments' | 'history' | 'extraNotifyNames'
@@ -302,7 +303,12 @@ export function useCreateChangeOrder() {
               ...UPDATE.storedInputs,
               object_type: CO,
               recordId: newId,
-              rawPayload: {},
+              rawPayload: {
+                ecoItemsJson: JSON.stringify(co.ecoItems ?? []),
+                historyJson: JSON.stringify(co.history ?? []),
+                extraNotifyJson: JSON.stringify(co.extraNotifyNames ?? []),
+                currentStageNum: co.currentStageNum ?? 1,
+              },
             },
           },
         })
@@ -326,9 +332,8 @@ export function useUpdateChangeOrder() {
     //   created, submitted, itemCount, modCount, pnsJson, desc, redline, notes,
     //   priority, awaitingMe, effectiveDate, completedDate, approvalsJson, currentStageNum,
     //   ecoItemsJson, commentsJson, historyJson, extraNotifyJson
-    // NOTE: historyJson, ecoItemsJson, commentsJson, extraNotifyJson are NOT currently
-    //   registered in the schema (update_object is locked), so they are silently omitted.
-    //   rejectionReason, rejectionNotes, rejectedBy are registered and saved on the change_order record.
+    // All registered fields: ecoItemsJson, historyJson, extraNotifyJson are now in the schema.
+    // rejectionReason, rejectionNotes, rejectedBy are encoded in approvalsJson.rejection.
     const {
       approvals, ecoItems, comments, history, extraNotifyNames,
       rejectionReason, rejectionNotes, rejectedBy,
@@ -347,8 +352,11 @@ export function useUpdateChangeOrder() {
       }
       payload.approvalsJson = JSON.stringify(combined)
     }
-    // ecoItems, comments, history, extraNotifyNames currently unregistered — skip to avoid 500s
-    void ecoItems; void comments; void history; void extraNotifyNames
+    // These fields are now registered — encode them when provided
+    if (ecoItems !== undefined) payload.ecoItemsJson = JSON.stringify(ecoItems)
+    if (history !== undefined) payload.historyJson = JSON.stringify(history)
+    if (extraNotifyNames !== undefined) payload.extraNotifyJson = JSON.stringify(extraNotifyNames)
+    void comments // comments go to eco_comment object, not here
     await mutation.mutateAsync({
       data: {
         id: UPDATE.id,
