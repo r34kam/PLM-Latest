@@ -68,7 +68,7 @@ html,body,#root{margin:0;padding:0;background:${T.brand};min-height:100vh}
 .rightrail-head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border:none;background:#fff;flex:none}
 .rightrail-body{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:14px}
 .tbl tr.inspected-row{background:${T.b50} !important}
-.crumb{display:none}
+.crumb{display:flex;align-items:center;gap:4px;font-size:12px;color:${T.g500};margin-bottom:6px;user-select:none}.crumb a,.crumb button.crumb-link{color:${T.g500};text-decoration:none;cursor:pointer}.crumb a:hover,.crumb button.crumb-link:hover{color:${T.brand};text-decoration:none}.crumb svg{flex-shrink:0;opacity:.6}
 .crumb-link{background:none;border:none;padding:0;font-size:inherit;color:inherit;cursor:pointer;text-decoration:none}
 .crumb-link:hover{color:#055aaf;text-decoration:underline}
 
