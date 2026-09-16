@@ -93,14 +93,14 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
   const HISTORY = historyFor(eco);
   const rejected = eco.stage === "Rejected";
   // Withdrawn-for-rework: stage is Open but rejection context still present
-  const withdrawnForRework = eco.stage === "Open" && !!eco.rejectedBy;
+  const withdrawnForRework = eco.stage === "Submit" && !!eco.rejectedBy;
   const TABS = ["Summary", "Items", "Files", "Approvals", "Supplier Access", "Notifications", "History"];
   const [tab, setTab] = useState(
     initialTab && TABS.includes(initialTab)
       ? initialTab
       : "Summary"
   );
-  const [detailsOpen, setDetailsOpen] = useState(false);
+
   const [modal, setModal] = useState<any>(null);
   const [syncing, setSyncing] = useState(false);
   const [aiReview, setAiReview] = useState(false);
@@ -287,15 +287,15 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
         id: `h-${Date.now()}`,
         timestamp: new Date().toISOString(),
         who: approverName,
-        action: `Withdrawn to Open \u2014 returned for rework, all prior decisions cleared`,
+        action: `Withdrawn for rework \u2014 returned to Submit stage, all prior decisions cleared`,
       }
       await updateChangeOrder(backendCo.id, {
-        stage: 'Open',
+        stage: 'Submit',
         approvals: resetApprovals,
         history: [...(backendCo.history ?? []), newEntry],
       }, backendCo)
       setModal(null)
-      toast.success('Change order withdrawn to Open.')
+      toast.success('Change order withdrawn for rework.')
     } catch {
       toast.error('Failed to withdraw \u2014 please try again.')
     } finally {
@@ -501,7 +501,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
     setModPage(1);
     setSelectedPns([]);
     setActiveRedlineItem(null);
-    setDetailsOpen(false);
+
   }, [id]);
 
   React.useEffect(() => {
@@ -556,7 +556,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
               <button className="btn" onClick={() => setRejectModal(true)}><X size={13} />Reject</button>
               <button className="btn ok" onClick={() => setModal("approve")}><Check size={13} />Approve</button>
             </>}
-            {!isApproverRole && eco.stage === "Open" && (
+            {!isApproverRole && eco.stage === "Submit" && (
               <button className="btn pri" onClick={handleSubmitToRouting} disabled={isSubmitting} data-test-id="submit-to-routing-btn">
                 {isSubmitting ? <><Loader2 size={13} className="animate-spin" />Submitting&hellip;</> : <><Send size={13} />Submit to routing</>}
               </button>
@@ -747,26 +747,8 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
               </div>
 
               <div style={{ marginTop: 2 }}>
-                <button
-                  type="button"
-                  className="btn gh sm"
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 6,
-                    fontWeight: 600,
-                    color: T.brand,
-                    padding: "4px 0",
-                  }}
-                  onClick={() => setDetailsOpen((prev: any) => !prev)}
-                  aria-expanded={detailsOpen}
-                  data-test-id="eco-details-disclosure-btn"
-                >
-                  <span>Details</span>
-                  {detailsOpen ? <ChevronUp size={13} strokeWidth={2} /> : <ChevronDown size={13} strokeWidth={2} />}
-                </button>
-                {detailsOpen && (
-                  <div style={{ marginTop: 8 }} data-test-id="eco-details-disclosure-content">
+                <h3 style={{ marginBottom: 8 }} data-test-id="eco-details-disclosure-btn">Details</h3>
+                <div data-test-id="eco-details-disclosure-content">
                     <div className="grid2">
                       <SpecList rows={[
                         ["Category", eco.cat],
@@ -790,8 +772,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                         ["Implementation Files", "0"]
                       ]} />
                     </div>
-                  </div>
-                )}
+                </div>
               </div>
 
               <div style={{ marginTop: 8 }}>
