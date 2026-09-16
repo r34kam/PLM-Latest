@@ -176,7 +176,7 @@ function TopconPLM({
     // Approvers can only navigate to their allowed pages
     if (isApprover && next?.page && !APPROVER_ALLOWED_PAGES.has(next.page)) return
     // Creation modals open as overlays — don't change the background page
-    if (next?.page === 'eco-new') { setEcoNewOpen(true); return; }
+    if (next?.page === 'eco-new') { setV(next); setEcoNewOpen(true); return; }
     if (next?.page === 'item-new') { setItemNewOpen(true); return; }
     // Close modals when navigating elsewhere (e.g. after successful creation)
     setEcoNewOpen(false);
