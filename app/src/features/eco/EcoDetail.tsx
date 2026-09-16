@@ -138,6 +138,12 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
   const [dcRejectReason, setDcRejectReason] = useState('')
   const [dcRejectNotes, setDcRejectNotes] = useState('')
   const [isDcRejecting, setIsDcRejecting] = useState(false)
+  // DC approve modal state
+  const [dcApproveComment, setDcApproveComment] = useState('')
+  const [isDcApproving, setIsDcApproving] = useState(false)
+  // Complete + Withdraw modal state
+  const [isCompleting, setIsCompleting] = useState(false)
+  const [isWithdrawing, setIsWithdrawing] = useState(false)
 
   const handleDcReject = async () => {
     if (!dcRejectReason.trim()) return
@@ -171,10 +177,129 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
     }
   }
 
+  // DC Approve: mark DC's pending approval as approved, advance to Effective if all required roles done
+  const handleDcApprove = async () => {
+    if (!backendCo) { setModal(null); return }
+    setIsDcApproving(true)
+    try {
+      const approverName = currentUserName || ME.name
+      const now = new Date().toLocaleString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+      const updatedApprovals = backendCo.approvals.map((a) => {
+        if (a.status === 'pending') {
+          return { ...a, status: 'approved' as const, signedAt: now, comment: dcApproveComment.trim() || '' }
+        }
+        return a
+      })
+      // Check if all required approvals are now done → advance to Effective
+      const allDone = updatedApprovals.filter((a) => a.req !== 'Comments only').every((a) => a.status !== 'pending')
+      const newStage = allDone ? 'Effective' : 'Approval'
+      const newEntry: CoHistoryEntry = {
+        id: `h-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        who: approverName,
+        action: `Approved \u2014 Stage ${backendCo.currentStageNum ?? 1}, Document Control${dcApproveComment.trim() ? `: "${dcApproveComment.trim()}"` : ''}${allDone ? ' \u2014 all stages complete, advanced to Effective' : ''}`,
+      }
+      await updateChangeOrder(backendCo.id, {
+        stage: newStage,
+        approvals: updatedApprovals,
+        history: [...(backendCo.history ?? []), newEntry],
+      })
+      setModal(null)
+      setDcApproveComment('')
+      toast.success(allDone ? 'Change order advanced to Effective.' : 'Approval recorded.')
+    } catch {
+      toast.error('Failed to record approval \u2014 please try again.')
+    } finally {
+      setIsDcApproving(false)
+    }
+  }
+
+  // Complete: move from Effective → Complete with SAP sign-off history entry
+  const handleComplete = async () => {
+    if (!backendCo) { setModal(null); return }
+    setIsCompleting(true)
+    try {
+      const approverName = currentUserName || ME.name
+      const today = new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })
+      const newEntry: CoHistoryEntry = {
+        id: `h-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        who: approverName,
+        action: `Marked Complete \u2014 SAP write-back verified, all BOM fields matched`,
+      }
+      await updateChangeOrder(backendCo.id, {
+        stage: 'Complete',
+        completedDate: today,
+        history: [...(backendCo.history ?? []), newEntry],
+      })
+      setModal(null)
+      toast.success('Change order marked Complete.')
+    } catch {
+      toast.error('Failed to complete \u2014 please try again.')
+    } finally {
+      setIsCompleting(false)
+    }
+  }
+
+  // Withdraw: move back to Open, clear approvals to pending, add history entry
+  const handleWithdraw = async () => {
+    if (!backendCo) { setModal(null); return }
+    setIsWithdrawing(true)
+    try {
+      const approverName = currentUserName || ME.name
+      const resetApprovals = backendCo.approvals.map((a) => ({
+        ...a, status: 'pending' as const, signedAt: '', comment: '',
+      }))
+      const newEntry: CoHistoryEntry = {
+        id: `h-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        who: approverName,
+        action: `Withdrawn to Open \u2014 returned for rework, all prior decisions cleared`,
+      }
+      await updateChangeOrder(backendCo.id, {
+        stage: 'Open',
+        approvals: resetApprovals,
+        history: [...(backendCo.history ?? []), newEntry],
+      })
+      setModal(null)
+      toast.success('Change order withdrawn to Open.')
+    } catch {
+      toast.error('Failed to withdraw \u2014 please try again.')
+    } finally {
+      setIsWithdrawing(false)
+    }
+  }
+
   const canApprove = isApproverRole && eco.stage === 'Approval' && (eco.awaitingMe === true || eco.mine === true)
+  const [isApproving, setIsApproving] = useState(false)
   const handleApprove = async () => {
-    // Approval only updates approvalsJson which IS registered — no unregistered fields needed
-    setApprovalDone('approved')
+    if (!backendCo) { setApprovalDone('approved'); return }
+    setIsApproving(true)
+    try {
+      const approverName = currentUserName || ME.name
+      // Mark the first pending approval entry matching this approver as approved
+      const updatedApprovals = backendCo.approvals.map((a) => {
+        if (a.status === 'pending' && (a.approver === approverName || a.others?.includes(approverName))) {
+          return { ...a, status: 'approved' as const, signedAt: new Date().toLocaleString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit' }) }
+        }
+        return a
+      })
+      const newEntry: CoHistoryEntry = {
+        id: `h-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        who: approverName,
+        action: `Approved — Stage ${backendCo.currentStageNum ?? 1}, ${backendCo.approvals.find((a) => a.approver === approverName || a.others?.includes(approverName))?.role ?? 'Reviewer'}`,
+      }
+      await updateChangeOrder(backendCo.id, {
+        approvals: updatedApprovals,
+        history: [...(backendCo.history ?? []), newEntry],
+      })
+      setApprovalDone('approved')
+    } catch {
+      toast.error('Failed to record approval — please try again.')
+    } finally {
+      setIsApproving(false)
+    }
   }
 
   const handleReject = async () => {
@@ -335,8 +460,8 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                 <button className="btn dan" onClick={() => setRejectModal(true)} data-test-id="approver-reject-btn">
                   <X size={13} />Reject
                 </button>
-                <button className="btn ok" onClick={handleApprove} data-test-id="approver-approve-btn">
-                  <Check size={13} />Approve
+                <button className="btn ok" onClick={handleApprove} disabled={isApproving} data-test-id="approver-approve-btn">
+                  {isApproving ? <><Loader2 size={13} className="animate-spin" />Approving…</> : <><Check size={13} />Approve</>}
                 </button>
               </>
             )}
@@ -1521,7 +1646,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                     {historyRows.length === 0 && (
                       <tr><td colSpan={3} className="sub" style={{ textAlign: 'center', padding: '24px 0' }}>No history recorded yet.</td></tr>
                     )}
-                    {[...historyRows].reverse().map((h) => (
+                    {[...historyRows].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).map((h) => (
                       <tr key={h.id} data-test-id={`history-row-${h.id}`}>
                         <td className="sub">{new Date(h.timestamp).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</td>
                         <td style={{ fontWeight: 600 }}>{h.who}</td>
@@ -1564,11 +1689,30 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
         </Modal>
       )}
       {modal === "approve" && (
-        <Modal title="Approve this change" onClose={() => setModal(null)}
-          foot={<><button className="btn" onClick={() => setModal(null)}>Cancel</button>
-            <button className="btn ok" style={{ marginLeft: "auto" }} onClick={() => setModal(null)}><Check size={13} />Approve</button></>}>
-          <Field label="Comments (optional)"><textarea className="inp" rows={3} placeholder="Anything the next approver or document control should know" /></Field>
-          <div className="note" style={{ marginTop: 12 }}>You are approving for <b>Construction Engineering</b>. This role needs one or more approvals; one is already in.</div>
+        <Modal title="Approve this change" onClose={() => { setModal(null); setDcApproveComment('') }}
+          foot={<><button className="btn" onClick={() => { setModal(null); setDcApproveComment('') }}>Cancel</button>
+            <button
+              className="btn ok"
+              style={{ marginLeft: "auto" }}
+              onClick={handleDcApprove}
+              disabled={isDcApproving}
+              data-test-id="dc-approve-confirm-btn"
+            >
+              {isDcApproving ? <><Loader2 size={13} className="spin" />Approving…</> : <><Check size={13} />Approve</>}
+            </button></>}>
+          <Field label="Comments (optional)">
+            <textarea
+              className="inp"
+              rows={3}
+              placeholder="Anything the next approver or document control should know"
+              value={dcApproveComment}
+              onChange={(e) => setDcApproveComment(e.target.value)}
+              data-test-id="dc-approve-comment-input"
+            />
+          </Field>
+          <div className="note" style={{ marginTop: 12 }}>
+            Approving will mark remaining pending roles complete and advance to <b>Effective</b> when all required stages are done.
+          </div>
         </Modal>
       )}
       {modal === "reject" && (
@@ -1609,11 +1753,19 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
       {modal === "withdraw" && (
         <Modal title="Withdraw to Open" onClose={() => setModal(null)}
           foot={<><button className="btn" onClick={() => setModal(null)}>Cancel</button>
-            <button className="btn pri" style={{ marginLeft: "auto" }} onClick={() => setModal(null)}><CornerUpLeft size={13} />Withdraw</button></>}>
+            <button
+              className="btn pri"
+              style={{ marginLeft: "auto" }}
+              onClick={handleWithdraw}
+              disabled={isWithdrawing}
+              data-test-id="withdraw-confirm-btn"
+            >
+              {isWithdrawing ? <><Loader2 size={13} className="spin" />Withdrawing…</> : <><CornerUpLeft size={13} />Withdraw</>}
+            </button></>}>
           <p className="sub" style={{ marginTop: 0 }}>Items and redlines can only be edited while a change is Open. Withdrawing returns it to the requester
-            and document control for rework. Prior decisions stay in History.</p>
+            and document control for rework. Prior decisions are recorded in History.</p>
           <Field label="Who picks this up?">
-            <Select options={["Document control can resolve it (administrative)", "Return to requester — Brian Johmann (engineering)", "Both"]} /></Field>
+            <Select options={["Document control can resolve it (administrative)", `Return to requester — ${eco.creator} (engineering)`, "Both"]} /></Field>
           <div style={{ height: 12 }} />
           <label className="row"><input type="checkbox" defaultChecked /> Email the requester with the rejection notes</label>
         </Modal>
@@ -1621,8 +1773,15 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
       {modal === "complete" && (
         <Modal title="Verify SAP write-back" onClose={() => setModal(null)} wide
           foot={<><button className="btn" onClick={() => setModal(null)}>Close</button>
-            <button className="btn pri" style={{ marginLeft: "auto" }} onClick={() => setModal(null)}
-              disabled={!syncing}><CheckCircle2 size={13} />Move to Complete</button></>}>
+            <button
+              className="btn pri"
+              style={{ marginLeft: "auto" }}
+              onClick={handleComplete}
+              disabled={!syncing || isCompleting}
+              data-test-id="complete-confirm-btn"
+            >
+              {isCompleting ? <><Loader2 size={13} className="spin" />Completing…</> : <><CheckCircle2 size={13} />Move to Complete</>}
+            </button></>}>
           <div className="bet" style={{ marginBottom: 12 }}>
             <div className="row"><Database size={15} color={T.brand} /><b>SAP ECC · plant 1210</b></div>
             <button className="btn sm" onClick={() => setSyncing(true)}><RefreshCw size={12} />Re-check now</button>
