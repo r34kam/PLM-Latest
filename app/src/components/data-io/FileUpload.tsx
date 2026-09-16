@@ -119,6 +119,7 @@ function FileUpload({
         }
       }
       toast.success(readyFiles.length + " file" + (readyFiles.length === 1 ? "" : "s") + " attached")
+      readyFiles.forEach((f) => removeFile(f.id))
       setStagedMeta({})
       onClose()
     } catch {
