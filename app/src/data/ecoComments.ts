@@ -40,7 +40,7 @@ export function useEcoComments(ecoId: string) {
     where: ecoId
       ? [{ property: 'properties.ecoId', filter: { operator: 'EQUAL' as const, value: ecoId } }]
       : [],
-    sort: [{ field: 'properties.timestamp', order: 'DESC' as const }],
+    sort: [{ field: 'properties.timestamp', order: 'ASC' as const }],
     limit: 200,
   })
   const comments = useMemo(

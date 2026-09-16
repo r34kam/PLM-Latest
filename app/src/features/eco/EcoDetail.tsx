@@ -271,7 +271,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
     const merged = optimisticComments.length > 0
       ? [...backendComments, ...optimisticComments]
       : backendComments
-    return [...merged].sort((a, b) => b.timestamp - a.timestamp)
+    return [...merged].sort((a, b) => a.timestamp - b.timestamp)
   }, [backendComments, optimisticComments])
 
   /** Format epoch ms for display. */
