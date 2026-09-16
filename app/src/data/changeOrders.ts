@@ -133,6 +133,7 @@ type CoPayload = Omit<
   NewChangeOrder,
   | 'approvals' | 'ecoItems' | 'comments' | 'history' | 'extraNotifyNames'
   | 'rejectionReason' | 'rejectionNotes' | 'rejectedBy' | 'currentStageNum'
+  | 'affectedAssemblies' | 'inventoryDisposition'
 > & {
   approvalsJson: string
 }
@@ -290,6 +291,8 @@ function toPayload(co: NewChangeOrder): CoPayload {
     rejectionNotes: _rn,
     rejectedBy: _rb,
     currentStageNum: _csn,
+    affectedAssemblies: _aa,
+    inventoryDisposition: _id,
     ...rest
   } = co
   return {
