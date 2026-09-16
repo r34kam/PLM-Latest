@@ -14,7 +14,7 @@ import { useAllItems } from '@/data/items'
 import { useKitExtractor } from '@/data/kitExtractor'
 import { useCreateChangeOrder, type ApprovalEntry, type CoHistoryEntry } from '@/data/changeOrders'
 import { ITEMS, ASSEMBLIES } from '@/domain/catalog'
-import { bomFor, whereUsed } from '@/domain/boms'
+import { bomFor } from '@/domain/boms'
 import { useEcoApprovalFlow, type AiSuggestion } from '@/data/ecoApprovalFlow'
 import { ROUTINGS, ROUTING_NAMES, approvalsFor } from '@/domain/routings'
 import { ME } from '@/domain/session'
@@ -542,36 +542,6 @@ function EcoNew({
         rejectionReason: '',
         rejectionNotes: '',
         rejectedBy: '',
-        // Compute affected assemblies from whereUsed on each kit being changed
-        affectedAssemblies: (() => {
-          const rows: import('@/data/changeOrders').AffectedAssemblyRow[] = []
-          const seen = new Set<string>()
-          for (const k of kits) {
-            const parents = whereUsed(k.pn).filter(Boolean)
-            for (const parent of parents) {
-              if (!parent) continue
-              const key = `${parent.pn}-${k.pn}`
-              if (seen.has(key)) continue
-              seen.add(key)
-              const hasDelete = k.bomEdits.some((e) => e.type === 'DELETE')
-              const impact = parent.phase === 'Discontinued' || parent.phase === 'Obsolete'
-                ? 'Discontinued — no action needed'
-                : hasDelete
-                ? 'Work instruction may still reference the removed component'
-                : `Inherits rev ${k.newRev} — verify no open orders`
-              rows.push({
-                parentPn: parent.pn,
-                parentName: parent.name,
-                containsPn: k.pn,
-                level: 1,
-                phase: parent.phase ?? 'In Production',
-                div: (parent as any).div ?? 'CO',
-                impact,
-              })
-            }
-          }
-          return rows
-        })(),
         // Seed notifications with every person in the approval flow so the
         // Notifications tab is fully populated from day one.
         extraNotifyNames: (() => {
