@@ -253,16 +253,25 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
   const { comments: backendComments, loading: commentsLoading } = useEcoComments(eco.id)
   const postEcoComment = usePostEcoComment()
 
-  // Optimistic additions — shown immediately; de-duplicated once backend refetches confirm them
+  // Optimistic count — how many comments we expect after a post, used to clear optimistic copies
   const [optimisticComments, setOptimisticComments] = useState<EcoCommentRecord[]>([])
-  React.useEffect(() => { setOptimisticComments([]) }, [eco.id])
+  const prevBackendCountRef = React.useRef(backendComments.length)
+  React.useEffect(() => { setOptimisticComments([]); prevBackendCountRef.current = 0 }, [eco.id])
+
+  // Drop optimistic entries as soon as the backend count grows — the real record arrived
+  React.useEffect(() => {
+    if (backendComments.length > prevBackendCountRef.current) {
+      setOptimisticComments([])
+    }
+    prevBackendCountRef.current = backendComments.length
+  }, [backendComments.length])
 
   const allComments = React.useMemo(() => {
-    const confirmedIds = new Set(backendComments.map((c) => c.id))
-    // Optimistic entries use a temp 'opt-*' id that will never match a real backend id,
-    // so they stay until the hook refetches and we clear them on eco change.
-    const pending = optimisticComments.filter((c) => !confirmedIds.has(c.id))
-    return [...backendComments, ...pending].sort((a, b) => b.timestamp - a.timestamp)
+    // Only show optimistic entries when the backend hasn't caught up yet
+    const merged = optimisticComments.length > 0
+      ? [...backendComments, ...optimisticComments]
+      : backendComments
+    return [...merged].sort((a, b) => b.timestamp - a.timestamp)
   }, [backendComments, optimisticComments])
 
   /** Format epoch ms for display. */
