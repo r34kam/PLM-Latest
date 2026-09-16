@@ -314,13 +314,11 @@ export function useUpdateChangeOrder() {
     //   ecoItemsJson, commentsJson, historyJson, extraNotifyJson
     // NOTE: historyJson, ecoItemsJson, commentsJson, extraNotifyJson are NOT currently
     //   registered in the schema (update_object is locked), so they are silently omitted.
-    //   rejectionReason, rejectionNotes, rejectedBy go to eco_rejection records instead.
+    //   rejectionReason, rejectionNotes, rejectedBy are registered and saved on the change_order record.
     const {
       approvals, ecoItems, comments, history, extraNotifyNames,
-      // Unregistered fields — omit entirely to prevent additionalProperties errors
-      rejectionReason: _rr, rejectionNotes: _rn, rejectedBy: _rb,
       ...rest
-    } = co as Partial<NewChangeOrder> & { rejectionReason?: string; rejectionNotes?: string; rejectedBy?: string }
+    } = co as Partial<NewChangeOrder>
     const payload: Record<string, unknown> = { ...rest }
     if (approvals !== undefined) payload.approvalsJson = JSON.stringify(approvals)
     // ecoItems, comments, history, extraNotifyNames currently unregistered — skip to avoid 500s
