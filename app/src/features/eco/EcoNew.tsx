@@ -9,6 +9,7 @@ import { Modal } from '@/components/primitives/Modal'
 import { WizardModal } from '@/components/primitives/WizardModal'
 import { Stepper } from '@/components/primitives/Stepper'
 import { useRoutings } from '@/data/admin'
+import { useEcoFormStore, SEC_CHANGE_DETAILS, SEC_CONFIRMATIONS } from '@/lib/ecoFormStore'
 import { useAllItems } from '@/data/items'
 import { useKitExtractor } from '@/data/kitExtractor'
 import { useCreateChangeOrder, type ApprovalEntry, type CoHistoryEntry } from '@/data/changeOrders'
@@ -229,6 +230,24 @@ function EcoNew({
   }
   const { data: allBackendItems } = useAllItems();
   const { extract: extractFromInstructions } = useKitExtractor();
+  // Live ECO form config from the Admin Form Builder
+  const { basicDetailsFields } = useEcoFormStore();
+  const changeDetailFields = basicDetailsFields.filter(f => f.sec === SEC_CHANGE_DETAILS);
+  const confirmationFields = basicDetailsFields.filter(f => f.sec === SEC_CONFIRMATIONS);
+
+  // Dynamic field values keyed by field label
+  const [dynValues, setDynValues] = React.useState<Record<string, string>>(() => {
+    const init: Record<string, string> = {};
+    basicDetailsFields.forEach(f => {
+      if (f.t === 'Picklist') init[f.l] = f.opts?.[0] ?? '';
+      else init[f.l] = '';
+    });
+    return init;
+  });
+
+  const setDynField = (label: string, val: string) =>
+    setDynValues(prev => ({ ...prev, [label]: val }));
+
   const [form, setForm] = useState({
     cat: initialCat ?? "ECO: Engineering Change Order",
     title: initialTitle ?? "",
@@ -646,6 +665,7 @@ function EcoNew({
           <div style={{ minWidth: 0 }}>
             {subSection === "general" && (
               <div className="eco-flat-form" data-test-id="kv-general-details">
+                {/* System fields — always present, not configurable */}
                 <div className="eco-flat-field">
                   <label className="eco-flat-label" htmlFor="eco-cat">Change category</label>
                   <Select id="eco-cat" value={form.cat} onChange={(e: any) => setForm({ ...form, cat: e.target.value })}
@@ -665,30 +685,61 @@ function EcoNew({
                   <Select id="eco-site" value={form.site} onChange={(e: any) => setForm({ ...form, site: e.target.value })}
                     options={["1210 – TPS Livermore", "Fort Collins", "Adelaide", "Sask"]} />
                 </div>
-                <div className="eco-flat-field">
-                  <label className="eco-flat-label" htmlFor="eco-title">Title <span style={{ color: '#e53e3e' }}>*</span></label>
-                  <Input id="eco-title" value={form.title} placeholder="Enter a descriptive title" onChange={(e: any) => setForm({ ...form, title: e.target.value })} data-test-id="eco-title-input" />
-                </div>
-                <div className="eco-flat-field" data-test-id="kv-row-redline-instructions">
-                  <label className="eco-flat-label" htmlFor="eco-redline" style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-                    Redline instructions
-                    <span className="eco-info-tip" data-test-id="redline-instructions-tooltip-icon">
-                      <Info size={13} />
-                      <span className="eco-info-tip-bubble" role="tooltip">
-                        This description will be used to create Item list automatically
-                      </span>
-                    </span>
-                  </label>
-                  <textarea
-                    id="eco-redline"
-                    className="inp"
-                    rows={6}
-                    value={form.desc}
-                    onChange={(e: any) => setForm({ ...form, desc: e.target.value })}
-                    placeholder="Detailed instructions for reviewers and shop floor..."
-                    data-test-id="redline-instructions-textarea"
-                  />
-                </div>
+
+                {/* Dynamic fields from the Form Builder (Change Details section) */}
+                {changeDetailFields.map((f) => (
+                  <div key={f.l} className="eco-flat-field" data-test-id={`eco-dyn-field-${f.l.toLowerCase().replace(/\s+/g, '-')}`}>
+                    <label className="eco-flat-label">
+                      {f.l}
+                      {f.req && <span style={{ color: '#e53e3e' }}> *</span>}
+                      {f.l === 'Redline instructions' && (
+                        <span className="eco-info-tip" data-test-id="redline-instructions-tooltip-icon">
+                          <Info size={13} />
+                          <span className="eco-info-tip-bubble" role="tooltip">
+                            This description will be used to create Item list automatically
+                          </span>
+                        </span>
+                      )}
+                    </label>
+                    {f.t === 'Long text' ? (
+                      <textarea
+                        className="inp"
+                        rows={f.l === 'Redline instructions' ? 6 : 4}
+                        value={f.l === 'Redline instructions' ? form.desc : (dynValues[f.l] ?? '')}
+                        onChange={(e: any) => {
+                          if (f.l === 'Redline instructions') setForm({ ...form, desc: e.target.value });
+                          else setDynField(f.l, e.target.value);
+                        }}
+                        placeholder={f.l === 'Redline instructions' ? 'Detailed instructions for reviewers and shop floor...' : ''}
+                        data-test-id={f.l === 'Redline instructions' ? 'redline-instructions-textarea' : undefined}
+                      />
+                    ) : f.t === 'Picklist' ? (
+                      <Select
+                        value={dynValues[f.l] ?? (f.opts?.[0] ?? '')}
+                        options={f.opts ?? []}
+                        onChange={(e: any) => setDynField(f.l, e.target.value)}
+                      />
+                    ) : f.t === 'Date' ? (
+                      <Input type="date" value={dynValues[f.l] ?? ''} onChange={(e: any) => setDynField(f.l, e.target.value)} />
+                    ) : f.t === 'Person' ? (
+                      <Select
+                        value={dynValues[f.l] ?? ME.name}
+                        options={[ME.name, 'Adam Royce', 'Nadia Haddad']}
+                        onChange={(e: any) => setDynField(f.l, e.target.value)}
+                      />
+                    ) : (
+                      <Input
+                        value={f.l === 'Title' ? form.title : (dynValues[f.l] ?? '')}
+                        placeholder={`Enter ${f.l.toLowerCase()}`}
+                        onChange={(e: any) => {
+                          if (f.l === 'Title') setForm({ ...form, title: e.target.value });
+                          else setDynField(f.l, e.target.value);
+                        }}
+                        data-test-id={f.l === 'Title' ? 'eco-title-input' : undefined}
+                      />
+                    )}
+                  </div>
+                ))}
               </div>
             )}
 
@@ -840,65 +891,61 @@ function EcoNew({
 
             {subSection === "confirmations" && (
               <div className="kv-form" data-test-id="kv-confirmations">
-                  <div className="kv-row">
-                    <div className="kv-key">
-                      <span className="kv-label">Validations complete?</span>
+                {confirmationFields.length > 0 ? (
+                  confirmationFields.map((f) => (
+                    <div key={f.l} className="kv-row" data-test-id={`eco-conf-field-${f.l.toLowerCase().replace(/\s+/g, '-')}`}>
+                      <div className="kv-key">
+                        <span className="kv-label">
+                          {f.l}
+                          {f.req && <span style={{ color: '#e53e3e' }}> *</span>}
+                        </span>
+                      </div>
+                      <div className="kv-val">
+                        {f.t === 'Picklist' ? (
+                          <Select
+                            value={dynValues[f.l] ?? (f.opts?.[0] ?? '')}
+                            options={f.opts ?? []}
+                            onChange={(e: any) => setDynField(f.l, e.target.value)}
+                          />
+                        ) : f.t === 'Person' ? (
+                          <Select
+                            value={dynValues[f.l] ?? ME.name}
+                            options={[ME.name, 'Adam Royce', 'Nadia Haddad']}
+                            onChange={(e: any) => setDynField(f.l, e.target.value)}
+                          />
+                        ) : f.t === 'Date' ? (
+                          <Input type="date" value={dynValues[f.l] ?? ''} onChange={(e: any) => setDynField(f.l, e.target.value)} />
+                        ) : f.t === 'Long text' ? (
+                          <textarea className="inp" rows={3} value={dynValues[f.l] ?? ''} onChange={(e: any) => setDynField(f.l, e.target.value)} />
+                        ) : (
+                          <Input
+                            value={dynValues[f.l] ?? ''}
+                            placeholder={`Enter ${f.l.toLowerCase()}`}
+                            onChange={(e: any) => setDynField(f.l, e.target.value)}
+                          />
+                        )}
+                      </div>
                     </div>
-                    <div className="kv-val">
-                      <Select value={confirmations.validations} onChange={(e: any) => setConfirmations({ ...confirmations, validations: e.target.value })}
-                        options={["N/A", "Yes", "No"]} />
+                  ))
+                ) : (
+                  // Fallback: no confirmation fields configured — show default hardcoded ones
+                  <>
+                    <div className="kv-row">
+                      <div className="kv-key"><span className="kv-label">Validations complete?</span></div>
+                      <div className="kv-val">
+                        <Select value={confirmations.validations} onChange={(e: any) => setConfirmations({ ...confirmations, validations: e.target.value })}
+                          options={["N/A", "Yes", "No"]} />
+                      </div>
                     </div>
-                  </div>
-
-                  <div className="kv-row">
-                    <div className="kv-key">
-                      <span className="kv-label">Seed stock approved?</span>
+                    <div className="kv-row">
+                      <div className="kv-key"><span className="kv-label">Inventory disposition filled?</span></div>
+                      <div className="kv-val">
+                        <Select value={confirmations.disposition} onChange={(e: any) => setConfirmations({ ...confirmations, disposition: e.target.value })}
+                          options={["Yes", "No"]} />
+                      </div>
                     </div>
-                    <div className="kv-val">
-                      <Select value={confirmations.seedStock} onChange={(e: any) => setConfirmations({ ...confirmations, seedStock: e.target.value })}
-                        options={["N/A", "Yes", "No"]} />
-                    </div>
-                  </div>
-
-                  <div className="kv-row">
-                    <div className="kv-key">
-                      <span className="kv-label">ECCN classification</span>
-                    </div>
-                    <div className="kv-val">
-                      <Select value={form.eccn} onChange={(e: any) => setForm({ ...form, eccn: e.target.value })}
-                        options={["N/A — not used", "Required — pending review", "Cleared"]} />
-                    </div>
-                  </div>
-
-                  <div className="kv-row">
-                    <div className="kv-key">
-                      <span className="kv-label">Inventory disposition filled?</span>
-                    </div>
-                    <div className="kv-val">
-                      <Select value={confirmations.disposition} onChange={(e: any) => setConfirmations({ ...confirmations, disposition: e.target.value })}
-                        options={["Yes", "No"]} />
-                    </div>
-                  </div>
-
-                  <div className="kv-row">
-                    <div className="kv-key">
-                      <span className="kv-label">DC Representative</span>
-                    </div>
-                    <div className="kv-val">
-                      <Select value={form.dc} onChange={(e: any) => setForm({ ...form, dc: e.target.value })}
-                        options={[ME.name, "Adam Royce", "Nadia Haddad"]} />
-                    </div>
-                  </div>
-
-                  <div className="kv-row">
-                    <div className="kv-key">
-                      <span className="kv-label">Status notes</span>
-                    </div>
-                    <div className="kv-val">
-                      <Input value={form.notes} placeholder="CCB 09.09 · DCR7-23172"
-                        onChange={(e: any) => setForm({ ...form, notes: e.target.value })} />
-                    </div>
-                  </div>
+                  </>
+                )}
               </div>
             )}
 

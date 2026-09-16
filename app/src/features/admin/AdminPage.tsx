@@ -11,7 +11,8 @@ import { PlmForm, useCreateForm, useCreateRole, useCreateRouting, useCreateUser,
 import { FIELD_TYPES } from '@/domain/adminSeed'
 import { GROUPS } from '@/domain/people'
 import { T } from '@/theme/tokens'
-import { ArrowLeft, Check, ChevronDown, ChevronRight, ChevronUp, Database, Layers, Loader2, Pencil, Plus, ShieldCheck, Sliders, Trash2, Upload, Users } from 'lucide-react'
+import { useEcoFormStore, SEC_CHANGE_DETAILS, SEC_CONFIRMATIONS } from '@/lib/ecoFormStore'
+import { ArrowLeft, Check, CheckCircle2, ChevronDown, ChevronRight, ChevronUp, Database, Layers, Loader2, Pencil, Plus, ShieldCheck, Sliders, Trash2, Upload, Users, Zap } from 'lucide-react'
 import React, { useState } from 'react'
 import { toast } from 'sonner'
 
@@ -91,8 +92,10 @@ function Admin({
   const [newFormType, setNewFormType] = useState("ECO: Engineering Change Order");
   const [newFormDesc, setNewFormDesc] = useState("");
 
+    const { publishFields, lastPublished } = useEcoFormStore();
+
   const [formSections, setFormSections] = useState<string[]>([]);
-  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+  const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({}); 
   const [formViewMode, setFormViewMode] = useState<"builder" | "preview">("builder");
   const [sectionModal, setSectionModal] = useState<{ name: string; isNew: boolean; oldName?: string } | null>(null);
   const [selectedFormType, setSelectedFormType] = useState("ECO: Engineering Change Order");
@@ -153,7 +156,15 @@ function Admin({
       fieldsJson: JSON.stringify(fields),
       updatedAt: "Just now",
     });
-    toast.success("Form saved");
+    // Publish Basic Details fields to the live ECO form store so the ECO wizard
+    // reflects these changes immediately.
+    const basicFields = fields.filter(
+      (f: any) => f.sec === SEC_CHANGE_DETAILS || f.sec === SEC_CONFIRMATIONS
+    );
+    if (basicFields.length > 0) {
+      publishFields(basicFields);
+    }
+    toast.success("Form saved & published to ECO wizard");
   };
 
   const toggleSectionCollapse = (sec: string) => {
@@ -161,17 +172,16 @@ function Admin({
   };
 
   const loadDefaultFormTemplate = () => {
-    setFormSections(["Basic details", "Confirmations", "Document control"]);
+    setFormSections([SEC_CHANGE_DETAILS, SEC_CONFIRMATIONS]);
     setFields([
-      { l: "Category", t: "Picklist", req: true, sap: false, sec: "Basic details" },
-      { l: "Title", t: "Single line text", req: true, sap: false, sec: "Basic details" },
-      { l: "Description", t: "Long text", req: true, sap: false, sec: "Basic details" },
-      { l: "Routing", t: "Picklist", req: true, sap: false, sec: "Basic details" },
-      { l: "Are validations complete?", t: "Picklist", req: false, sap: false, sec: "Confirmations", opts: ["N/A", "Yes", "No"] },
-      { l: "Has seed stock been approved?", t: "Picklist", req: false, sap: false, sec: "Confirmations", opts: ["N/A", "Yes", "No"] },
-      { l: "Inventory disposition filled?", t: "Picklist", req: true, sap: true, sec: "Confirmations", opts: ["Yes", "No"] },
-      { l: "CCB date", t: "Date", req: false, sap: false, sec: "Document control" },
-      { l: "DC rep", t: "Person", req: true, sap: false, sec: "Document control" },
+      { l: "Title", t: "Single line text", req: true, sap: false, sec: SEC_CHANGE_DETAILS },
+      { l: "Redline instructions", t: "Long text", req: false, sap: false, sec: SEC_CHANGE_DETAILS },
+      { l: "Validations complete?", t: "Picklist", req: false, sap: false, sec: SEC_CONFIRMATIONS, opts: ["N/A", "Yes", "No"] },
+      { l: "Seed stock approved?", t: "Picklist", req: false, sap: false, sec: SEC_CONFIRMATIONS, opts: ["N/A", "Yes", "No"] },
+      { l: "ECCN classification", t: "Picklist", req: false, sap: false, sec: SEC_CONFIRMATIONS, opts: ["N/A — not used", "Required — pending review", "Cleared"] },
+      { l: "Inventory disposition filled?", t: "Picklist", req: true, sap: true, sec: SEC_CONFIRMATIONS, opts: ["Yes", "No"] },
+      { l: "DC Representative", t: "Person", req: true, sap: false, sec: SEC_CONFIRMATIONS },
+      { l: "Status notes", t: "Single line text", req: false, sap: false, sec: SEC_CONFIRMATIONS },
     ]);
   };
   const [fieldModal, setFieldModal] = useState<any>(null);
@@ -401,9 +411,17 @@ function Admin({
                                 </Chip>
                               </td>
                               <td>
-                                {inUseCount > 0
-                                  ? <Chip k="ok">{inUseCount} routing{inUseCount !== 1 ? "s" : ""}</Chip>
-                                  : <span className="mut">Not assigned</span>}
+                                <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+                                  {f.type.startsWith("ECO") && (
+                                    <Chip k="ok"><Zap size={10} />Live — ECO Wizard</Chip>
+                                  )}
+                                  {inUseCount > 0
+                                    ? <Chip k="blue">{inUseCount} routing{inUseCount !== 1 ? "s" : ""}</Chip>
+                                    : null}
+                                  {!f.type.startsWith("ECO") && inUseCount === 0 && (
+                                    <span className="mut">Not assigned</span>
+                                  )}
+                                </div>
                               </td>
                               <td><span style={{ fontSize: 13, color: "#0A2233", fontWeight: 500 }}>{sections.length} {sections.length === 1 ? "section" : "sections"}</span></td>
                               <td><span style={{ fontSize: 13, color: "#0A2233", fontWeight: 500 }}>{ffields.length} {ffields.length === 1 ? "field" : "fields"}</span></td>
@@ -464,6 +482,21 @@ function Admin({
                 </div>
 
                 <div className="row" style={{ gap: 8 }}>
+                  {lastPublished && (
+                    <div className="row" style={{ gap: 5, fontSize: 12, color: '#059669' }}>
+                      <CheckCircle2 size={13} />
+                      <span>Live</span>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    className="btn pri"
+                    data-test-id="publish-form-btn"
+                    onClick={async () => { await saveCurrentForm(); }}
+                  >
+                    <Zap size={13} />
+                    Save &amp; publish
+                  </button>
                   <button
                     type="button"
                     className="btn"
@@ -473,7 +506,7 @@ function Admin({
                       setActiveFormMeta(null);
                     }}
                   >
-                    Done &amp; save
+                    Done
                   </button>
                 </div>
               </div>
