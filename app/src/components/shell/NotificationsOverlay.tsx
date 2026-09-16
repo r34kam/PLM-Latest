@@ -53,7 +53,9 @@ function NotificationsOverlay({
 
   if (!open) return null;
 
-  const unreadCount = notifications.filter((n) => !readIds.has(n.id)).length;
+  // Newest first within each group
+  const sorted = [...notifications].sort((a, b) => b.timestamp - a.timestamp)
+  const unreadCount = sorted.filter((n) => !readIds.has(n.id)).length;
 
   return (
     <>
@@ -124,13 +126,13 @@ function NotificationsOverlay({
         </div>
 
         <div style={{ flex: 1, overflowY: "auto" }} data-test-id="notifications-list">
-          {notifications.length === 0 && (
+          {sorted.length === 0 && (
             <div style={{ padding: "32px 16px", textAlign: "center", color: T.g500, fontSize: 13 }} data-test-id="notif-empty">
               No notifications for your account.
             </div>
           )}
           {["Today", "Earlier"].map((groupName) => {
-            const groupItems = notifications.filter((n) => n.group === groupName);
+            const groupItems = sorted.filter((n) => n.group === groupName);
             if (!groupItems.length) return null;
             return (
               <div key={groupName}>
