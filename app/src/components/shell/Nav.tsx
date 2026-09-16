@@ -388,7 +388,7 @@ function Nav({
                       data-test-id={`admin-subitem-${sub.id.toLowerCase().replace(/\s+/g, "-")}`}
                       onClick={() => {
                         go({ page: "admin", tab: sub.id });
-                        try { navigate("/admin"); } catch (e) {}
+                        try { navigate(`/admin?tab=${encodeURIComponent(sub.id)}`); } catch (e) {}
                       }}
                     >
                       {sub.label}
@@ -509,7 +509,7 @@ function Nav({
                 onClick={() => {
                   setAdminFlyoutOpen(false);
                   go({ page: "admin", tab: sub.id });
-                  try { navigate("/admin"); } catch (e) {}
+                  try { navigate(`/admin?tab=${encodeURIComponent(sub.id)}`); } catch (e) {}
                 }}
                 style={{
                   display: 'block',
