@@ -107,9 +107,9 @@ function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = ''
           <div className="sub" style={{ marginTop: 4 }} data-test-id="home-greeting-sub">Your change order activity and open actions at a glance · {subLine}</div>
         </div>
         <div className="row">
-          <button className="btn" onClick={() => go({ page: "reports" })}><FileText size={13} />Build a report</button>
-          <button className="btn" onClick={() => go({ page: "item-new" })}><Boxes size={13} />Create item</button>
-          <button className="btn pri" onClick={() => go({ page: "eco-new" })}><Plus size={13} />New change order</button>
+          <button className="btn" onClick={() => go({ page: "reports" })}><FileText size={13} />Build A Report</button>
+          <button className="btn" onClick={() => go({ page: "item-new" })}><Boxes size={13} />Create Item</button>
+          <button className="btn pri" onClick={() => go({ page: "eco-new" })}><Plus size={13} />New Change Order</button>
           {renderHeaderActions?.()}
         </div>
       </div>

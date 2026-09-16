@@ -93,7 +93,7 @@ function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, 
       <div className="bet" data-test-id="eco-list-header">
         <div>
           <div className="crumb">Changes</div>
-          <h1>{isApproverRole ? "My changes" : "Change orders"}</h1>
+          <h1>{isApproverRole ? "My Changes" : "Change Orders"}</h1>
           <div className="sub" style={{ marginTop: 4 }}>
             {isApproverRole
               ? "Changes in your approval queue — awaiting your review"
@@ -104,7 +104,7 @@ function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, 
           {/* Only DCs (and unknown/dev) can create new change orders */}
           {!isApproverRole && (
             <button className="btn pri" onClick={() => go({ page: "eco-new" })} data-test-id="eco-new-btn">
-              <Plus size={13} strokeWidth={2} />New change order
+              <Plus size={13} strokeWidth={2} />New Change Order
             </button>
           )}
           {renderHeaderActions?.()}
@@ -249,7 +249,7 @@ function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, 
         ) : rows.length === 0 ? (
           <Empty icon={GitPullRequest} title={`No matching change orders`}
             body="Nothing sits in this view right now. Adjust your search or filters, or start a change."
-            action={<button className="btn pri" onClick={() => go({ page: "eco-new" })}><Plus size={13} />New change order</button>} />
+            action={<button className="btn pri" onClick={() => go({ page: "eco-new" })}><Plus size={13} />New Change Order</button>} />
         ) : view === "table" ? (
           <div className="scrollx">
             <table className="tbl">
@@ -258,7 +258,7 @@ function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, 
                 {!railOpen && <th>Category</th>}
                 {!railOpen && <th>Routing</th>}
                 {!railOpen && <th>Division</th>}
-                <th style={{ textAlign: "right" }} title="Items on the change / requested modifications">Items / mods</th>
+                <th style={{ textAlign: "right" }} title="Items on the change / requested modifications">Items / Mods</th>
                 <th>Stage</th>
                 {!railOpen && <th>Creator</th>}
                 <th>Created</th>

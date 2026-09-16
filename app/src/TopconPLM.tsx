@@ -161,7 +161,7 @@ function TopconPLM({
       : Boolean(initialRailOpen && initialRailMode === "inspect")
   );
   const [notifOpen, setNotifOpen] = useState(initialNotifOpen ?? false);
-  const [inspectedEcoId, setInspectedEcoId] = useState<string>(initialInspectedEcoId || "ECO-011420");
+  const [inspectedEcoId, setInspectedEcoId] = useState<string>(initialInspectedEcoId || "");
   const [readNotifIds, setReadNotifIds] = useState<Set<string>>(new Set());
 
   const unreadNotifCount = userNotifications.filter((n) => !readNotifIds.has(n.id)).length;

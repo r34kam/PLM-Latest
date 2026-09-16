@@ -3,14 +3,53 @@ import { WhereThisStandsBand } from '@/components/lifecycle/WhereThisStandsBand'
 import { stageChip } from '@/components/primitives/Chip'
 import { SpecList } from '@/components/primitives/SpecList'
 import { LC, ecoById } from '@/domain/ecos'
-import { deriveApprovalState } from '@/domain/routings'
+import { useAllChangeOrders } from '@/data/changeOrders'
 import { T } from '@/theme/tokens'
 import { ChevronRight, Eye, X } from 'lucide-react'
 import React from 'react'
 
-function InspectRailContent({ ecoId, go }: { ecoId: string; go: (v: any) => void }) {
-  const eco = ecoById(ecoId || "ECO-011420");
-  const approvalState = deriveApprovalState(eco);
+function InspectRailContent({ ecoId, go, onClose }: { ecoId: string; go: (v: any) => void; onClose: () => void }) {
+  const { data: allBackendOrders } = useAllChangeOrders();
+  // Prefer live backend record; fall back to static domain data only for demo ECOs
+  const backendCo = allBackendOrders.find((o) => o.coId === ecoId);
+  const staticEco = ecoById(ecoId);
+  const hasStaticMatch = staticEco.id === ecoId; // ecoById returns ECOS[0] when not found
+
+  // Build a display object from whichever source has real data
+  const eco = backendCo ? {
+    id: backendCo.coId,
+    title: backendCo.title,
+    stage: backendCo.stage,
+    routing: backendCo.routing,
+    div: backendCo.div,
+    site: backendCo.site,
+    creator: backendCo.creator,
+    submitter: backendCo.submitter,
+    created: backendCo.created,
+    submitted: backendCo.submitted,
+    items: backendCo.itemCount,
+    mods: backendCo.modCount,
+    approvals: backendCo.approvals ?? [],
+  } : hasStaticMatch ? {
+    id: staticEco.id,
+    title: staticEco.title,
+    stage: staticEco.stage,
+    routing: staticEco.routing,
+    div: staticEco.div,
+    site: staticEco.site,
+    creator: staticEco.creator,
+    submitter: staticEco.submitter,
+    created: staticEco.created,
+    submitted: staticEco.submitted,
+    items: staticEco.items,
+    mods: staticEco.mods,
+    approvals: [],
+  } : null;
+
+  if (!eco) return (
+    <div style={{ padding: 24, color: T.g500, fontSize: 13 }}>Loading…</div>
+  );
+
   const rejected = eco.stage === "Rejected";
 
   return (
@@ -36,7 +75,7 @@ function InspectRailContent({ ecoId, go }: { ecoId: string; go: (v: any) => void
         />
       </div>
 
-      <WhereThisStandsBand eco={eco} stacked />
+      <WhereThisStandsBand eco={eco as any} stacked />
 
       <div className="card" style={{ padding: "12px 14px" }}>
         <SpecList rows={[
@@ -44,7 +83,7 @@ function InspectRailContent({ ecoId, go }: { ecoId: string; go: (v: any) => void
           ["Submitter", eco.submitter],
           ["Created on", eco.created],
           ["Submitted on", eco.submitted || "—"],
-          ["Items / mods", `${eco.items} items / ${eco.mods} mods`],
+          ["Items / Mods", `${eco.items} items / ${eco.mods} mods`],
         ]} />
       </div>
 
@@ -53,10 +92,10 @@ function InspectRailContent({ ecoId, go }: { ecoId: string; go: (v: any) => void
           type="button"
           className="btn pri"
           style={{ width: "100%", justifyContent: "center" }}
-          onClick={() => go({ page: "eco", id: eco.id })}
+          onClick={() => { onClose(); go({ page: "eco", id: eco.id }); }}
           data-test-id="rail-inspect-open-full"
         >
-          Open full page <ChevronRight size={13} />
+          Open Full Page <ChevronRight size={13} />
         </button>
       </div>
     </div>
@@ -111,7 +150,7 @@ function InspectRail({
         >
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <Eye size={15} color={T.brand} strokeWidth={2} />
-            <span style={{ fontSize: 13, fontWeight: 600, color: T.g900 }}>Inspect change</span>
+            <span style={{ fontSize: 13, fontWeight: 600, color: T.g900 }}>Inspect Change</span>
           </div>
           <button
             type="button"
@@ -124,7 +163,7 @@ function InspectRail({
           </button>
         </div>
         <div className="rightrail-body">
-          <InspectRailContent ecoId={ecoId} go={go} />
+          <InspectRailContent ecoId={ecoId} go={go} onClose={onClose} />
         </div>
       </aside>
     </>

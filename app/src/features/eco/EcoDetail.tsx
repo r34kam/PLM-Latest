@@ -89,7 +89,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
   const APPROVALS = approvalState.roles;
   const HISTORY = historyFor(eco);
   const rejected = eco.stage === "Rejected";
-  const TABS = ["Summary", "Items", "Files", "Approvals", "Supplier access", "Notifications", "History"];
+  const TABS = ["Summary", "Items", "Files", "Approvals", "Supplier Access", "Notifications", "History"];
   const [tab, setTab] = useState(
     initialTab && TABS.includes(initialTab)
       ? initialTab
@@ -244,6 +244,11 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
   const [commentAuthor, setCommentAuthor] = useState(currentUserName || ME.name)
   const [commentText, setCommentText] = useState('')
   const [isSavingComment, setIsSavingComment] = useState(false)
+  // Optimistic local comments — cleared when backend data refreshes or ECO changes
+  const [localComments, setLocalComments] = useState<EcoComment[]>([])
+  React.useEffect(() => { setLocalComments([]) }, [id])
+  // Merged list shown in the drawer: persisted backend comments + optimistic additions
+  const allComments = [...(eco.comments ?? []), ...localComments]
 
   const handleSaveComment = async () => {
     if (!commentText.trim() || !commentAuthor.trim()) return
@@ -253,16 +258,20 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
       message: commentText.trim(),
       timestamp: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }),
     }
-    const updatedComments = [...(eco.comments ?? []), newComment]
+    // Show immediately — don't wait for network
+    setLocalComments((prev) => [...prev, newComment])
+    setCommentText('')
+    setCommentDrawerOpen(false)
     setIsSavingComment(true)
     try {
       if (backendCo) {
+        const updatedComments = [...(eco.comments ?? []), ...localComments, newComment]
         await updateChangeOrder(backendCo.id, { comments: updatedComments })
       }
-      setCommentText('')
-      setCommentDrawerOpen(false)
       toast.success('Comment added.')
     } catch {
+      // Roll back on failure
+      setLocalComments((prev) => prev.filter((c) => c.id !== newComment.id))
       toast.error('Failed to save comment — please try again.')
     } finally {
       setIsSavingComment(false)
@@ -288,7 +297,12 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
   return (
     <div className="stack" data-test-id="eco-detail-page">
       <div>
-        <div className="crumb"><a onClick={() => go({ page: "ecos" })}>Changes</a><ChevronRight size={11} />{eco.id}</div>
+        <div className="crumb" data-test-id="eco-detail-breadcrumb">
+          <a onClick={() => go({ page: "ecos" })} style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+            <ChevronLeft size={12} strokeWidth={2.5} />Changes
+          </a>
+          <ChevronRight size={11} />{eco.id}
+        </div>
         <div className="bet">
           <div className="row" style={{ gap: 10 }}>
             <h1>{eco.id}</h1>
@@ -340,7 +354,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                       {isExporting ? <><Loader2 size={14} className="spin" />Generating…</> : <><Download size={14} />Export to Excel</>}
                     </button>
                     <button onClick={() => { setActions(false); setCommentDrawerOpen(true); }}>
-                      <FileText size={14} />Add a comment
+                      <FileText size={14} />Add A Comment
                     </button>
                     <button onClick={() => {
                       setActions(false);
@@ -503,7 +517,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                 ]} />
                 <SpecList rows={[
                   ["Effectivity", "This change becomes effective once approved"],
-                  ["Approval deadline", "None specified"]
+                  ["Approval Deadline", "None specified"]
                 ]} />
               </div>
 
@@ -531,24 +545,24 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                     <div className="grid2">
                       <SpecList rows={[
                         ["Category", eco.cat],
-                        ["Change number", eco.id],
+                        ["Change Number", eco.id],
                         ["Title", eco.title],
                         ["Division", eco.div === "AG" ? "AG – Agriculture" : "CO – Construction"],
-                        ["Validations complete?", "N/A"],
-                        ["Seed stock approved?", "N/A"],
-                        ["Inventory disposition filled?", "Yes"],
-                        ["DC rep", eco.dc],
-                        ["Status notes", (eco.notes && eco.notes.includes("Unique-parts cascade")) ? "—" : (eco.notes || "—")]
+                        ["Validations Complete?", "N/A"],
+                        ["Seed Stock Approved?", "N/A"],
+                        ["Inventory Disposition Filled?", "Yes"],
+                        ["DC Rep", eco.dc],
+                        ["Status Notes", (eco.notes && eco.notes.includes("Unique-parts cascade")) ? "—" : (eco.notes || "—")]
                       ]} />
                       <SpecList rows={[
-                        ["Expiration date", "N/A (this is a permanent change)"],
-                        ["Lifecycle status", eco.stage],
+                        ["Expiration Date", "N/A (this is a permanent change)"],
+                        ["Lifecycle Status", eco.stage],
                         ["Creator", eco.creator],
                         ["Submitter", eco.submitter],
-                        ["Created on", eco.created],
-                        ["Submitted on", eco.submitted],
-                        ["Reference files", "1"],
-                        ["Implementation files", "0"]
+                        ["Created On", eco.created],
+                        ["Submitted On", eco.submitted],
+                        ["Reference Files", "1"],
+                        ["Implementation Files", "0"]
                       ]} />
                     </div>
                   </div>
@@ -573,7 +587,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
             <div className="stack">
               <div className="bet">
                 <div className="seg">
-                  {["Modifications", "BOM redline", "Affected assemblies", "Inventory disposition"].map((x: any) => (
+                  {["Modifications", "BOM Redline", "Affected Assemblies", "Inventory Disposition"].map((x: any) => (
                     <button key={x} className={itemSub === x ? "on" : ""} onClick={() => setItemSub(x)}>{x}</button>
                   ))}
                 </div>
@@ -701,11 +715,11 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                                   className="btn sm"
                                   onClick={() => {
                                     setActiveRedlineItem(row);
-                                    setItemSub("BOM redline");
+                                    setItemSub("BOM Redline");
                                   }}
                                   data-test-id={`view-redline-btn-${row.pn}`}
                                 >
-                                  View redline
+                                  View Redline
                                 </button>
                               </td>
                             </tr>
@@ -761,7 +775,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                 );
               })()}
 
-              {itemSub === "BOM redline" && (() => {
+              {itemSub === "BOM Redline" && (() => {
                 // Use eco.affectedAssembly as the primary data source for the redlined kit
                 const aa = eco.affectedAssembly;
                 const target = redlineTarget;
@@ -871,7 +885,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                 );
               })()}
 
-              {itemSub === "Affected assemblies" && (() => {
+              {itemSub === "Affected Assemblies" && (() => {
                 const isECO010870 = eco.id === "ECO-010870";
 
                 // Derive affected assemblies: whereUsed on the kit being redlined (affectedAssembly.pn),
@@ -993,7 +1007,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                 );
               })()}
 
-              {itemSub === "Inventory disposition" && (() => {
+              {itemSub === "Inventory Disposition" && (() => {
                 const isECO010870 = eco.id === "ECO-010870";
                 const dispRows = isECO010870
                   ? [
@@ -1257,7 +1271,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
             );
           })()}
 
-          {tab === "Supplier access" && (() => {
+          {tab === "Supplier Access" && (() => {
             const isECO010870 = eco.id === "ECO-010870";
             const samplePns = isECO010870
               ? ["01-080401-03", "04-080401-10", "04-080401-11", "05-080401-01LF"]
@@ -1776,7 +1790,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px 16px', borderBottom: `1px solid ${T.g200}` }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <MessageSquare size={16} />
-                <span style={{ fontWeight: 700, fontSize: 15 }}>Add a comment</span>
+                <span style={{ fontWeight: 700, fontSize: 15 }}>Add A Comment</span>
               </div>
               <button className="btn gh sm" onClick={() => setCommentDrawerOpen(false)} aria-label="Close" data-test-id="comment-drawer-close">
                 <X size={14} />
@@ -1785,12 +1799,12 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
 
             {/* Past comments trail */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {(eco.comments ?? []).length === 0 ? (
+              {allComments.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '32px 0', color: T.g400, fontSize: 13 }}>
                   No comments yet — be the first to leave a note.
                 </div>
               ) : (
-                [...(eco.comments ?? [])].reverse().map((c) => (
+                [...allComments].reverse().map((c) => (
                   <div key={c.id} style={{ padding: '12px 14px', background: T.g50, borderRadius: 8, border: `1px solid ${T.g200}` }} data-test-id={`comment-item-${c.id}`}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                       <span style={{ fontWeight: 700, fontSize: 13 }}>{c.author}</span>
@@ -1831,7 +1845,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                   onClick={handleSaveComment}
                   data-test-id="comment-save-btn"
                 >
-                  {isSavingComment ? <><Loader2 size={13} className="spin" />Saving…</> : <>Post comment</>}
+                  {isSavingComment ? <><Loader2 size={13} className="spin" />Saving…</> : <>Post Comment</>}
                 </button>
               </div>
             </div>
