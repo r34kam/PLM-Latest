@@ -14,6 +14,7 @@ export const ENTITY: Record<string, string> = {
   bomItem: 'bom_item_e_6aa81a1f8136a3761d49b96a',
   changeOrder: 'change_order_e_6aa81a1f8136a3761d49b96a',
   kitFile: 'kit_file_e_6aaa114c936c4b63967ade30',
+  ecoComment: 'eco_comment_e_6aaa51ef912b4f74d0add86a',
 }
 
 export const FETCH = {

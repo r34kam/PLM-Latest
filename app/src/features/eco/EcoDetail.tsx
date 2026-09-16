@@ -14,7 +14,8 @@ import { ECO_010870_ITEMS, LC, ecoById, historyFor } from '@/domain/ecos'
 import { ROUTINGS, deriveApprovalState, notificationRecipientsFor } from '@/domain/routings'
 import { ME } from '@/domain/session'
 import { suppliersFor } from '@/domain/suppliers'
-import { useAllChangeOrders, useUpdateChangeOrder, type EcoComment, type CoHistoryEntry } from '@/data/changeOrders'
+import { useAllChangeOrders, useUpdateChangeOrder, type CoHistoryEntry } from '@/data/changeOrders'
+import { useEcoComments, usePostEcoComment, type EcoCommentRecord } from '@/data/ecoComments'
 import { useUsers } from '@/data/admin'
 import { useExportEcoExcel } from '@/data/export'
 import { useSendReminder } from '@/data/reminder'
@@ -244,56 +245,52 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
   const [commentDrawerOpen, setCommentDrawerOpen] = useState(false)
   const [commentText, setCommentText] = useState('')
   const [isSavingComment, setIsSavingComment] = useState(false)
-  // Optimistic local comments — keyed by their temp id; cleared when ECO changes
-  const [localComments, setLocalComments] = useState<EcoComment[]>([])
-  React.useEffect(() => { setLocalComments([]) }, [id])
 
   // The author is always the current logged-in user — never editable
   const commentAuthor = currentUserName || ME.name
 
-  // Merged comment list: persisted backend comments plus optimistic additions not yet confirmed
-  // De-duplicate by id so a refetch doesn't double-count optimistic entries
-  const allComments = React.useMemo(() => {
-    const persisted = eco.comments ?? []
-    const persistedIds = new Set(persisted.map((c) => c.id))
-    const unconfirmed = localComments.filter((c) => !persistedIds.has(c.id))
-    return [...persisted, ...unconfirmed]
-  }, [eco.comments, localComments])
+  // Backend comment records — each comment is its own record, no blob merging
+  const { comments: backendComments, loading: commentsLoading } = useEcoComments(eco.id)
+  const postEcoComment = usePostEcoComment()
 
-  /** Format epoch ms (or a legacy locale string) for display. */
-  function formatCommentTime(ts: number | string): string {
-    const n = typeof ts === 'number' ? ts : Number(ts)
-    if (!isNaN(n) && n > 1_000_000_000_000) {
-      // Epoch ms
-      return format(new Date(n), 'MMM d, yyyy h:mm a')
-    }
-    // Legacy locale string — display as-is
-    return String(ts)
+  // Optimistic additions — shown immediately; de-duplicated once backend refetches confirm them
+  const [optimisticComments, setOptimisticComments] = useState<EcoCommentRecord[]>([])
+  React.useEffect(() => { setOptimisticComments([]) }, [eco.id])
+
+  const allComments = React.useMemo(() => {
+    const confirmedIds = new Set(backendComments.map((c) => c.id))
+    // Optimistic entries use a temp 'opt-*' id that will never match a real backend id,
+    // so they stay until the hook refetches and we clear them on eco change.
+    const pending = optimisticComments.filter((c) => !confirmedIds.has(c.id))
+    return [...backendComments, ...pending].sort((a, b) => b.timestamp - a.timestamp)
+  }, [backendComments, optimisticComments])
+
+  /** Format epoch ms for display. */
+  function formatCommentTime(ts: number): string {
+    if (!ts || ts < 1_000_000_000_000) return '—'
+    return format(new Date(ts), 'MMM d, yyyy h:mm a')
   }
 
   const handleSaveComment = async () => {
     if (!commentText.trim()) return
     const epochMs = Date.now()
-    const newComment: EcoComment = {
-      id: `c-${epochMs}`,
+    const optimistic: EcoCommentRecord = {
+      id: `opt-${epochMs}`,
+      ecoId: eco.id,
       author: commentAuthor,
       message: commentText.trim(),
       timestamp: epochMs,
     }
     // Show immediately in the drawer — don't close it
-    setLocalComments((prev) => [...prev, newComment])
+    setOptimisticComments((prev) => [...prev, optimistic])
     setCommentText('')
     setIsSavingComment(true)
     try {
-      if (backendCo) {
-        // Build the full updated array from what the backend currently has + the new comment
-        const updatedComments = [...(eco.comments ?? []), newComment]
-        await updateChangeOrder(backendCo.id, { comments: updatedComments })
-      }
+      await postEcoComment({ ecoId: eco.id, author: commentAuthor, message: optimistic.message, timestamp: epochMs })
       toast.success('Comment added.')
     } catch {
-      // Roll back the optimistic entry on failure
-      setLocalComments((prev) => prev.filter((c) => c.id !== newComment.id))
+      // Roll back on failure
+      setOptimisticComments((prev) => prev.filter((c) => c.id !== optimistic.id))
       toast.error('Failed to save comment — please try again.')
     } finally {
       setIsSavingComment(false)
@@ -1821,16 +1818,16 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
 
             {/* Past comments trail */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }} data-test-id="comment-thread">
-              {allComments.length === 0 ? (
+              {commentsLoading && allComments.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '32px 0', color: T.g400, fontSize: 13 }} data-test-id="comment-loading-state">
+                  Loading comments…
+                </div>
+              ) : allComments.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '32px 0', color: T.g400, fontSize: 13 }} data-test-id="comment-empty-state">
                   No comments yet — be the first to leave a note.
                 </div>
               ) : (
-                [...allComments].sort((a, b) => {
-                  const ta = typeof a.timestamp === 'number' ? a.timestamp : 0
-                  const tb = typeof b.timestamp === 'number' ? b.timestamp : 0
-                  return tb - ta
-                }).map((c) => (
+                allComments.map((c) => (
                   <div key={c.id} style={{ padding: '12px 14px', background: T.g50, borderRadius: 8, border: `1px solid ${T.g200}` }} data-test-id={`comment-item-${c.id}`}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                       <div style={{ width: 28, height: 28, borderRadius: '50%', background: T.b100, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: T.brand, flexShrink: 0 }}>
