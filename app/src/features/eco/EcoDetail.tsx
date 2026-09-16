@@ -12,7 +12,7 @@ import { Tabs } from '@/components/primitives/Tabs'
 import { BOM_1003140 } from '@/domain/boms'
 import { deriveAffectedAssemblies, deriveInventoryDisposition } from '@/domain/ecoDerivations'
 import { ECO_010870_ITEMS, LC, ecoById, historyFor } from '@/domain/ecos'
-import { ASSEMBLIES } from '@/domain/catalog'
+import { useAllBomItems } from '@/data/bomItems'
 import { ROUTINGS, deriveApprovalState, notificationRecipientsFor } from '@/domain/routings'
 import { ME } from '@/domain/session'
 import { suppliersFor } from '@/domain/suppliers'
@@ -121,6 +121,17 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
   const [addItemOpen, setAddItemOpen] = useState(false);
   const [addItemQ, setAddItemQ] = useState('');
   const [addItemQty, setAddItemQty] = useState('1 EA');
+
+  // Unique BOM parts from the backend — source for the Add Item picker
+  const { bomItems: allBomItemsRaw, loading: bomItemsLoading } = useAllBomItems()
+  const uniqueBomParts = (() => {
+    const seen = new Set<string>()
+    const out: typeof allBomItemsRaw = []
+    for (const item of allBomItemsRaw) {
+      if (!seen.has(item.pn)) { seen.add(item.pn); out.push(item) }
+    }
+    return out
+  })()
   const [modPage, setModPage] = useState(1);
   const [selectedPns, setSelectedPns] = useState<any[]>([]);
 
@@ -1128,11 +1139,10 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                   return "No BOM edits recorded";
                 })();
 
-                // Kit items already in the redline — used to exclude from the picker
+                // Parts already in the redline — exclude from picker
                 const existingPns = new Set(bomRows.map((r: any) => r.pn))
-                // Filtered catalog list for the add-item modal
-                const allKitItems: any[] = ASSEMBLIES as any[]
-                const filteredKitItems = allKitItems.filter((it: any) =>
+                // Unique BOM parts filtered by search query
+                const filteredKitItems = uniqueBomParts.filter((it) =>
                   !existingPns.has(it.pn) &&
                   (addItemQ === '' ||
                     it.pn.toLowerCase().includes(addItemQ.toLowerCase()) ||
@@ -1189,19 +1199,23 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                           </div>
                           {/* Item list */}
                           <div style={{ flex: 1, overflowY: 'auto' }} data-test-id="add-bom-item-list">
-                            {filteredKitItems.length === 0 ? (
+                            {bomItemsLoading ? (
                               <div style={{ padding: 24, textAlign: 'center', color: T.g500, fontSize: 13 }}>
-                                {addItemQ ? 'No items match your search' : 'All items are already in the redline'}
+                                Loading parts…
+                              </div>
+                            ) : filteredKitItems.length === 0 ? (
+                              <div style={{ padding: 24, textAlign: 'center', color: T.g500, fontSize: 13 }}>
+                                {addItemQ ? 'No parts match your search' : 'All parts are already in the redline'}
                               </div>
                             ) : (
                               <table className="tbl">
-                                <thead><tr><th>Item number</th><th>Name</th><th>Phase</th><th></th></tr></thead>
+                                <thead><tr><th>Part number</th><th>Name</th><th>Category</th><th></th></tr></thead>
                                 <tbody>
-                                  {filteredKitItems.slice(0, 80).map((it: any) => (
+                                  {filteredKitItems.slice(0, 100).map((it) => (
                                     <tr key={it.pn} data-test-id={`add-bom-item-row-${it.pn}`}>
                                       <td className="pn">{it.pn}</td>
                                       <td>{it.name}</td>
-                                      <td>{it.phase}</td>
+                                      <td><span className="mut">{it.cat}</span></td>
                                       <td style={{ textAlign: 'right' }}>
                                         <button
                                           className="btn sm pri"
