@@ -188,7 +188,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
           rejectionNotes: dcRejectNotes.trim(),
           rejectedBy: rejecterName,
           history: [...(backendCo.history ?? []), newHistoryEntry],
-        })
+        }, backendCo)
       }
       setModal(null)
       setDcRejectReason('')
@@ -230,9 +230,10 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
       }
       await updateChangeOrder(backendCo.id, {
         stage: newStage,
+        effectiveDate: allDone ? new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }) : backendCo.effectiveDate,
         approvals: updatedApprovals,
         history: [...(backendCo.history ?? []), newEntry],
-      })
+      }, backendCo)
       setModal(null)
       setDcApproveComment('')
       toast.success(allDone ? 'Change order advanced to Effective.' : 'Approval recorded.')
@@ -260,7 +261,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
         stage: 'Complete',
         completedDate: today,
         history: [...(backendCo.history ?? []), newEntry],
-      })
+      }, backendCo)
       setModal(null)
       toast.success('Change order marked Complete.')
     } catch {
@@ -289,7 +290,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
         stage: 'Open',
         approvals: resetApprovals,
         history: [...(backendCo.history ?? []), newEntry],
-      })
+      }, backendCo)
       setModal(null)
       toast.success('Change order withdrawn to Open.')
     } catch {
@@ -324,7 +325,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
       await updateChangeOrder(backendCo.id, {
         approvals: updatedApprovals,
         history: [...(backendCo.history ?? []), newEntry],
-      })
+      }, backendCo)
       setApprovalDone('approved')
     } catch {
       toast.error('Failed to record approval — please try again.')
@@ -360,7 +361,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
           rejectionNotes: rejectNotes.trim(),
           rejectedBy: rejecterName,
           history: [...(backendCo.history ?? []), newHistoryEntry],
-        })
+        }, backendCo)
       }
       setApprovalDone('rejected')
       setRejectModal(false)
@@ -385,7 +386,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
     const updated = [...current, userName]
     setIsSavingNotify(true)
     try {
-      await updateChangeOrder(backendCo.id, { extraNotifyNames: updated } as any)
+      await updateChangeOrder(backendCo.id, { extraNotifyNames: updated } as any, backendCo)
       toast.success(`${userName} added to notifications.`)
       setNotifyModalOpen(false)
       setNotifySearch('')

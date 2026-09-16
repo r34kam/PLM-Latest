@@ -352,41 +352,78 @@ export function useCreateChangeOrder() {
   }
 }
 
+/**
+ * Update a change order.
+ *
+ * IMPORTANT: the platform's update_record_by_id with useRawPayload:true is a FULL REPLACE
+ * of the properties object — any field absent from rawPayload is WIPED on the stored record.
+ * Every call MUST include the full current record as `current` so that unchanged fields are
+ * preserved. `changes` is overlaid on top of `current` and is the only thing that differs.
+ */
 export function useUpdateChangeOrder() {
   const mutation = useExecuteWorkflowNodeMutation()
   const qc = useQueryClient()
-  return async (recordId: string, co: Partial<NewChangeOrder>) => {
-    // Serialize registered array fields; strip ALL unregistered fields so the backend
-    // never sees additionalProperties it rejects. The schema only has:
-    //   coId, title, type, cat, stage, div, site, routing, creator, submitter, dc,
-    //   created, submitted, itemCount, modCount, pnsJson, desc, redline, notes,
-    //   priority, awaitingMe, effectiveDate, completedDate, approvalsJson, currentStageNum,
-    //   ecoItemsJson, commentsJson, historyJson, extraNotifyJson
-    // All registered fields: ecoItemsJson, historyJson, extraNotifyJson are now in the schema.
-    // rejectionReason, rejectionNotes, rejectedBy are encoded in approvalsJson.rejection.
+  return async (recordId: string, changes: Partial<NewChangeOrder>, current?: ChangeOrder) => {
+    // Build the full payload by starting from the current record (all existing fields),
+    // then overlaying the caller's changes. This guarantees no field is accidentally wiped.
+    const base: Partial<NewChangeOrder> = current
+      ? {
+          coId: current.coId,
+          title: current.title,
+          type: current.type,
+          cat: current.cat,
+          stage: current.stage,
+          div: current.div,
+          site: current.site,
+          routing: current.routing,
+          creator: current.creator,
+          dc: current.dc,
+          created: current.created,
+          submitted: current.submitted,
+          submitter: current.submitter,
+          priority: current.priority,
+          itemCount: current.itemCount,
+          modCount: current.modCount,
+          desc: current.desc,
+          redline: current.redline,
+          notes: current.notes,
+          pnsJson: current.pnsJson,
+          awaitingMe: current.awaitingMe,
+          effectiveDate: current.effectiveDate,
+          completedDate: current.completedDate,
+          currentStageNum: current.currentStageNum,
+          approvals: current.approvals,
+          ecoItems: current.ecoItems,
+          history: current.history,
+          extraNotifyNames: current.extraNotifyNames,
+          rejectionReason: current.rejectionReason,
+          rejectionNotes: current.rejectionNotes,
+          rejectedBy: current.rejectedBy,
+        }
+      : {}
+    const co = { ...base, ...changes } as Partial<NewChangeOrder>
+
+    // Destructure the array/rejection fields that need special serialization
     const {
       approvals, ecoItems, comments, history, extraNotifyNames,
       rejectionReason, rejectionNotes, rejectedBy,
       ...rest
-    } = co as Partial<NewChangeOrder>
+    } = co
     const payload: Record<string, unknown> = { ...rest }
-    // Build approvalsJson combining approvals entries + optional rejection details.
-    // This is the only registered field that can carry per-ECO rejection data, since
-    // the change_order schema cannot be extended (it belongs to an older session).
-    if (approvals !== undefined || rejectionReason !== undefined || rejectionNotes !== undefined || rejectedBy !== undefined) {
-      // We need to merge with what we're given; approvals come from the caller when rejecting
-      const combined: Record<string, unknown> = {}
-      if (approvals !== undefined) combined.entries = approvals
-      if (rejectionReason !== undefined || rejectionNotes !== undefined || rejectedBy !== undefined) {
-        combined.rejection = { reason: rejectionReason ?? '', notes: rejectionNotes ?? '', rejectedBy: rejectedBy ?? '' }
-      }
-      payload.approvalsJson = JSON.stringify(combined)
+
+    // approvalsJson carries both the entries array and optional rejection metadata
+    const combined: Record<string, unknown> = {}
+    combined.entries = approvals ?? []
+    if (rejectionReason || rejectionNotes || rejectedBy) {
+      combined.rejection = { reason: rejectionReason ?? '', notes: rejectionNotes ?? '', rejectedBy: rejectedBy ?? '' }
     }
-    // These fields are now registered — encode them when provided
+    payload.approvalsJson = JSON.stringify(combined)
+
     if (ecoItems !== undefined) payload.ecoItemsJson = JSON.stringify(ecoItems)
     if (history !== undefined) payload.historyJson = JSON.stringify(history)
     if (extraNotifyNames !== undefined) payload.extraNotifyJson = JSON.stringify(extraNotifyNames)
-    void comments // comments go to eco_comment object, not here
+    void comments // comments go to the eco_comment object, not here
+
     await mutation.mutateAsync({
       data: {
         id: UPDATE.id,
