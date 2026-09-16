@@ -7,6 +7,101 @@ import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
 import { usePasswordPolicy } from '@/lib/passwordPolicy'
 
+// ── Left decorative panel (identical to Login) ─────────────────────────────────
+function HeroPanelSvg() {
+  return (
+    <svg
+      viewBox="0 0 740 800"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0.9 }}
+      aria-hidden="true"
+      preserveAspectRatio="xMidYMid slice"
+    >
+      {[200, 300, 400, 500, 600].map((y) => (
+        <line key={y} x1="0" y1={y} x2="740" y2={y} stroke="#1e3a52" strokeWidth="1" strokeDasharray="4 6" />
+      ))}
+      {[150, 300, 450, 600].map((x) => (
+        <line key={x} x1={x} y1="0" x2={x} y2="800" stroke="#1e3a52" strokeWidth="1" strokeDasharray="4 6" />
+      ))}
+      <path
+        id="up-curve"
+        d="M -20 600 C 80 590, 160 560, 230 510 C 310 450, 360 400, 440 310 C 510 230, 580 150, 760 40"
+        stroke="#4a9fd4"
+        strokeWidth="2.5"
+        fill="none"
+      />
+      <circle cx="160" cy="548" r="5" fill="#4a9fd4" />
+      <circle cx="232" cy="500" r="5" fill="#4a9fd4" />
+      <g>
+        <circle r="14" stroke="#4a9fd4" strokeWidth="2" fill="#0d2137">
+          <animateMotion dur="5s" repeatCount="indefinite" rotate="none" calcMode="spline" keyTimes="0;1" keySplines="0.4 0 0.6 1">
+            <mpath href="#up-curve" />
+          </animateMotion>
+        </circle>
+        <circle r="6" fill="#4a9fd4">
+          <animateMotion dur="5s" repeatCount="indefinite" rotate="none" calcMode="spline" keyTimes="0;1" keySplines="0.4 0 0.6 1">
+            <mpath href="#up-curve" />
+          </animateMotion>
+        </circle>
+      </g>
+      <text x="200" y="378" fill="#a0c4e0" fontSize="12" fontFamily="monospace" letterSpacing="1">REV A</text>
+      <text x="456" y="258" fill="#ffffff" fontSize="11" fontFamily="monospace" letterSpacing="1">● REV C // CCB APPROVED</text>
+      <text x="540" y="190" fill="#a0c4e0" fontSize="11" fontFamily="monospace" letterSpacing="1">PROD SYNC</text>
+    </svg>
+  )
+}
+
+function HeroPanel() {
+  return (
+    <div
+      style={{
+        flex: '0 0 49%',
+        background: 'linear-gradient(160deg, #0d2137 0%, #0a1929 60%, #061220 100%)',
+        position: 'relative',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        padding: '28px 32px 40px',
+        minHeight: '100vh',
+      }}
+      data-test-id="up-hero-panel"
+    >
+      <HeroPanelSvg />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, position: 'relative', zIndex: 1 }}>
+        <div style={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+          <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#4a9fd4', border: '2px solid #4a9fd4' }} />
+          <div style={{ width: 10, height: 10, borderRadius: '50%', border: '2px solid #4a9fd4', background: 'transparent' }} />
+        </div>
+        <span style={{ color: '#ffffff', fontSize: 16, fontWeight: 600, letterSpacing: '0.02em' }}>Topcon PLM</span>
+      </div>
+      <div style={{ position: 'absolute', top: 28, right: 32, zIndex: 1 }}>
+        <span style={{ color: '#4a9fd4', fontSize: 11, fontFamily: 'monospace', letterSpacing: '0.08em' }}>
+          SYS: LIV-HQ / TOL: ±0.01MM
+        </span>
+      </div>
+      <div style={{ position: 'relative', zIndex: 1 }}>
+        <h2 style={{
+          color: '#ffffff',
+          fontSize: 'clamp(28px, 4vw, 42px)',
+          fontWeight: 400,
+          lineHeight: 1.2,
+          letterSpacing: '-0.01em',
+          marginBottom: 16,
+          fontFamily: "Georgia, 'Times New Roman', serif",
+          textWrap: 'balance',
+        }}>
+          Nobody notices the bill of materials until the line stops.
+        </h2>
+        <p style={{ color: '#7aafcf', fontSize: 14, lineHeight: 1.65, maxWidth: 480 }}>
+          So Topcon PLM traces every engineering change, CAD revision, and supplier sign-off back to the rule, the spec and the deal that produced it — before anyone has to come and ask.
+        </p>
+      </div>
+    </div>
+  )
+}
+
 // Update-password route — the destination the SDK auto-redirects to when the backend
 // returns an "expired password" (first-login / forced-reset) response. It collects a
 // NEW password (twice), enforces the app's password policy client-side, then calls the
@@ -35,13 +130,6 @@ function ErrorAlert({ message }: { message?: string }) {
   )
 }
 
-function AuthCard({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="flex w-[416px] max-w-[calc(100vw-2rem)] flex-col rounded-2xl border border-border bg-background px-8 py-10 shadow-sm">
-      {children}
-    </div>
-  )
-}
 
 export default function UpdatePassword() {
   const navigate = useNavigate()
@@ -89,88 +177,104 @@ export default function UpdatePassword() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
-      <AuthCard>
-        <div className="mb-2 text-center">
-          <h1 className="font-serif text-2xl font-medium text-foreground">Set a new password</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
+    <main style={{ display: 'flex', minHeight: '100vh' }} data-test-id="up-root">
+      <HeroPanel />
+      <div
+        style={{
+          flex: '0 0 51%',
+          background: '#f4f6f8',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '100vh',
+          padding: '48px 32px',
+        }}
+        data-test-id="up-auth-panel"
+      >
+        <div style={{ width: '100%', maxWidth: 420 }}>
+          <h1
+            style={{ fontSize: 32, fontWeight: 400, color: '#0a1929', marginBottom: 8, fontFamily: "Georgia, 'Times New Roman', serif", letterSpacing: '-0.02em' }}
+            data-test-id="up-heading"
+          >
+            Set a new password
+          </h1>
+          <p style={{ fontSize: 14, color: '#6b7280', marginBottom: 32 }}>
             Choose a new password to continue to your account.
           </p>
-        </div>
 
-        <form className="mt-6 flex flex-col gap-5" onSubmit={handleSubmit}>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="new-password">New password</Label>
-            <PasswordInput
-              id="new-password"
-              autoFocus
-              autoComplete="new-password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
+          <form style={{ display: 'flex', flexDirection: 'column', gap: 20 }} onSubmit={handleSubmit} data-test-id="up-form">
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <Label htmlFor="new-password">New password</Label>
+              <PasswordInput
+                id="new-password"
+                autoFocus
+                autoComplete="new-password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                data-test-id="up-new-password-input"
+              />
+            </div>
 
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="confirm-password">Confirm new password</Label>
-            <PasswordInput
-              id="confirm-password"
-              autoComplete="new-password"
-              placeholder="••••••••"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              required
-            />
-          </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <Label htmlFor="confirm-password">Confirm new password</Label>
+              <PasswordInput
+                id="confirm-password"
+                autoComplete="new-password"
+                placeholder="••••••••"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                required
+                data-test-id="up-confirm-password-input"
+              />
+            </div>
 
-          <ul className="flex flex-col gap-1.5">
-            {rules.map((rule) => {
-              const met = rule.test(password)
-              return (
-                <li
-                  key={rule.id}
-                  className={`flex items-center gap-2 text-sm ${
-                    met ? 'text-emerald-600' : 'text-muted-foreground'
-                  }`}
-                >
-                  <Check className={`size-4 shrink-0 ${met ? 'opacity-100' : 'opacity-30'}`} />
-                  {rule.label}
-                </li>
-              )
-            })}
-            <li
-              className={`flex items-center gap-2 text-sm ${
-                passwordsMatch ? 'text-emerald-600' : 'text-muted-foreground'
-              }`}
-            >
-              <Check className={`size-4 shrink-0 ${passwordsMatch ? 'opacity-100' : 'opacity-30'}`} />
-              Both passwords match
-            </li>
-            {/* every row here is one the browser can decide. The policy's server-only rules
-                (common passwords, your own name/email) are enforced by the API and surface
-                in its rejection — see @/lib/passwordPolicy for why they aren't listed. */}
-          </ul>
+            <ul style={{ display: 'flex', flexDirection: 'column', gap: 6, listStyle: 'none', padding: 0, margin: 0 }}>
+              {rules.map((rule) => {
+                const met = rule.test(password)
+                return (
+                  <li
+                    key={rule.id}
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: met ? '#059669' : '#6b7280' }}
+                    data-test-id={`up-rule-${rule.id}`}
+                  >
+                    <Check style={{ width: 16, height: 16, flexShrink: 0, opacity: met ? 1 : 0.3 }} />
+                    {rule.label}
+                  </li>
+                )
+              })}
+              <li
+                style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: passwordsMatch ? '#059669' : '#6b7280' }}
+                data-test-id="up-rule-match"
+              >
+                <Check style={{ width: 16, height: 16, flexShrink: 0, opacity: passwordsMatch ? 1 : 0.3 }} />
+                Both passwords match
+              </li>
+            </ul>
 
-          {notes.length > 0 && (
-            <p className="text-xs text-muted-foreground">{notes.join(' ')}</p>
-          )}
-
-          <ErrorAlert message={validationError ?? serverError} />
-
-          <Button
-            type="submit"
-            size="lg"
-            className="h-11 w-full"
-            disabled={update.isPending || isPolicyLoading}
-          >
-            {(update.isPending || isPolicyLoading) && (
-              <LoaderCircle className="size-4 animate-spin" />
+            {notes.length > 0 && (
+              <p style={{ fontSize: 12, color: '#6b7280' }}>{notes.join(' ')}</p>
             )}
-            Update password
-          </Button>
-        </form>
-      </AuthCard>
+
+            <ErrorAlert message={validationError ?? serverError} />
+
+            <Button
+              type="submit"
+              size="lg"
+              className="h-11 w-full"
+              disabled={update.isPending || isPolicyLoading}
+              data-test-id="up-submit-btn"
+            >
+              {(update.isPending || isPolicyLoading) && (
+                <LoaderCircle className="size-4 animate-spin" />
+              )}
+              Update password
+            </Button>
+          </form>
+        </div>
+      </div>
     </main>
   )
 }

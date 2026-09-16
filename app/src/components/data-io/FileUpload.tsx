@@ -1,4 +1,5 @@
 import { useKitFilesByPn, useCreateKitFile, useDeleteKitFile, type KitFile } from '@/data/kitFiles'
+import { useEcoFilesByCoId, useCreateEcoFile, useDeleteEcoFile, type EcoFile } from '@/data/ecoFiles'
 import { Modal } from '@/components/primitives/Modal'
 import { Select } from '@/components/primitives/Field'
 import { T } from '@/theme/tokens'
@@ -7,7 +8,7 @@ import { Check, ExternalLink, FileText, Loader2, Trash2, Upload } from 'lucide-r
 import React, { useRef, useState } from 'react'
 import { toast } from 'sonner'
 
-const FILE_TYPES = ['Drawing', 'Work instruction', 'Inspection report', 'Specification', 'Certificate', 'Other'] as const
+const FILE_TYPES = ['Drawing', 'Work instruction', 'Inspection report', 'Specification', 'Certificate', 'Reference', 'Other'] as const
 const VISIBILITY_OPTS = ['Internal only', 'Share with suppliers'] as const
 
 function fmtSize(bytes: number): string {
@@ -24,26 +25,42 @@ function FileUpload({
   context,
   hideCancel,
   itemPn,
+  coId,
+  uploadedBy,
 }: {
   onClose: () => void
   context?: string
   hideCancel?: boolean
   itemPn?: string
+  coId?: string
+  uploadedBy?: string
 }) {
   const [stagedMeta, setStagedMeta] = useState<Record<string, StagedMeta>>({})
   const [saving, setSaving] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
+  const referenceId = itemPn ? `kit-file-${itemPn}` : coId ? `eco-file-${coId}` : undefined
+
   const { files, isUploading, addFiles, removeFile } = useUppy({
-    referenceId: itemPn ? `kit-file-${itemPn}` : undefined,
+    referenceId,
     accessScope: 'PUBLIC',
     maxFileSize: 100 * 1024 * 1024,
     allowedFileTypes: ['.pdf', '.dwg', '.step', '.stp', '.docx', '.doc', '.xlsx', '.xls', '.png', '.jpg', '.jpeg', '.svg'],
   })
 
-  const { files: savedFiles, loading: savedLoading } = useKitFilesByPn(itemPn ?? '')
+  const { files: kitSavedFiles, loading: kitLoading } = useKitFilesByPn(itemPn ?? '')
   const createKitFile = useCreateKitFile()
   const deleteKitFile = useDeleteKitFile()
+
+  const { files: ecoSavedFiles, loading: ecoLoading } = useEcoFilesByCoId(coId ?? '')
+  const createEcoFile = useCreateEcoFile()
+  const deleteEcoFile = useDeleteEcoFile()
+
+  type SavedFile = { id: string; fileName: string; fileType: string; visibility: string; isPrimary: boolean; url: string; size: string }
+  const savedFiles: SavedFile[] = itemPn
+    ? kitSavedFiles.map((f: KitFile) => ({ id: f.id, fileName: f.fileName, fileType: f.fileType, visibility: f.visibility, isPrimary: f.isPrimary, url: f.url, size: f.size }))
+    : ecoSavedFiles.map((f: EcoFile) => ({ id: f.id, fileName: f.fileName, fileType: f.fileType, visibility: f.visibility, isPrimary: f.isPrimary, url: f.url, size: f.size }))
+  const savedLoading = itemPn ? kitLoading : ecoLoading
 
   const handleFilesInput = async (fileList: FileList | null) => {
     if (!fileList || fileList.length === 0) return
@@ -69,10 +86,7 @@ function FileUpload({
     setStagedMeta((prev) => ({ ...prev, [fileId]: { ...(prev[fileId] ?? { fileType: 'Drawing', visibility: 'Internal only', isPrimary: false }), ...patch } }))
 
   const handleAttach = async () => {
-    if (!itemPn) {
-      toast.error('No item selected')
-      return
-    }
+    if (!itemPn && !coId) { toast.error('No record selected'); return }
     const readyFiles = files.filter((f) => f.status === 'success' && f.url)
     if (readyFiles.length === 0) return
     setSaving(true)
@@ -80,17 +94,32 @@ function FileUpload({
       const now = new Date().toISOString()
       for (const f of readyFiles) {
         const meta = stagedMeta[f.id] ?? { fileType: 'Drawing', visibility: 'Internal only', isPrimary: false }
-        await createKitFile({
-          itemPn,
-          fileName: f.name,
-          fileType: meta.fileType,
-          visibility: meta.visibility,
-          isPrimary: meta.isPrimary,
-          url: f.url!,
-          size: fmtSize(f.size),
-          mimeType: f.type,
-          uploadedAt: now,
-        })
+        if (itemPn) {
+          await createKitFile({
+            itemPn,
+            fileName: f.name,
+            fileType: meta.fileType,
+            visibility: meta.visibility,
+            isPrimary: meta.isPrimary,
+            url: f.url!,
+            size: fmtSize(f.size),
+            mimeType: f.type,
+            uploadedAt: now,
+          })
+        } else if (coId) {
+          await createEcoFile({
+            coId,
+            fileName: f.name,
+            fileType: meta.fileType,
+            visibility: meta.visibility,
+            isPrimary: meta.isPrimary,
+            url: f.url!,
+            size: fmtSize(f.size),
+            mimeType: f.type,
+            uploadedAt: now,
+            uploadedBy: uploadedBy ?? '',
+          })
+        }
       }
       toast.success(`${readyFiles.length} file${readyFiles.length === 1 ? '' : 's'} attached`)
       setStagedMeta({})
@@ -102,9 +131,10 @@ function FileUpload({
     }
   }
 
-  const handleDeleteSaved = async (file: KitFile) => {
+  const handleDeleteSaved = async (file: { id: string; fileName: string }) => {
     try {
-      await deleteKitFile(file.id)
+      if (itemPn) await deleteKitFile(file.id)
+      else await deleteEcoFile(file.id)
       toast.success(`${file.fileName} removed`)
     } catch {
       toast.error('Failed to remove file')
@@ -343,16 +373,20 @@ function FileUploadModal({
   onClose,
   context,
   itemPn,
+  coId,
+  uploadedBy,
 }: {
   open: boolean
   onClose: () => void
   context?: string
   itemPn?: string
+  coId?: string
+  uploadedBy?: string
 }) {
   if (!open) return null
   return (
     <Modal title="Attach files" wide onClose={onClose}>
-      <FileUpload onClose={onClose} context={context} itemPn={itemPn} />
+      <FileUpload onClose={onClose} context={context} itemPn={itemPn} coId={coId} uploadedBy={uploadedBy} />
     </Modal>
   )
 }

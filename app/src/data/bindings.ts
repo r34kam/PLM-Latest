@@ -16,6 +16,7 @@ export const ENTITY: Record<string, string> = {
   kitFile: 'kit_file_e_6aaa114c936c4b63967ade30',
   ecoComment: 'eco_comment_e_6aaa51ef912b4f74d0add86a',
   ecoRejection: 'eco_rejection_e_6aaa51ef912b4f74d0add86a',
+  ecoFile: 'eco_file_e_6aaa7014bdf0874c5839fbc0',
 }
 
 export const FETCH = {
