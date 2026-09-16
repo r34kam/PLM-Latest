@@ -138,7 +138,7 @@ function Inactivate({ go, id = "01-080401-03", renderHeaderActions }: { go: any;
     <div className="stack" data-test-id="inactivate-page">
       <div>
         <div className="crumb">
-          <a onClick={() => go({ page: "items" })}>Items</a>
+          <a onClick={() => go({ page: "kits" })}>Kits</a>
           <ChevronRight size={11} />
           <a onClick={() => go({ page: "item", id: parent.pn })}>{parent.pn}</a>
           <ChevronRight size={11} />
@@ -155,7 +155,7 @@ function Inactivate({ go, id = "01-080401-03", renderHeaderActions }: { go: any;
               className="btn gh"
               type="button"
               data-test-id="inactivate-cancel-btn"
-              onClick={() => go({ page: "items" })}
+              onClick={() => go({ page: "kits" })}
             >
               <X size={14} strokeWidth={2} />Cancel
             </button>
