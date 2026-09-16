@@ -23,6 +23,7 @@ import { toast } from 'sonner'
 import { initials } from '@/lib/prng'
 import { T } from '@/theme/tokens'
 import { AlertCircle, AlertTriangle, Ban, Bell, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, Clock, CornerUpLeft, Database, Download, FileText, Info, Layers, Link2, Loader2, MessageSquare, Plus, RefreshCw, Send, Sparkles, Trash2, Upload, Users, X } from 'lucide-react'
+import { format } from 'date-fns'
 import React, { useState } from 'react'
 
 function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', currentUserName = '' }: { id: any; go: any; initialTab?: string; renderHeaderActions?: () => React.ReactNode; role?: string; currentUserName?: string }) {
@@ -241,36 +242,57 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
 
   /* ---- Comment drawer ---- */
   const [commentDrawerOpen, setCommentDrawerOpen] = useState(false)
-  const [commentAuthor, setCommentAuthor] = useState(currentUserName || ME.name)
   const [commentText, setCommentText] = useState('')
   const [isSavingComment, setIsSavingComment] = useState(false)
-  // Optimistic local comments — cleared when backend data refreshes or ECO changes
+  // Optimistic local comments — keyed by their temp id; cleared when ECO changes
   const [localComments, setLocalComments] = useState<EcoComment[]>([])
   React.useEffect(() => { setLocalComments([]) }, [id])
-  // Merged list shown in the drawer: persisted backend comments + optimistic additions
-  const allComments = [...(eco.comments ?? []), ...localComments]
+
+  // The author is always the current logged-in user — never editable
+  const commentAuthor = currentUserName || ME.name
+
+  // Merged comment list: persisted backend comments plus optimistic additions not yet confirmed
+  // De-duplicate by id so a refetch doesn't double-count optimistic entries
+  const allComments = React.useMemo(() => {
+    const persisted = eco.comments ?? []
+    const persistedIds = new Set(persisted.map((c) => c.id))
+    const unconfirmed = localComments.filter((c) => !persistedIds.has(c.id))
+    return [...persisted, ...unconfirmed]
+  }, [eco.comments, localComments])
+
+  /** Format epoch ms (or a legacy locale string) for display. */
+  function formatCommentTime(ts: number | string): string {
+    const n = typeof ts === 'number' ? ts : Number(ts)
+    if (!isNaN(n) && n > 1_000_000_000_000) {
+      // Epoch ms
+      return format(new Date(n), 'MMM d, yyyy h:mm a')
+    }
+    // Legacy locale string — display as-is
+    return String(ts)
+  }
 
   const handleSaveComment = async () => {
-    if (!commentText.trim() || !commentAuthor.trim()) return
+    if (!commentText.trim()) return
+    const epochMs = Date.now()
     const newComment: EcoComment = {
-      id: `c-${Date.now()}`,
-      author: commentAuthor.trim(),
+      id: `c-${epochMs}`,
+      author: commentAuthor,
       message: commentText.trim(),
-      timestamp: new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }),
+      timestamp: epochMs,
     }
-    // Show immediately — don't wait for network
+    // Show immediately in the drawer — don't close it
     setLocalComments((prev) => [...prev, newComment])
     setCommentText('')
-    setCommentDrawerOpen(false)
     setIsSavingComment(true)
     try {
       if (backendCo) {
-        const updatedComments = [...(eco.comments ?? []), ...localComments, newComment]
+        // Build the full updated array from what the backend currently has + the new comment
+        const updatedComments = [...(eco.comments ?? []), newComment]
         await updateChangeOrder(backendCo.id, { comments: updatedComments })
       }
       toast.success('Comment added.')
     } catch {
-      // Roll back on failure
+      // Roll back the optimistic entry on failure
       setLocalComments((prev) => prev.filter((c) => c.id !== newComment.id))
       toast.error('Failed to save comment — please try again.')
     } finally {
@@ -1798,35 +1820,43 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
             </div>
 
             {/* Past comments trail */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }} data-test-id="comment-thread">
               {allComments.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '32px 0', color: T.g400, fontSize: 13 }}>
+                <div style={{ textAlign: 'center', padding: '32px 0', color: T.g400, fontSize: 13 }} data-test-id="comment-empty-state">
                   No comments yet — be the first to leave a note.
                 </div>
               ) : (
-                [...allComments].reverse().map((c) => (
+                [...allComments].sort((a, b) => {
+                  const ta = typeof a.timestamp === 'number' ? a.timestamp : 0
+                  const tb = typeof b.timestamp === 'number' ? b.timestamp : 0
+                  return tb - ta
+                }).map((c) => (
                   <div key={c.id} style={{ padding: '12px 14px', background: T.g50, borderRadius: 8, border: `1px solid ${T.g200}` }} data-test-id={`comment-item-${c.id}`}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                      <span style={{ fontWeight: 700, fontSize: 13 }}>{c.author}</span>
-                      <span className="sub" style={{ fontSize: 11 }}>{c.timestamp}</span>
+                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: T.b100, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: T.brand, flexShrink: 0 }}>
+                        {initials(c.author)}
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                        <span style={{ fontWeight: 700, fontSize: 13, lineHeight: 1.2 }}>{c.author}</span>
+                        <span style={{ fontSize: 11, color: T.g400, lineHeight: 1.2 }}>{formatCommentTime(c.timestamp)}</span>
+                      </div>
                     </div>
-                    <div style={{ fontSize: 13, lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>{c.message}</div>
+                    <div style={{ fontSize: 13, lineHeight: 1.55, whiteSpace: 'pre-wrap', paddingLeft: 36 }}>{c.message}</div>
                   </div>
                 ))
               )}
             </div>
 
             {/* Input area */}
-            <div style={{ borderTop: `1px solid ${T.g200}`, padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <Field label="Your name">
-                <input
-                  className="inp"
-                  value={commentAuthor}
-                  onChange={(e) => setCommentAuthor(e.target.value)}
-                  placeholder="Your name"
-                  data-test-id="comment-author-input"
-                />
-              </Field>
+            <div style={{ borderTop: `1px solid ${T.g200}`, padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 10 }} data-test-id="comment-input-area">
+              {/* Posting as — read-only, derived from logged-in user */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: T.g50, borderRadius: 6, border: `1px solid ${T.g200}` }} data-test-id="comment-posting-as">
+                <div style={{ width: 24, height: 24, borderRadius: '50%', background: T.b100, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: T.brand, flexShrink: 0 }}>
+                  {initials(commentAuthor)}
+                </div>
+                <span style={{ fontSize: 12, color: T.g500 }}>Posting as </span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: T.g800 }}>{commentAuthor}</span>
+              </div>
               <Field label="Comment">
                 <textarea
                   className="inp"
@@ -1835,17 +1865,20 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                   onChange={(e) => setCommentText(e.target.value)}
                   placeholder={`Leave a note on ${eco.id}…`}
                   data-test-id="comment-text-input"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSaveComment()
+                  }}
                 />
               </Field>
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                 <button className="btn" onClick={() => setCommentDrawerOpen(false)} data-test-id="comment-cancel-btn">Cancel</button>
                 <button
                   className="btn pri"
-                  disabled={!commentText.trim() || !commentAuthor.trim() || isSavingComment}
+                  disabled={!commentText.trim() || isSavingComment}
                   onClick={handleSaveComment}
                   data-test-id="comment-save-btn"
                 >
-                  {isSavingComment ? <><Loader2 size={13} className="spin" />Saving…</> : <>Post Comment</>}
+                  {isSavingComment ? <><Loader2 size={13} className="spin" />Saving…</> : <><Send size={13} />Post Comment</>}
                 </button>
               </div>
             </div>

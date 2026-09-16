@@ -85,7 +85,8 @@ export type EcoComment = {
   id: string
   author: string
   message: string
-  timestamp: string
+  /** Epoch milliseconds (new comments). Legacy comments may have a locale string — treat anything that parses as a number as epoch. */
+  timestamp: number | string
 }
 
 export type CoHistoryEntry = {
