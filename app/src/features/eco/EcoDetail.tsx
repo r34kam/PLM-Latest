@@ -338,6 +338,15 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
   }
 
   const canApprove = isApproverRole && eco.stage === 'Approval' && (eco.awaitingMe === true || eco.mine === true)
+
+  // Check whether the current user has already signed off on any approval entry.
+  // Covers both the approver role and the DC role — once signed, buttons disappear.
+  const currentUserNames = [currentUserName, ME.name].filter(Boolean)
+  const hasCurrentUserApproved = backendApprovals.some(
+    (a) => a.status !== 'pending' && currentUserNames.some(
+      (n) => a.approver === n || (a.others ?? []).includes(n)
+    )
+  )
   const [isApproving, setIsApproving] = useState(false)
   const handleApprove = async () => {
     if (!backendCo) { setApprovalDone('approved'); return }
@@ -532,7 +541,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
           </div>
           <div className="row">
             {/* Approver-role actions: approve / reject this ECO */}
-            {isApproverRole && canApprove && approvalDone === null && (
+            {isApproverRole && canApprove && approvalDone === null && !hasCurrentUserApproved && (
               <>
                 <button className="btn dan" onClick={() => setRejectModal(true)} data-test-id="approver-reject-btn">
                   <X size={13} />Reject
@@ -555,10 +564,15 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
 
             {/* DC-only actions */}
             {!isApproverRole && rejected && <button className="btn dan" onClick={() => setModal("withdraw")}><CornerUpLeft size={13} />Withdraw to Open</button>}
-            {!isApproverRole && eco.stage === "Approval" && <>
+            {!isApproverRole && eco.stage === "Approval" && !hasCurrentUserApproved && <>
               <button className="btn" onClick={() => setRejectModal(true)}><X size={13} />Reject</button>
               <button className="btn ok" onClick={() => setModal("approve")}><Check size={13} />Approve</button>
             </>}
+            {!isApproverRole && eco.stage === "Approval" && hasCurrentUserApproved && (
+              <span className="chip c-ok" style={{ fontSize: 13, padding: "6px 12px" }} data-test-id="dc-approved-badge">
+                <Check size={13} />Your approval recorded
+              </span>
+            )}
             {!isApproverRole && eco.stage === "Submit" && (
               <button className="btn pri" onClick={handleSubmitToRouting} disabled={isSubmitting} data-test-id="submit-to-routing-btn">
                 {isSubmitting ? <><Loader2 size={13} className="animate-spin" />Submitting&hellip;</> : <><Send size={13} />Submit to routing</>}
