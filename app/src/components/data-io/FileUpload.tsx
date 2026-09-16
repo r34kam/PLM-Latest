@@ -171,10 +171,10 @@ function FileUpload({
         aria-label="Upload files"
         disabled={uploadingOrSaving}
         className={cn(
-          "w-full flex items-center gap-4 px-6 py-5 rounded-xl border-2 border-dashed transition-all cursor-pointer text-left",
+          "w-full flex items-center gap-4 px-6 py-5 rounded-xl border transition-all cursor-pointer text-left",
           dragOver
             ? "border-primary bg-primary/5"
-            : "border-border bg-muted/30 hover:border-primary/60 hover:bg-muted/50"
+            : "border-border bg-card hover:border-primary/60 hover:bg-muted/30"
         )}
       >
         <span className={cn(
