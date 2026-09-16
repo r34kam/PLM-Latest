@@ -1503,7 +1503,6 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
       <FileUploadModal
         open={fileModalOpen}
         onClose={() => setFileModalOpen(false)}
-        onAttach={(files) => setAttachedFiles((prev) => [...prev, ...files])}
         context="this change order"
       />
       {modal === "cancelEco" && (

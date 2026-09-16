@@ -415,7 +415,7 @@ function ItemDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: 
                 <h3>Files on this item</h3>
                 <div className="sub" style={{ marginTop: 3 }}>Drawings, specifications and certificates. The primary file is what suppliers see first.</div>
               </div>
-              <FileUpload onClose={() => {}} context="this item" hideCancel />
+              <FileUpload onClose={() => {}} context="this item" hideCancel itemPn={it.pn} />
             </div>
           )}
 

@@ -80,10 +80,10 @@ function Inactivate({ go, id = "01-080401-03", renderHeaderActions }: { go: any;
     setTimeout(() => {
       setLoading(false);
       setAnalyzed(true);
-      // Auto-select the parent + any unique children
-      const uniquePns = rawRows.filter((r: any) => r.isParent || r.unique).map((r: any) => r.pn);
-      setSel(uniquePns);
-    }, 900);
+      // Auto-select the parent + any unique children; shared parts are not selectable
+      const selectablePns = rawRows.filter((r: any) => r.isParent || r.unique).map((r: any) => r.pn);
+      setSel(selectablePns);
+    }, 10000);
   };
 
   const segs = analyzed
@@ -318,7 +318,10 @@ function Inactivate({ go, id = "01-080401-03", renderHeaderActions }: { go: any;
                       <input
                         type="checkbox"
                         checked={isSelected}
+                        disabled={analyzed && !it.isParent && !it.unique}
                         onChange={() => toggleSel(it.pn)}
+                        title={analyzed && !it.isParent && !it.unique ? `Cannot inactivate — shared across ${it.otherParents} other BOM(s)` : undefined}
+                        data-test-id={`inactivate-checkbox-${it.pn}`}
                       />
                     </td>
                     <td style={{ whiteSpace: "nowrap" }}>
