@@ -14,7 +14,7 @@ import { ECO_010870_ITEMS, LC, ecoById, historyFor } from '@/domain/ecos'
 import { ROUTINGS, deriveApprovalState, notificationRecipientsFor } from '@/domain/routings'
 import { ME } from '@/domain/session'
 import { suppliersFor } from '@/domain/suppliers'
-import { useAllChangeOrders, useUpdateChangeOrder, type CoHistoryEntry, type ApprovalEntry } from '@/data/changeOrders'
+import { useAllChangeOrders, useUpdateChangeOrder, type CoHistoryEntry, type ApprovalEntry, type AffectedAssemblyEntry, type InventoryDispositionEntry } from '@/data/changeOrders'
 import { useEcoComments, usePostEcoComment, type EcoCommentRecord } from '@/data/ecoComments'
 
 import { useUsers } from '@/data/admin'
@@ -64,6 +64,8 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
         rejectedBy: backendCo.rejectedBy ?? '',
         history: backendCo.history ?? [],
         extraNotifyNames: backendCo.extraNotifyNames ?? [],
+        affectedAssemblies: backendCo.affectedAssemblies ?? [],
+        inventoryDisposition: backendCo.inventoryDisposition ?? [],
         // Always null-out the static affectedAssembly so the BOM Redline tab
         // reads only from ecoItems (the real data saved at creation time).
         affectedAssembly: null,
@@ -1125,74 +1127,39 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
               })()}
 
               {itemSub === "Affected Assemblies" && (() => {
-                const isECO010870 = eco.id === "ECO-010870";
-
-                // Derive affected assemblies: whereUsed on the kit being redlined (affectedAssembly.pn),
-                // or fall back to each pn on the ECO.
-                const aa = eco.affectedAssembly;
-                const changedPns: string[] = aa
-                  ? [aa.pn]
-                  : eco.pns && eco.pns.length > 0 ? eco.pns : ["1003140-01"];
-
-                type AffectedRow = {
-                  parentPn: string;
-                  parentName: string;
-                  containsPn: string;
-                  level: number;
-                  phase: string;
-                  div: string;
-                  impact: string;
-                };
-
-                const derivedRows: AffectedRow[] = [];
-                const seen = new Set<string>();
-                for (const changedPn of changedPns) {
-                  const parents = whereUsed(changedPn).filter(Boolean);
-                  for (const parent of parents) {
-                    if (!parent) continue;
-                    const key = `${parent.pn}-${changedPn}`;
-                    if (seen.has(key)) continue;
-                    seen.add(key);
-                    // Annotate with contextual impact text
-                    const impact = parent.phase === "Discontinued" || parent.phase === "Obsolete"
-                      ? "Discontinued — no action needed"
-                      : changedPn === "9060-1319"
-                      ? "Work instruction still references the removed tape"
-                      : `Inherits rev change — verify no open orders`;
-                    derivedRows.push({
-                      parentPn: parent.pn,
-                      parentName: parent.name,
-                      containsPn: changedPn,
-                      level: 1,
-                      phase: parent.phase,
-                      div: (parent as any).div || "CO",
-                      impact,
-                    });
-                  }
-                }
-
-                // Fallback to curated rows when derived data has no results (for static ECOs)
-                // Use the affectedAssembly pn when building the containsPn reference
-                const kitPn = aa?.pn ?? "1003140-01";
-                const staticRows: AffectedRow[] = isECO010870
-                  ? [
-                      { parentPn: "1021200-83", parentName: "RECEIVER, RL-H5A 1021200-83", containsPn: kitPn, level: 1, phase: "Discontinued", div: "AG", impact: "Discontinued — no action needed" },
-                      { parentPn: "1007886-02", parentName: "ASSY, GNSS ANTENNA MOUNT", containsPn: kitPn, level: 1, phase: "Discontinued", div: "AG", impact: "Obsolete cascade applied" },
-                      { parentPn: "1029732-01", parentName: "FC-5000/SC5000 BATTERY", containsPn: kitPn, level: 2, phase: "Discontinued", div: "AG", impact: "Discontinued — no action needed" },
-                    ]
-                  : [
-                      { parentPn: "1021200-83", parentName: "RECEIVER, RL-H5A 1021200-83", containsPn: kitPn, level: 1, phase: "In Production", div: "AG", impact: `Inherits rev ${aa?.toRev ?? "C"} — no action needed` },
-                      { parentPn: "1007886-02", parentName: "ASSY, GNSS ANTENNA MOUNT", containsPn: kitPn, level: 1, phase: "In Production", div: "CO", impact: "Work instruction still references the removed component" },
-                      { parentPn: "01-080401-03", parentName: "ASSY, RECEIVER SGR1 (SDF)", containsPn: kitPn, level: 2, phase: "Discontinued", div: "AG", impact: "Discontinued — no action needed" },
-                    ];
-
-                const affRows = derivedRows.length > 0 ? derivedRows : staticRows;
+                // Read from the stored backend snapshot (populated at ECO creation).
+                // Fall back to live whereUsed derivation only for static seed ECOs
+                // that pre-date the affectedAssembliesJson field.
+                const storedRows: AffectedAssemblyEntry[] = (eco as any).affectedAssemblies ?? []
+                const affRows: AffectedAssemblyEntry[] = storedRows.length > 0
+                  ? storedRows
+                  : (() => {
+                      // Legacy fallback: derive live from whereUsed for static ECOs
+                      const aa = eco.affectedAssembly
+                      const changedPns: string[] = aa ? [aa.pn] : (eco.pns ?? [])
+                      const seen = new Set<string>()
+                      const rows: AffectedAssemblyEntry[] = []
+                      for (const pn of changedPns) {
+                        for (const parent of whereUsed(pn).filter(Boolean)) {
+                          if (!parent) continue
+                          const key = `${parent.pn}::${pn}`
+                          if (seen.has(key)) continue
+                          seen.add(key)
+                          const ph: string = (parent as any).phase ?? ''
+                          const impact = ph === 'Discontinued' || ph === 'Obsolete'
+                            ? 'Discontinued — no action needed'
+                            : 'Inherits rev change — verify no open orders'
+                          rows.push({ parentPn: parent.pn, parentName: parent.name, containsPn: pn, level: 1, phase: ph, div: (parent as any).div ?? 'CO', impact })
+                        }
+                      }
+                      return rows
+                    })()
                 const hasWorkInstructionWarning = affRows.some((r) => r.impact.includes("still references"));
 
                 return (
                   <>
                     <div className="sub">
-                      Parent assemblies that contain {aa ? <><b>{aa.pn}</b> ({aa.name})</> : "an item on this change"} — derived from the live BOM.
+                      Parent assemblies that contain an item on this change — derived from the BOM at submission time.
                       These assemblies are not being redlined, but they inherit the revision result.
                     </div>
                     {affRows.length === 0 ? (
@@ -1247,48 +1214,61 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
               })()}
 
               {itemSub === "Inventory Disposition" && (() => {
-                const isECO010870 = eco.id === "ECO-010870";
-                const dispRows = isECO010870
-                  ? [
-                      ["01-080401-03", "ASSY, RECEIVER SGR1 (SDF)", 0, 0, 0, "Scrap"],
-                      ["04-080401-10", "RADOME, FLASH GORDON MOLD LTGRAY SDF", 42, 0, 0, "Use up"],
-                      ["04-080401-11", "RADOME, FLASH GORDON (SDF)", 18, 0, 0, "Use up"],
-                      ["05-080401-01LF", "ASSY, FLASH GORDON LNA PCB", 5, 0, 0, "Scrap"],
-                      ["05-080711-03LF", "ASSY,AG04 RECEIVER PCBA R5", 0, 0, 0, "Scrap"],
-                    ]
-                  : [
-                      ["1003140-01", "KIT, TS CG MOUNTING", 148, 12, 200, "Use up"],
-                      ["1006394-01", "WASHER FLAT M5", 9420, 0, 5000, "N/A — added"],
-                      ["2505-0103", "SCR, M5-0.8 X 16MM HEX HD ZN", 6110, 0, 0, "N/A — added"],
-                      ["9060-1319", "TAPE, DIECUT 3M VHB", 340, 0, 0, "Scrap"],
-                    ];
+                // Read from the stored backend snapshot (populated at ECO creation).
+                const storedDisp: InventoryDispositionEntry[] = (eco as any).inventoryDisposition ?? []
+                const allHaveDisposition = storedDisp.length > 0 && storedDisp.every((r) => !!r.disposition)
+
+                if (storedDisp.length === 0) {
+                  return (
+                    <div className="card" style={{ padding: 24, textAlign: "center", color: T.g500, fontSize: 13 }} data-test-id="inv-disp-empty">
+                      No inventory disposition data — this change predates automated disposition tracking,
+                      or no items with BOM edits were added.
+                    </div>
+                  )
+                }
 
                 return (
                   <>
                     <div className="sub">What happens to stock already on hand when this change goes effective. Required before document control can sign.</div>
-                    <div className="card" style={{ overflow: "hidden" }}>
+                    <div className="card" style={{ overflow: "hidden" }} data-test-id="inv-disp-table">
                       <table className="tbl">
-                        <thead><tr><th>Item number</th><th>Item name</th><th style={{ textAlign: "right" }}>On hand</th>
-                          <th style={{ textAlign: "right" }}>In WIP</th><th style={{ textAlign: "right" }}>On order</th>
-                          <th style={{ width: 160 }}>Disposition</th><th>Notes</th></tr></thead>
+                        <thead><tr>
+                          <th>Item number</th><th>Item name</th>
+                          <th style={{ textAlign: "right" }}>On hand</th>
+                          <th style={{ textAlign: "right" }}>In WIP</th>
+                          <th style={{ textAlign: "right" }}>On order</th>
+                          <th style={{ width: 160 }}>Disposition</th>
+                          <th>Notes</th>
+                        </tr></thead>
                         <tbody>
-                          {dispRows.map((r: any) => (
-                            <tr key={r[0]}>
-                              <td className="pn">{r[0]}</td><td>{r[1]}</td>
-                              <td style={{ textAlign: "right" }}>{r[2].toLocaleString()}</td>
-                              <td style={{ textAlign: "right" }}>{r[3] || <span className="mut">—</span>}</td>
-                              <td style={{ textAlign: "right" }}>{r[4] ? r[4].toLocaleString() : <span className="mut">—</span>}</td>
-                              <td><Select style={{ height: 28 }} options={[r[5], "Use up", "Scrap", "Rework", "Return to supplier", "N/A"]} /></td>
-                              <td><Input style={{ height: 28 }} placeholder="Optional note" /></td>
+                          {storedDisp.map((r) => (
+                            <tr key={r.pn} data-test-id={`inv-disp-row-${r.pn}`}>
+                              <td className="pn">{r.pn}</td>
+                              <td>{r.name}</td>
+                              <td style={{ textAlign: "right" }}>{r.onHand.toLocaleString()}</td>
+                              <td style={{ textAlign: "right" }}>{r.inWip ? r.inWip.toLocaleString() : <span className="mut">—</span>}</td>
+                              <td style={{ textAlign: "right" }}>{r.onOrder ? r.onOrder.toLocaleString() : <span className="mut">—</span>}</td>
+                              <td>
+                                <Select
+                                  style={{ height: 28 }}
+                                  options={["Use up", "Scrap", "Rework", "Return to supplier", "N/A — added", "N/A — deleted", "N/A"]}
+                                  value={r.disposition}
+                                />
+                              </td>
+                              <td><Input style={{ height: 28 }} placeholder="Optional note" defaultValue={r.notes} /></td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
-                    <div className="okbox"><CheckCircle2 size={15} />
-                      <div><b>All items have a disposition.</b> This satisfies the confirmation on the summary page.</div></div>
+                    {allHaveDisposition && (
+                      <div className="okbox" data-test-id="inv-disp-complete">
+                        <CheckCircle2 size={15} />
+                        <div><b>All items have a disposition.</b> This satisfies the confirmation on the summary page.</div>
+                      </div>
+                    )}
                   </>
-                );
+                )
               })()}
             </div>
           )}

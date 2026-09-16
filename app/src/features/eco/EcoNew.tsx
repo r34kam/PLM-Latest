@@ -13,6 +13,7 @@ import { useEcoFormStore, SEC_CHANGE_DETAILS, SEC_CONFIRMATIONS } from '@/lib/ec
 import { useAllItems } from '@/data/items'
 import { useKitExtractor } from '@/data/kitExtractor'
 import { useCreateChangeOrder, type ApprovalEntry, type CoHistoryEntry } from '@/data/changeOrders'
+import { deriveAffectedAssemblies, deriveInventoryDisposition } from '@/domain/ecoDerivations'
 import { ITEMS, ASSEMBLIES } from '@/domain/catalog'
 import { bomFor } from '@/domain/boms'
 import { useEcoApprovalFlow, type AiSuggestion } from '@/data/ecoApprovalFlow'
@@ -500,6 +501,11 @@ function EcoNew({
         others: (r.members ?? []).slice(1),
       }));
     }
+    // Derive the two dynamic datasets from the kits at creation time so they
+    // are stored as a BOM snapshot and never re-computed from a drifted live BOM.
+    const affectedAssemblies = deriveAffectedAssemblies(kits)
+    const inventoryDisposition = deriveInventoryDisposition(kits)
+
     try {
       await createChangeOrder({
         coId,
@@ -561,6 +567,8 @@ function EcoNew({
           who: ME.name,
           action: `Change order created by ${ME.name} and submitted to approval — ${initialApprovals.length} approver role${initialApprovals.length !== 1 ? 's' : ''} notified`,
         }] as CoHistoryEntry[],
+        affectedAssemblies,
+        inventoryDisposition,
       });
       toast.success(`${coId} submitted to ${routing} approval flow`);
       go({ page: "ecos" });

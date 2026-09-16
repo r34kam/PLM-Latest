@@ -59,6 +59,31 @@ export type ChangeOrder = {
   rejectedBy: string          // name of person who rejected
   history: CoHistoryEntry[]         // parsed from historyJson — audit trail
   extraNotifyNames: string[]        // parsed from extraNotifyJson — manually added notification recipients
+  affectedAssemblies: AffectedAssemblyEntry[]   // parsed from affectedAssembliesJson
+  inventoryDisposition: InventoryDispositionEntry[] // parsed from inventoryDispositionJson
+}
+
+/** A parent assembly that contains one of the changed PNs — snapshot at ECO creation time. */
+export type AffectedAssemblyEntry = {
+  parentPn: string    // PN of the parent kit/assembly
+  parentName: string  // display name
+  containsPn: string  // the changed child PN it contains
+  level: number       // BOM depth (1 = direct parent)
+  phase: string       // lifecycle phase at creation time
+  div: string         // CO | AG
+  impact: string      // editable impact note
+}
+
+/** Per-item inventory disposition — one entry per BOM edit, filled by DC before sign-off. */
+export type InventoryDispositionEntry = {
+  pn: string          // part number
+  name: string        // part name
+  op: string          // ADD | DELETE | UPDATE_DESC | UPDATE_QTY
+  onHand: number      // snapshot at ECO creation
+  inWip: number
+  onOrder: number
+  disposition: string // Use up | Scrap | Rework | Return to supplier | N/A — added | N/A — deleted | ""
+  notes: string       // DC's optional note
 }
 
 /** One kit/assembly added to the ECO during creation, with its BOM edits. */
@@ -188,6 +213,8 @@ function flatten(raw: any): ChangeOrder {
 
     history: parseJsonSafe<CoHistoryEntry[]>(p.historyJson, []),
     extraNotifyNames: parseJsonSafe<string[]>(p.extraNotifyJson, []),
+    affectedAssemblies: parseJsonSafe<AffectedAssemblyEntry[]>(p.affectedAssembliesJson, []),
+    inventoryDisposition: parseJsonSafe<InventoryDispositionEntry[]>(p.inventoryDispositionJson, []),
   }
 }
 
@@ -337,6 +364,8 @@ export function useCreateChangeOrder() {
                 ecoItemsJson: JSON.stringify(co.ecoItems ?? []),
                 historyJson: JSON.stringify(co.history ?? []),
                 extraNotifyJson: JSON.stringify(co.extraNotifyNames ?? []),
+                affectedAssembliesJson: JSON.stringify(co.affectedAssemblies ?? []),
+                inventoryDispositionJson: JSON.stringify(co.inventoryDisposition ?? []),
                 currentStageNum: co.currentStageNum ?? 1,
               },
             },
@@ -399,6 +428,8 @@ export function useUpdateChangeOrder() {
           rejectionReason: current.rejectionReason,
           rejectionNotes: current.rejectionNotes,
           rejectedBy: current.rejectedBy,
+          affectedAssemblies: current.affectedAssemblies,
+          inventoryDisposition: current.inventoryDisposition,
         }
       : {}
     const co = { ...base, ...changes } as Partial<NewChangeOrder>
@@ -407,6 +438,7 @@ export function useUpdateChangeOrder() {
     const {
       approvals, ecoItems, comments, history, extraNotifyNames,
       rejectionReason, rejectionNotes, rejectedBy,
+      affectedAssemblies, inventoryDisposition,
       ...rest
     } = co
     const payload: Record<string, unknown> = { ...rest }
@@ -422,6 +454,8 @@ export function useUpdateChangeOrder() {
     if (ecoItems !== undefined) payload.ecoItemsJson = JSON.stringify(ecoItems)
     if (history !== undefined) payload.historyJson = JSON.stringify(history)
     if (extraNotifyNames !== undefined) payload.extraNotifyJson = JSON.stringify(extraNotifyNames)
+    if (affectedAssemblies !== undefined) payload.affectedAssembliesJson = JSON.stringify(affectedAssemblies)
+    if (inventoryDisposition !== undefined) payload.inventoryDispositionJson = JSON.stringify(inventoryDisposition)
     void comments // comments go to the eco_comment object, not here
 
     await mutation.mutateAsync({
