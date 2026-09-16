@@ -58,10 +58,10 @@ html,body,#root{margin:0;padding:0;background:${T.brand};min-height:100vh}
 .main{margin-left:240px;transition:margin-left .16s ease;height:calc(100vh - 12px);display:flex;flex-direction:column;background:#EEF2F7;border-radius:12px;overflow:hidden;margin-top:6px;margin-right:6px;margin-bottom:6px}
 .main.collapsed{margin-left:48px}
 .topbar{height:52px;background:#fff;border:none;display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:30;flex:none}
-.iconbtn{width:32px;height:32px;border-radius:10px;display:grid;place-items:center;color:#486581;position:relative;background:#fff;border:none}
-.iconbtn:hover{background:#f0f4f8;color:#0a2233}
-.iconbtn .dotr{position:absolute;top:6px;right:7px;width:7px;height:7px;border-radius:50%;background:${T.bad};
-  border:none}
+.iconbtn{width:36px;height:36px;border-radius:999px;display:grid;place-items:center;color:#486581;position:relative;background:#ffffff;border:1px solid #d4dee9;box-shadow:0 1px 2px rgba(2,42,66,.06)}
+.iconbtn:hover{background:#f0f4f8;border-color:#b6c6d8;color:#0a2233}
+.iconbtn .dotr{position:absolute;top:5px;right:5px;width:8px;height:8px;border-radius:50%;background:${T.bad};
+  border:2px solid #fff}
 .content-layout{display:flex;flex:1;min-width:0;min-height:0;width:100%;align-items:stretch}
 .wrap{flex:1;min-width:0;min-height:0;padding:22px 24px 40px;box-sizing:border-box;overflow-y:auto}
 .rightrail{position:fixed;top:0;right:0;bottom:0;width:380px;height:100vh;background:#fff;border-radius:10px 0 0 10px;box-shadow:0 1px 2px rgba(2,42,66,.05), -10px 0 26px -14px rgba(2,42,66,.18);border:none;display:flex;flex-direction:column;overflow:hidden;z-index:70}
@@ -83,9 +83,9 @@ html,body,#root{margin:0;padding:0;background:${T.brand};min-height:100vh}
    Default (.btn)     = white with a subtle shadow — secondary actions.
    Ghost (.btn.gh)    = borderless white — low-emphasis actions (row actions, etc).
    ---- */
-.btn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:10px;
+.btn{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 16px;border-radius:999px;
   font-size:13px;font-weight:600;border:1px solid #d4dee9;background:#ffffff;color:#0a2233;white-space:nowrap;
-  box-shadow:0 1px 2px rgba(2,42,66,.06);transition:background .1s,box-shadow .1s,border-color .1s}
+  box-shadow:0 1px 2px rgba(2,42,66,.06);transition:background .12s,box-shadow .12s,border-color .12s}
 .btn:hover{background:#f8fafc;border-color:#b6c6d8;box-shadow:0 1px 3px rgba(2,42,66,.10)}
 .btn.pri{background:${T.brand};border-color:${T.brand};color:#ffffff;box-shadow:0 1px 2px rgba(0,95,168,.20)}
 .btn.pri:hover{background:${T.b700};border-color:${T.b700};box-shadow:0 2px 4px rgba(0,95,168,.28)}
@@ -95,8 +95,8 @@ html,body,#root{margin:0;padding:0;background:${T.brand};min-height:100vh}
 .btn.ok:hover{background:${T.b700};border-color:${T.b700}}
 .btn.gh{border:none;background:transparent;color:#486581;box-shadow:none}
 .btn.gh:hover{background:#f0f4f8;color:#0a2233;box-shadow:none}
-.btn.sm{height:28px;padding:0 9px;font-size:11px;border-radius:10px}
-.btn.lg{height:36px;padding:0 16px;font-size:13px;border-radius:10px}
+.btn.sm{height:28px;padding:0 10px;font-size:11px;border-radius:999px}
+.btn.lg{height:40px;padding:0 20px;font-size:13px;border-radius:999px}
 .btn:disabled{opacity:.42;cursor:not-allowed}
 
 /* ---- chips ---- */
