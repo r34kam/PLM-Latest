@@ -9,7 +9,7 @@ import { Field, Input, Select } from '@/components/primitives/Field'
 import { Modal } from '@/components/primitives/Modal'
 import { SpecList } from '@/components/primitives/SpecList'
 import { Tabs } from '@/components/primitives/Tabs'
-import { BOM_1003140, whereUsed } from '@/domain/boms'
+import { BOM_1003140 } from '@/domain/boms'
 import { ECO_010870_ITEMS, LC, ecoById, historyFor } from '@/domain/ecos'
 import { ROUTINGS, deriveApprovalState, notificationRecipientsFor } from '@/domain/routings'
 import { ME } from '@/domain/session'
@@ -1127,33 +1127,8 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
               })()}
 
               {itemSub === "Affected Assemblies" && (() => {
-                // Read from the stored backend snapshot (populated at ECO creation).
-                // Fall back to live whereUsed derivation only for static seed ECOs
-                // that pre-date the affectedAssembliesJson field.
-                const storedRows: AffectedAssemblyEntry[] = (eco as any).affectedAssemblies ?? []
-                const affRows: AffectedAssemblyEntry[] = storedRows.length > 0
-                  ? storedRows
-                  : (() => {
-                      // Legacy fallback: derive live from whereUsed for static ECOs
-                      const aa = eco.affectedAssembly
-                      const changedPns: string[] = aa ? [aa.pn] : (eco.pns ?? [])
-                      const seen = new Set<string>()
-                      const rows: AffectedAssemblyEntry[] = []
-                      for (const pn of changedPns) {
-                        for (const parent of whereUsed(pn).filter(Boolean)) {
-                          if (!parent) continue
-                          const key = `${parent.pn}::${pn}`
-                          if (seen.has(key)) continue
-                          seen.add(key)
-                          const ph: string = (parent as any).phase ?? ''
-                          const impact = ph === 'Discontinued' || ph === 'Obsolete'
-                            ? 'Discontinued — no action needed'
-                            : 'Inherits rev change — verify no open orders'
-                          rows.push({ parentPn: parent.pn, parentName: parent.name, containsPn: pn, level: 1, phase: ph, div: (parent as any).div ?? 'CO', impact })
-                        }
-                      }
-                      return rows
-                    })()
+                // Read from the stored backend snapshot populated at ECO creation time.
+                const affRows: AffectedAssemblyEntry[] = (eco as any).affectedAssemblies ?? []
                 const hasWorkInstructionWarning = affRows.some((r) => r.impact.includes("still references"));
 
                 return (
