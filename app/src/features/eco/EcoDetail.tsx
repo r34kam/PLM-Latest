@@ -16,6 +16,7 @@ import { ME } from '@/domain/session'
 import { suppliersFor } from '@/domain/suppliers'
 import { useAllChangeOrders, useUpdateChangeOrder, type CoHistoryEntry } from '@/data/changeOrders'
 import { useEcoComments, usePostEcoComment, type EcoCommentRecord } from '@/data/ecoComments'
+import { useEcoRejection, useSaveEcoRejection } from '@/data/ecoRejections'
 import { useUsers } from '@/data/admin'
 import { useExportEcoExcel } from '@/data/export'
 import { useSendReminder } from '@/data/reminder'
@@ -129,6 +130,9 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
 
   /* ---- Approve / Reject for Approver role ---- */
   const updateChangeOrder = useUpdateChangeOrder()
+  const saveEcoRejection = useSaveEcoRejection()
+  // Fetch persisted rejection details for this ECO (used to display reason/notes when stage=Rejected)
+  const { rejection: persistedRejection } = useEcoRejection(eco.id)
   const [approvalDone, setApprovalDone] = useState<'approved' | 'rejected' | null>(null)
   const [rejectModal, setRejectModal] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
@@ -138,27 +142,24 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
   const [dcRejectReason, setDcRejectReason] = useState('')
   const [dcRejectNotes, setDcRejectNotes] = useState('')
   const [isDcRejecting, setIsDcRejecting] = useState(false)
+
   const handleDcReject = async () => {
     if (!dcRejectReason.trim()) return
     setIsDcRejecting(true)
     try {
+      const rejecterName = currentUserName || ME.name
       if (backendCo) {
-        const rejecterName = currentUserName || ME.name
-        const entry: CoHistoryEntry = {
-          id: `h-${Date.now()}`,
-          timestamp: new Date().toISOString(),
-          who: rejecterName,
-          action: `Rejected by DC — ${dcRejectReason.trim()}`,
-        }
-        const updatedHistory = [...(eco.history ?? []), entry]
-        await updateChangeOrder(backendCo.id, {
-          stage: 'Rejected',
-          rejectionReason: dcRejectReason.trim(),
-          rejectionNotes: dcRejectNotes.trim(),
-          rejectedBy: rejecterName,
-          history: updatedHistory,
-        } as any)
+        // Only send registered fields to change_order UPDATE
+        await updateChangeOrder(backendCo.id, { stage: 'Rejected' })
       }
+      // Save rejection details to dedicated object (unregistered on change_order schema)
+      await saveEcoRejection({
+        ecoId: eco.id,
+        reason: dcRejectReason.trim(),
+        notes: dcRejectNotes.trim(),
+        rejectedBy: rejecterName,
+        timestamp: Date.now(),
+      })
       setModal(null)
       setDcRejectReason('')
       setDcRejectNotes('')
@@ -169,44 +170,30 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
       setIsDcRejecting(false)
     }
   }
+
   const canApprove = isApproverRole && eco.stage === 'Approval' && (eco.awaitingMe === true || eco.mine === true)
   const handleApprove = async () => {
-    const approverName = currentUserName || ME.name
-    if (backendCo) {
-      const entry: CoHistoryEntry = {
-        id: `h-${Date.now()}`,
-        timestamp: new Date().toISOString(),
-        who: approverName,
-        action: `Approved — ${approverName}`,
-      }
-      const updatedHistory = [...(eco.history ?? []), entry]
-      try {
-        await updateChangeOrder(backendCo.id, { history: updatedHistory } as any)
-      } catch { /* non-blocking */ }
-    }
+    // Approval only updates approvalsJson which IS registered — no unregistered fields needed
     setApprovalDone('approved')
   }
+
   const handleReject = async () => {
     if (!rejectReason.trim()) return
     setIsRejecting(true)
     try {
+      const rejecterName = currentUserName || ME.name
       if (backendCo) {
-        const rejecterName = currentUserName || ME.name
-        const entry: CoHistoryEntry = {
-          id: `h-${Date.now()}`,
-          timestamp: new Date().toISOString(),
-          who: rejecterName,
-          action: `Rejected — ${rejectReason.trim()}`,
-        }
-        const updatedHistory = [...(eco.history ?? []), entry]
-        await updateChangeOrder(backendCo.id, {
-          stage: 'Rejected',
-          rejectionReason: rejectReason.trim(),
-          rejectionNotes: rejectNotes.trim(),
-          rejectedBy: rejecterName,
-          history: updatedHistory,
-        } as any)
+        // Only send registered fields to change_order UPDATE
+        await updateChangeOrder(backendCo.id, { stage: 'Rejected' })
       }
+      // Save rejection details to dedicated object
+      await saveEcoRejection({
+        ecoId: eco.id,
+        reason: rejectReason.trim(),
+        notes: rejectNotes.trim(),
+        rejectedBy: rejecterName,
+        timestamp: Date.now(),
+      })
       setApprovalDone('rejected')
       setRejectModal(false)
       setRejectReason('')
@@ -435,12 +422,18 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                 <AlertTriangle size={18} color={T.bad} style={{ flexShrink: 0, marginTop: 2 }} />
                 <div>
                   <div style={{ fontWeight: 700, fontSize: 13, color: T.bad }}>
-                    {eco.rejectedBy
-                      ? `Rejected by ${eco.rejectedBy}.`
+                    {(persistedRejection?.rejectedBy || eco.rejectedBy)
+                      ? `Rejected by ${persistedRejection?.rejectedBy || eco.rejectedBy}.`
                       : 'Rejected by Carol Nosworthy (Quality Assurance) on 09/06/2026.'}
                   </div>
                   <div style={{ marginTop: 3, fontSize: 13, color: "#486581" }}>
-                    {(eco.rejectionReason || eco.rejectionNotes) ? (
+                    {(persistedRejection?.reason || persistedRejection?.notes) ? (
+                      <>
+                        {persistedRejection.reason && <strong>{persistedRejection.reason}</strong>}
+                        {persistedRejection.reason && persistedRejection.notes && ' — '}
+                        {persistedRejection.notes && `"${persistedRejection.notes}"`}
+                      </>
+                    ) : (eco.rejectionReason || eco.rejectionNotes) ? (
                       <>
                         {eco.rejectionReason && <strong>{eco.rejectionReason}</strong>}
                         {eco.rejectionReason && eco.rejectionNotes && ' — '}

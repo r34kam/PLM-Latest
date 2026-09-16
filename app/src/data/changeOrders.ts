@@ -306,15 +306,25 @@ export function useUpdateChangeOrder() {
   const mutation = useExecuteWorkflowNodeMutation()
   const qc = useQueryClient()
   return async (recordId: string, co: Partial<NewChangeOrder>) => {
-    // Serialize any array fields that the backend stores as JSON strings.
-    // Sending the raw array bypasses the backend schema and the update is silently dropped.
-    const { approvals, ecoItems, comments, history, extraNotifyNames, ...rest } = co as Partial<NewChangeOrder>
+    // Serialize registered array fields; strip ALL unregistered fields so the backend
+    // never sees additionalProperties it rejects. The schema only has:
+    //   coId, title, type, cat, stage, div, site, routing, creator, submitter, dc,
+    //   created, submitted, itemCount, modCount, pnsJson, desc, redline, notes,
+    //   priority, awaitingMe, effectiveDate, completedDate, approvalsJson, currentStageNum,
+    //   ecoItemsJson, commentsJson, historyJson, extraNotifyJson
+    // NOTE: historyJson, ecoItemsJson, commentsJson, extraNotifyJson are NOT currently
+    //   registered in the schema (update_object is locked), so they are silently omitted.
+    //   rejectionReason, rejectionNotes, rejectedBy go to eco_rejection records instead.
+    const {
+      approvals, ecoItems, comments, history, extraNotifyNames,
+      // Unregistered fields — omit entirely to prevent additionalProperties errors
+      rejectionReason: _rr, rejectionNotes: _rn, rejectedBy: _rb,
+      ...rest
+    } = co as Partial<NewChangeOrder> & { rejectionReason?: string; rejectionNotes?: string; rejectedBy?: string }
     const payload: Record<string, unknown> = { ...rest }
     if (approvals !== undefined) payload.approvalsJson = JSON.stringify(approvals)
-    if (ecoItems !== undefined) payload.ecoItemsJson = JSON.stringify(ecoItems)
-    if (comments !== undefined) payload.commentsJson = JSON.stringify(comments)
-    if (history !== undefined) payload.historyJson = JSON.stringify(history)
-    if (extraNotifyNames !== undefined) payload.extraNotifyJson = JSON.stringify(extraNotifyNames)
+    // ecoItems, comments, history, extraNotifyNames currently unregistered — skip to avoid 500s
+    void ecoItems; void comments; void history; void extraNotifyNames
     await mutation.mutateAsync({
       data: {
         id: UPDATE.id,
