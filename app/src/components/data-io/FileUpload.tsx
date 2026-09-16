@@ -4,7 +4,7 @@ import { Modal } from "@/components/primitives/Modal"
 import { Select } from "@/components/primitives/Field"
 import { cn } from "@/lib/utils"
 import { useUppy } from "@unifyapps/app-builder-sdk/hooks/upload"
-import { Check, Circle, ExternalLink, History, Loader2, RefreshCw, Trash2, UploadCloud, X } from "lucide-react"
+import { Check, Circle, ExternalLink, History, Loader2, Trash2, UploadCloud, X } from "lucide-react"
 import React, { useRef, useState } from "react"
 import { toast } from "sonner"
 import { format } from "date-fns"
@@ -170,10 +170,10 @@ function FileUpload({
         aria-label="Upload files"
         disabled={uploadingOrSaving}
         className={cn(
-          "w-full flex items-center gap-4 px-6 py-5 rounded-xl border-2 border-dashed transition-all cursor-pointer text-left",
+          "w-full flex items-center gap-4 px-6 py-5 rounded-xl border border-dashed transition-all cursor-pointer text-left",
           dragOver
             ? "border-primary bg-primary/5"
-            : "border-border hover:border-primary/60 hover:bg-muted/50"
+            : "border-border/70 bg-muted/30 hover:border-primary/60 hover:bg-muted/50"
         )}
       >
         <span className={cn(
@@ -252,8 +252,8 @@ function FileUpload({
                   </div>
 
                   {/* Type + Visibility dropdowns */}
-                  <Select value={meta.fileType} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateMeta(f.id, { fileType: e.target.value })} options={FILE_TYPES} aria-label="File type" data-test-id={"staged-file-type-" + f.id} style={{ height: 34, fontSize: 13, flex: 1, minWidth: 130 }} />
-                  <Select value={meta.visibility} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateMeta(f.id, { visibility: e.target.value })} options={VISIBILITY_OPTS} aria-label="Visibility" data-test-id={"staged-file-visibility-" + f.id} style={{ height: 34, fontSize: 13, flex: 1, minWidth: 140 }} />
+                  <Select value={meta.fileType} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateMeta(f.id, { fileType: e.target.value })} options={FILE_TYPES} aria-label="File type" data-test-id={"staged-file-type-" + f.id} style={{ height: 28, fontSize: 12, width: 120 }} />
+                  <Select value={meta.visibility} onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateMeta(f.id, { visibility: e.target.value })} options={VISIBILITY_OPTS} aria-label="Visibility" data-test-id={"staged-file-visibility-" + f.id} style={{ height: 28, fontSize: 12, width: 120 }} />
 
                   {/* Set primary */}
                   <button
@@ -345,15 +345,6 @@ function FileUpload({
                         <ExternalLink size={14} />
                       </a>
                     )}
-                    <button
-                      type="button"
-                      className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted transition-colors"
-                      aria-label={"Replace " + f.fileName}
-                      onClick={() => inputRef.current?.click()}
-                      data-test-id={"replace-saved-file-" + f.id}
-                    >
-                      <RefreshCw size={14} />
-                    </button>
                     <button
                       type="button"
                       className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
