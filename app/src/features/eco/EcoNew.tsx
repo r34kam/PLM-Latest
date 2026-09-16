@@ -118,6 +118,7 @@ function EcoNew({
   initialApprovalMode = null,
   initialManualItems = null,
   initialTitle,
+  initialDesc,
   initialCat,
   renderHeaderActions,
   isModal = false,
@@ -128,6 +129,7 @@ function EcoNew({
   initialApprovalMode?: "ai" | "routing" | "manual" | null;
   initialManualItems?: any[] | null;
   initialTitle?: string;
+  initialDesc?: string;
   initialCat?: string;
   renderHeaderActions?: () => React.ReactNode;
   isModal?: boolean;
@@ -253,7 +255,7 @@ function EcoNew({
     title: initialTitle ?? "",
     div: "CO \u2013 Construction", site: "1210 \u2013 TPS Livermore", eccn: "N/A \u2014 not used", notes: "", dc: "",
     eff: "Effective once approved", effDate: "", effSerial: "", deadline: "",
-    desc: "",
+    desc: initialDesc ?? "",
   });
   const [confirmations, setConfirmations] = useState({
     validations: "N/A",

@@ -76,13 +76,13 @@ function Inactivate({ go, id = "01-080401-03", renderHeaderActions }: { go: any;
     })),
   ], [parent, bomChildren, allKitBomItems]);
 
-  const ANALYSIS_MS = 10000;
+  // 1 second per item in scope
+  const ANALYSIS_MS = rawRows.length * 1000;
 
   const handleRunAnalysis = () => {
     setLoading(true);
     setScanningPn(rawRows[0]?.pn ?? "");
 
-    // Cycle through each part number during the 10s scan window
     const allPns = rawRows.map((r: any) => r.pn);
     const intervalMs = allPns.length > 1 ? Math.floor(ANALYSIS_MS / allPns.length) : ANALYSIS_MS;
     let idx = 0;
@@ -200,14 +200,15 @@ function Inactivate({ go, id = "01-080401-03", renderHeaderActions }: { go: any;
                   borderColor: "#0B7A4B"
                 }}
                 onClick={() => {
-                  const selectedItems = filteredRows
+                  const selectedItems = rawRows
                     .filter((r: any) => sel.includes(r.pn))
                     .map((r: any) => ({ pn: r.pn, name: r.name }));
                   go({
                     page: "eco-new",
-                    step: 2,
+                    step: 5,  // maps to Approvals step (index 2)
                     initialManualItems: selectedItems,
-                    initialTitle: `Inactivate ${parent.pn} – ${parent.name}`,
+                    initialTitle: `Inactivate ${parent.pn} \u2013 ${parent.name}`,
+                    initialDesc: `Inactivation ECO for ${parent.pn} (${parent.name} rev ${parent.rev}).\n\nUnique parts identified by analysis:\n${selectedItems.filter((x: any) => x.pn !== parent.pn).map((x: any) => `\u2022 ${x.pn} \u2013 ${x.name}`).join('\n')}\n\nAll items above are unique to this assembly and safe to inactivate.`,
                     initialCat: "ECO: Engineering Change Order",
                   });
                 }}
@@ -259,74 +260,130 @@ function Inactivate({ go, id = "01-080401-03", renderHeaderActions }: { go: any;
           }
         />
 
-        {loading && (
-          <div
-            data-test-id="unique-parts-analysis-loader"
-            style={{
-              padding: "20px 20px 16px",
-              background: "#F8FAFC",
-              borderBottom: "1px solid #E2E8F0",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, marginBottom: 12 }}>
-              <div className="row" style={{ gap: 14 }}>
-                <div
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 10,
-                    background: T.b50,
-                    display: "grid",
-                    placeItems: "center",
-                    flexShrink: 0
-                  }}
-                >
-                  <Loader2 size={18} color={T.brand} style={{ animation: "spin 1s linear infinite" }} />
+        {loading && (() => {
+          const scanIdx = rawRows.findIndex((r: any) => r.pn === scanningPn);
+          const pct = Math.round(((scanIdx + 1) / Math.max(rawRows.length, 1)) * 100);
+          const stepMs = Math.floor(ANALYSIS_MS / Math.max(rawRows.length, 1));
+          return (
+            <div
+              data-test-id="unique-parts-analysis-loader"
+              style={{
+                padding: "18px 24px 20px",
+                background: "linear-gradient(135deg, #EEF4FF 0%, #F0FDF4 100%)",
+                borderBottom: "1px solid #E2E8F0",
+                position: "relative",
+                overflow: "hidden",
+              }}
+            >
+              {/* Subtle shimmer stripe */}
+              <div style={{
+                position: "absolute", inset: 0, pointerEvents: "none",
+                background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.45) 50%, transparent 100%)",
+                animation: "shimmer 1.8s ease-in-out infinite",
+              }} />
+
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, marginBottom: 14, position: "relative" }}>
+                <div className="row" style={{ gap: 14 }}>
+                  {/* Pulse ring icon */}
+                  <div style={{ position: "relative", flexShrink: 0 }}>
+                    <div style={{
+                      width: 40, height: 40, borderRadius: 12,
+                      background: "linear-gradient(135deg, #3B82F6 0%, #6366F1 100%)",
+                      display: "grid", placeItems: "center",
+                      boxShadow: "0 4px 12px rgba(99,102,241,0.35)",
+                    }}>
+                      <Sparkles size={18} color="#ffffff" />
+                    </div>
+                    <div style={{
+                      position: "absolute", inset: -3, borderRadius: 15,
+                      border: "2px solid rgba(99,102,241,0.3)",
+                      animation: "pulse 1.4s ease-in-out infinite",
+                    }} />
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 13, color: "#1E293B", letterSpacing: "-0.01em" }}>
+                      Scanning where-used graph across all assemblies…
+                    </div>
+                    <div style={{ marginTop: 3, fontSize: 12, color: "#64748B", display: "flex", alignItems: "center", gap: 6 }}>
+                      <span>Checking</span>
+                      <span
+                        key={scanningPn}
+                        style={{
+                          fontFamily: "monospace",
+                          fontWeight: 700,
+                          fontSize: 11,
+                          color: "#4F46E5",
+                          background: "rgba(99,102,241,0.08)",
+                          padding: "1px 6px",
+                          borderRadius: 4,
+                          display: "inline-block",
+                          animation: "fadeSlideUp .18s ease-out",
+                          minWidth: 110,
+                        }}
+                      >
+                        {scanningPn}
+                      </span>
+                      <span style={{ color: "#94A3B8" }}>across {rawRows.length} item{rawRows.length !== 1 ? "s" : ""}</span>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: 13, color: "#0A2233" }}>
-                    Running unique part analysis across live where-used graph…
-                  </div>
-                  <div className="sub" style={{ marginTop: 2, fontSize: 12 }}>
-                    Scanning{" "}
-                    <span
-                      key={scanningPn}
-                      style={{
-                        fontFamily: "monospace",
-                        fontWeight: 700,
-                        color: T.brand,
-                        display: "inline-block",
-                        minWidth: 120,
-                        animation: "fadeSlideUp .22s ease-out",
-                      }}
-                    >
-                      {scanningPn}
-                    </span>
-                    {" "}across all products and active assemblies.
-                  </div>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+                  <span style={{ fontSize: 20, fontWeight: 800, color: "#4F46E5", fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em" }}>
+                    {pct}%
+                  </span>
+                  <span style={{ fontSize: 11, color: "#94A3B8" }}>
+                    {scanIdx + 1} of {rawRows.length} items
+                  </span>
                 </div>
               </div>
-              <div className="row" style={{ gap: 8 }}>
-                <span className="chip c-blue">AI Assisted</span>
-                <span className="mini" style={{ color: T.g600 }}>
-                  {rawRows.findIndex((r: any) => r.pn === scanningPn) + 1} / {rawRows.length}
+
+              {/* Progress track — segmented per item */}
+              <div style={{ position: "relative" }}>
+                <div style={{ height: 6, borderRadius: 6, background: "rgba(99,102,241,0.12)", overflow: "hidden" }}>
+                  <div
+                    style={{
+                      height: "100%",
+                      borderRadius: 6,
+                      background: "linear-gradient(90deg, #6366F1 0%, #3B82F6 60%, #10B981 100%)",
+                      width: `${pct}%`,
+                      transition: `width ${stepMs}ms linear`,
+                      boxShadow: "0 0 8px rgba(99,102,241,0.5)",
+                    }}
+                  />
+                </div>
+                {/* Item tick marks */}
+                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 6, display: "flex" }}>
+                  {rawRows.map((_: any, i: number) => (
+                    i > 0 && (
+                      <div
+                        key={i}
+                        style={{
+                          position: "absolute",
+                          left: `${(i / rawRows.length) * 100}%`,
+                          top: 0, bottom: 0,
+                          width: 1,
+                          background: "rgba(255,255,255,0.5)",
+                        }}
+                      />
+                    )
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 8 }}>
+                <div style={{ fontSize: 11, color: "#94A3B8" }}>
+                  AI-assisted unique-part detection · {rawRows.length}s estimated
+                </div>
+                <span style={{
+                  fontSize: 10, fontWeight: 600, letterSpacing: "0.05em", textTransform: "uppercase",
+                  color: "#6366F1", background: "rgba(99,102,241,0.1)", padding: "2px 8px", borderRadius: 20,
+                }}>
+                  Live Analysis
                 </span>
               </div>
             </div>
-            {/* Progress track */}
-            <div style={{ height: 4, borderRadius: 4, background: T.g100, overflow: "hidden" }}>
-              <div
-                style={{
-                  height: "100%",
-                  borderRadius: 4,
-                  background: T.brand,
-                  width: `${((rawRows.findIndex((r: any) => r.pn === scanningPn) + 1) / Math.max(rawRows.length, 1)) * 100}%`,
-                  transition: `width ${Math.floor(ANALYSIS_MS / Math.max(rawRows.length, 1))}ms linear`,
-                }}
-              />
-            </div>
-          </div>
-        )}
+          );
+        })()}
 
         <div className="scrollx">
           <table className="tbl inactivate-tbl" data-test-id="inactivate-items-table">

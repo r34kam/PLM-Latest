@@ -248,7 +248,7 @@ textarea.inp{height:auto;padding:8px 10px;line-height:1.5;resize:vertical}
 .seg button .n{display:none}
 /* toolbar: floats above the table card on the page background — no card, no background.
    Left side = filter pills / selects. Right edge = search + actions. */
-.toolbar{display:flex;align-items:center;gap:12px;padding:0 0 12px;border:none;min-width:0;background:transparent}
+.toolbar{display:flex;align-items:center;gap:12px;padding:8px 0 12px;border:none;min-width:0;background:transparent}
 .toolbar-right{display:flex;align-items:center;gap:8px;margin-left:auto;flex-shrink:0}
 .srch{position:relative;display:flex;align-items:center;flex-shrink:0}
 .srch input{padding-left:30px;padding-right:10px;height:32px;border-radius:10px;width:240px;border:1px solid #D4DEE9;outline:none;background:#fff;font:inherit;font-size:13px;color:#0a2233;transition:border-color .12s,box-shadow .12s}
@@ -555,6 +555,7 @@ textarea.inp{height:auto;padding:8px 10px;line-height:1.5;resize:vertical}
 .eco-info-tip-bubble::before{content:'';position:absolute;right:100%;top:50%;transform:translateY(-50%);border:5px solid transparent;border-right-color:#1e293b}
 .eco-info-tip:hover .eco-info-tip-bubble{visibility:visible;opacity:1}
 @keyframes fadeSlideUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(1.08)}}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 .spin{animation:spin 0.8s linear infinite}
 @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
