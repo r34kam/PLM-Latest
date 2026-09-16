@@ -103,10 +103,10 @@ function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = ''
       ]
     : [
         { key: "Awaiting me", label: "Awaiting me", count: awaiting.length },
-        { key: "Open", label: "Open", count: kpis.open },
-        { key: "Submit", label: "Submit", count: kpis.submit },
         { key: "Approval", label: "Approval", count: kpis.approval },
         { key: "Effective", label: "Effective", count: kpis.effective },
+        { key: "Submit", label: "Submit", count: kpis.submit },
+        { key: "Open", label: "Open", count: kpis.open },
         { key: "Complete", label: "Complete", count: kpis.complete },
         { key: "Rejected", label: "Rejected", count: kpis.rejected },
         { key: "All", label: "All", count: kpis.total },

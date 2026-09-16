@@ -14,8 +14,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, renderHeaderActions, role = 'unknown', currentUserName = '', roleLoading = false }: { go: any; initialFilter?: any; onInspect?: any; inspectedId?: any; railOpen?: boolean; renderHeaderActions?: () => React.ReactNode; role?: string; currentUserName?: string; roleLoading?: boolean }) {
   const isApproverRole = role === 'approver'
-  // Approvers default to "Approval"; DC defaults to "Open"
-  const [f, setF] = useState(initialFilter || (isApproverRole ? "Approval" : "Open"));
+  // Approvers default to "Approval"; DC defaults to "Awaiting me"
+  const [f, setF] = useState(initialFilter || (isApproverRole ? "Approval" : "Awaiting me"));
   const [q, setQ] = useState("");
   const [view, setView] = useState("table");
   const [filterOpen, setFilterOpen] = useState(false);
@@ -23,9 +23,9 @@ function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, 
     initialFilter && (CO_STAGES as readonly string[]).includes(initialFilter) ? [initialFilter] : []
   );
   const [ecoPage, setEcoPage] = useState(0);
-  // All roles see the same stage tabs (approvers just see their subset of COs)
+  // Approver: all stages, scoped to their approval-flow COs. DC: same + "Awaiting me" first.
   const APPROVER_STAGE_FILTERS = ["Approval", "Effective", "Submit", "Open", "Complete", "Rejected", "All"] as const;
-  const DC_STAGE_FILTERS = ["Open", "All"] as const;
+  const DC_STAGE_FILTERS = ["Awaiting me", "Approval", "Effective", "Submit", "Open", "Complete", "Rejected", "All"] as const;
   const filters = isApproverRole ? APPROVER_STAGE_FILTERS : DC_STAGE_FILTERS;
 
   // Backend data
@@ -61,15 +61,18 @@ function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, 
     return map;
   }, [visibleOrders]);
 
+  const isAwaitingMe = (e: ChangeOrder) => e.awaitingMe || e.stage === "Rejected";
+  const awaitingMeCount = useMemo(() => visibleOrders.filter(isAwaitingMe).length, [visibleOrders]);
+
   const count = (x: string) => {
     if (x === "All") return visibleOrders.length;
-    if (x === "Open") return stageStats["Open"] ?? 0;
+    if (x === "Awaiting me") return awaitingMeCount;
     return stageStats[x] ?? 0;
   };
 
   const rows = useMemo(() => visibleOrders.filter((e) => {
-    // "All" with no extra stage filter = show everything
-    if (f !== "All" && e.stage !== f) return false;
+    if (f === "Awaiting me" && !isAwaitingMe(e)) return false;
+    if (f !== "All" && f !== "Awaiting me" && e.stage !== f) return false;
     if (selectedStages.length > 0 && !selectedStages.includes(e.stage)) return false;
     if (q !== "" && !(e.coId + e.title + e.creator).toLowerCase().includes(q.toLowerCase())) return false;
     return true;
