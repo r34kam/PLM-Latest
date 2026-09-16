@@ -301,6 +301,37 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
     }
   }
 
+  // Submit to routing: move back from Open → Approval, reset approvals, add history
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const handleSubmitToRouting = async () => {
+    if (!backendCo) { toast.error('Change order not loaded'); return }
+    setIsSubmitting(true)
+    try {
+      const resetApprovals = backendCo.approvals.map((a) => ({
+        ...a, status: 'pending' as const, signedAt: '', comment: '',
+      }))
+      const newEntry: CoHistoryEntry = {
+        id: `h-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        who: ME.name,
+        action: 'Resubmitted to routing — returned to Approval after rework',
+      }
+      await updateChangeOrder(backendCo.id, {
+        stage: 'Approval',
+        approvals: resetApprovals,
+        rejectionReason: '',
+        rejectionNotes: '',
+        rejectedBy: '',
+        history: [...(backendCo.history ?? []), newEntry],
+      }, backendCo)
+      toast.success('Change order resubmitted to approval routing.')
+    } catch {
+      toast.error('Failed to submit — please try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   const canApprove = isApproverRole && eco.stage === 'Approval' && (eco.awaitingMe === true || eco.mine === true)
   const [isApproving, setIsApproving] = useState(false)
   const handleApprove = async () => {
@@ -523,7 +554,11 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
               <button className="btn" onClick={() => setRejectModal(true)}><X size={13} />Reject</button>
               <button className="btn ok" onClick={() => setModal("approve")}><Check size={13} />Approve</button>
             </>}
-            {!isApproverRole && eco.stage === "Open" && <button className="btn pri"><Send size={13} />Submit to routing</button>}
+            {!isApproverRole && eco.stage === "Open" && (
+              <button className="btn pri" onClick={handleSubmitToRouting} disabled={isSubmitting} data-test-id="submit-to-routing-btn">
+                {isSubmitting ? <><Loader2 size={13} className="animate-spin" />Submitting&hellip;</> : <><Send size={13} />Submit to routing</>}
+              </button>
+            )}
             {!isApproverRole && eco.stage === "Effective" && <button className="btn pri" onClick={() => setModal("complete")}><CheckCircle2 size={13} />Verify SAP and complete</button>}
             {!isApproverRole && (
               <div style={{ position: "relative" }}>
