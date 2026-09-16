@@ -41,7 +41,7 @@ export type PlmNotification = {
   ecoId: string
   title: string
   detail: string
-  timestamp: string
+  timestamp: number    // epoch milliseconds — render with formatDistanceToNow
   tone: string         // 'warn' | 'ok' | 'bad' | 'blue' | 'vio'
   group: string        // 'Today' | 'Earlier'
 }

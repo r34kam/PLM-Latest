@@ -1,7 +1,29 @@
 import type { PlmNotification } from '@/data/admin'
 import { T } from '@/theme/tokens'
+import { formatDistanceToNow } from 'date-fns'
 import { Bell, X } from 'lucide-react'
-import React from 'react'
+import React, { useState, useEffect } from 'react'
+
+/** Converts an epoch timestamp (ms) to a live relative string. Falls back gracefully for legacy string timestamps. */
+function useRelativeTime(timestamp: number | string): string {
+  const [, setTick] = useState(0)
+
+  useEffect(() => {
+    // Refresh every 60 seconds so "just now" → "1 minute ago" etc.
+    const id = setInterval(() => setTick((t) => t + 1), 60_000)
+    return () => clearInterval(id)
+  }, [])
+
+  if (typeof timestamp === 'number' && timestamp > 0) {
+    return formatDistanceToNow(new Date(timestamp), { addSuffix: true })
+  }
+  return String(timestamp)
+}
+
+function RelativeTime({ timestamp }: { timestamp: number | string }) {
+  const label = useRelativeTime(timestamp)
+  return <>{label}</>
+}
 
 function NotificationsOverlay({
   open,
@@ -173,9 +195,9 @@ function NotificationsOverlay({
                         <div style={{ fontSize: 11, color: T.g600, marginTop: 2 }}>{n.detail}</div>
                       </div>
 
-                      {/* Timestamp */}
-                      <div style={{ flex: "none", fontSize: 11, color: T.g500, whiteSpace: "nowrap", paddingTop: 2 }}>
-                        {n.timestamp}
+                      {/* Timestamp — live relative time from epoch */}
+                      <div style={{ flex: "none", fontSize: 11, color: T.g500, whiteSpace: "nowrap", paddingTop: 2 }} data-test-id={`notif-timestamp-${n.id}`}>
+                        <RelativeTime timestamp={n.timestamp} />
                       </div>
                     </div>
                   );
