@@ -128,6 +128,31 @@ function parseJsonSafe<T>(raw: string | undefined, fallback: T): T {
   try { return JSON.parse(raw) as T } catch { return fallback }
 }
 
+/**
+ * approvalsJson stores either a legacy plain array OR a combined object:
+ *   { entries: ApprovalEntry[], rejection?: { reason, notes, rejectedBy } }
+ * Both formats are supported for backward compatibility.
+ */
+function parseApprovalsJson(raw: string | undefined): Pick<ChangeOrder, 'approvals' | 'rejectionReason' | 'rejectionNotes' | 'rejectedBy'> {
+  if (!raw) return { approvals: [], rejectionReason: '', rejectionNotes: '', rejectedBy: '' }
+  try {
+    const parsed = JSON.parse(raw)
+    if (Array.isArray(parsed)) {
+      // Legacy format: plain array of ApprovalEntry
+      return { approvals: parsed as ApprovalEntry[], rejectionReason: '', rejectionNotes: '', rejectedBy: '' }
+    }
+    const r = parsed.rejection ?? {}
+    return {
+      approvals: (parsed.entries ?? []) as ApprovalEntry[],
+      rejectionReason: r.reason ?? '',
+      rejectionNotes: r.notes ?? '',
+      rejectedBy: r.rejectedBy ?? '',
+    }
+  } catch {
+    return { approvals: [], rejectionReason: '', rejectionNotes: '', rejectedBy: '' }
+  }
+}
+
 function flatten(raw: any): ChangeOrder {
   const p = raw?.properties ?? raw ?? {}
   return {
@@ -155,13 +180,11 @@ function flatten(raw: any): ChangeOrder {
     awaitingMe: p.awaitingMe === true,
     effectiveDate: p.effectiveDate ?? '',
     completedDate: p.completedDate ?? '',
-    approvals: parseJsonSafe<ApprovalEntry[]>(p.approvalsJson, []),
+    ...parseApprovalsJson(p.approvalsJson),
     currentStageNum: typeof p.currentStageNum === 'number' ? p.currentStageNum : Number(p.currentStageNum ?? 0),
     ecoItems: parseJsonSafe<EcoItemRecord[]>(p.ecoItemsJson, []),
     comments: parseJsonSafe<EcoComment[]>(p.commentsJson, []),
-    rejectionReason: p.rejectionReason ?? '',
-    rejectionNotes: p.rejectionNotes ?? '',
-    rejectedBy: p.rejectedBy ?? '',
+
     history: parseJsonSafe<CoHistoryEntry[]>(p.historyJson, []),
     extraNotifyNames: parseJsonSafe<string[]>(p.extraNotifyJson, []),
   }
@@ -243,7 +266,7 @@ function toPayload(co: NewChangeOrder): CoPayload {
   } = co
   return {
     ...rest,
-    approvalsJson: JSON.stringify(approvals ?? []),
+    approvalsJson: JSON.stringify({ entries: approvals ?? [] }),
   }
 }
 
@@ -279,16 +302,7 @@ export function useCreateChangeOrder() {
               ...UPDATE.storedInputs,
               object_type: CO,
               recordId: newId,
-              rawPayload: {
-                ecoItemsJson: JSON.stringify(co.ecoItems ?? []),
-                commentsJson: JSON.stringify(co.comments ?? []),
-                historyJson: JSON.stringify(co.history ?? []),
-                extraNotifyJson: JSON.stringify(co.extraNotifyNames ?? []),
-                currentStageNum: co.currentStageNum ?? 0,
-                rejectionReason: co.rejectionReason ?? '',
-                rejectionNotes: co.rejectionNotes ?? '',
-                rejectedBy: co.rejectedBy ?? '',
-              },
+              rawPayload: {},
             },
           },
         })
@@ -317,10 +331,22 @@ export function useUpdateChangeOrder() {
     //   rejectionReason, rejectionNotes, rejectedBy are registered and saved on the change_order record.
     const {
       approvals, ecoItems, comments, history, extraNotifyNames,
+      rejectionReason, rejectionNotes, rejectedBy,
       ...rest
     } = co as Partial<NewChangeOrder>
     const payload: Record<string, unknown> = { ...rest }
-    if (approvals !== undefined) payload.approvalsJson = JSON.stringify(approvals)
+    // Build approvalsJson combining approvals entries + optional rejection details.
+    // This is the only registered field that can carry per-ECO rejection data, since
+    // the change_order schema cannot be extended (it belongs to an older session).
+    if (approvals !== undefined || rejectionReason !== undefined || rejectionNotes !== undefined || rejectedBy !== undefined) {
+      // We need to merge with what we're given; approvals come from the caller when rejecting
+      const combined: Record<string, unknown> = {}
+      if (approvals !== undefined) combined.entries = approvals
+      if (rejectionReason !== undefined || rejectionNotes !== undefined || rejectedBy !== undefined) {
+        combined.rejection = { reason: rejectionReason ?? '', notes: rejectionNotes ?? '', rejectedBy: rejectedBy ?? '' }
+      }
+      payload.approvalsJson = JSON.stringify(combined)
+    }
     // ecoItems, comments, history, extraNotifyNames currently unregistered — skip to avoid 500s
     void ecoItems; void comments; void history; void extraNotifyNames
     await mutation.mutateAsync({

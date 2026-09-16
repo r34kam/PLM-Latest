@@ -147,6 +147,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
       if (backendCo) {
         await updateChangeOrder(backendCo.id, {
           stage: 'Rejected',
+          approvals: backendCo?.approvals ?? [],
           rejectionReason: dcRejectReason.trim(),
           rejectionNotes: dcRejectNotes.trim(),
           rejectedBy: rejecterName,
@@ -177,6 +178,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
       if (backendCo) {
         await updateChangeOrder(backendCo.id, {
           stage: 'Rejected',
+          approvals: backendCo?.approvals ?? [],
           rejectionReason: rejectReason.trim(),
           rejectionNotes: rejectNotes.trim(),
           rejectedBy: rejecterName,
