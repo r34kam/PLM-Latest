@@ -10,6 +10,7 @@ import { Modal } from '@/components/primitives/Modal'
 import { SpecList } from '@/components/primitives/SpecList'
 import { Tabs } from '@/components/primitives/Tabs'
 import { BOM_1003140 } from '@/domain/boms'
+import { deriveAffectedAssemblies, deriveInventoryDisposition } from '@/domain/ecoDerivations'
 import { ECO_010870_ITEMS, LC, ecoById, historyFor } from '@/domain/ecos'
 import { ROUTINGS, deriveApprovalState, notificationRecipientsFor } from '@/domain/routings'
 import { ME } from '@/domain/session'
@@ -1127,8 +1128,15 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
               })()}
 
               {itemSub === "Affected Assemblies" && (() => {
-                // Read from the stored backend snapshot populated at ECO creation time.
-                const affRows: AffectedAssemblyEntry[] = (eco as any).affectedAssemblies ?? []
+                // Read from the stored backend snapshot. If absent (seed ECOs pre-dating
+                // this field), derive on-the-fly from the kit's ecoItems so every ECO
+                // shows real data without requiring a manual back-fill.
+                const stored: AffectedAssemblyEntry[] = (eco as any).affectedAssemblies ?? []
+                const affRows: AffectedAssemblyEntry[] = stored.length > 0
+                  ? stored
+                  : deriveAffectedAssemblies(
+                      eco.ecoItems.map((it) => ({ pn: it.pn, name: it.name, bomEdits: it.bomEdits ?? [] }))
+                    )
                 const hasWorkInstructionWarning = affRows.some((r) => r.impact.includes("still references"));
 
                 return (
@@ -1189,8 +1197,13 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
               })()}
 
               {itemSub === "Inventory Disposition" && (() => {
-                // Read from the stored backend snapshot (populated at ECO creation).
-                const storedDisp: InventoryDispositionEntry[] = (eco as any).inventoryDisposition ?? []
+                // Read from the stored backend snapshot. If absent (seed ECOs pre-dating
+                // this field), derive on-the-fly so every ECO shows real data.
+                const storedDisp: InventoryDispositionEntry[] = (eco as any).inventoryDisposition?.length > 0
+                  ? (eco as any).inventoryDisposition
+                  : deriveInventoryDisposition(
+                      eco.ecoItems.map((it) => ({ pn: it.pn, name: it.name, bomEdits: it.bomEdits ?? [] }))
+                    )
                 const allHaveDisposition = storedDisp.length > 0 && storedDisp.every((r) => !!r.disposition)
 
                 if (storedDisp.length === 0) {
