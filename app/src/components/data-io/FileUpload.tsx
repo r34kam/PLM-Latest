@@ -5,6 +5,7 @@ import { Select } from "@/components/primitives/Field"
 import { cn } from "@/lib/utils"
 import { useUppy } from "@unifyapps/app-builder-sdk/hooks/upload"
 import { Check, Circle, ExternalLink, History, Loader2, Trash2, UploadCloud, X } from "lucide-react"
+
 import React, { useRef, useState } from "react"
 import { toast } from "sonner"
 import { format } from "date-fns"
@@ -368,18 +369,7 @@ function FileUpload({
         <span>Files attached to {context ?? "this record"} are versioned — replacing one keeps the previous version in history.</span>
       </div>
 
-      {/* ── Legacy bottom actions (cancel + attach) — only shown when no staged files yet ── */}
-      {files.length === 0 && (
-        <div className="flex items-center justify-between pt-1 border-t border-border" data-test-id="file-upload-actions">
-          {!hideCancel ? (
-            <button type="button" className="btn" onClick={onClose} data-test-id="file-upload-cancel-btn">Cancel</button>
-          ) : <span />}
-          <button type="button" className="btn pri" disabled={readyCount === 0 || uploadingOrSaving} onClick={handleAttach} data-test-id="file-upload-attach-btn-bottom">
-            {saving ? <Loader2 size={13} className="animate-spin" /> : <Check size={13} />}
-            {saving ? "Saving…" : isUploading ? "Uploading…" : "Attach files"}
-          </button>
-        </div>
-      )}
+
     </div>
   )
 }
