@@ -20,7 +20,7 @@ function greetingWord(): string {
   return 'Good evening'
 }
 
-function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = '', aiInsights = [], currentUser = null }: { go: any; renderHeaderActions?: () => React.ReactNode; userRole?: string; userName?: string; aiInsights?: PlmAiInsight[]; currentUser?: PlmUser | null }) {
+function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = '', aiInsights = [], currentUser = null, roleLoading = false }: { go: any; renderHeaderActions?: () => React.ReactNode; userRole?: string; userName?: string; aiInsights?: PlmAiInsight[]; currentUser?: PlmUser | null; roleLoading?: boolean }) {
   const [expandedInsights, setExpandedInsights] = useState<Record<string, boolean>>({});
   const toggleInsight = (key: string) => setExpandedInsights((prev) => ({ ...prev, [key]: !prev[key] }));
 
@@ -37,19 +37,22 @@ function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = ''
   // Approvers start on Approval tab; DC starts on Awaiting me
   const [selectedHomeStage, setSelectedHomeStage] = useState(isApprover ? "Approval" : "Awaiting me");
 
-  // Backend change orders — approvers see only ECOs they are listed in (approvalsJson match),
-  // plus Rejected ones. Falls back to all Approval-stage when username not yet resolved.
+  // Backend change orders — approvers see only ECOs they are listed in (approvalsJson match).
+  // Returns empty until identity is fully resolved; caller renders skeletons in that window.
   const { data: rawOrders, loading: ordersLoading } = useAllChangeOrders();
+  const identityPending = isApprover && (roleLoading || !userName)
+  const isLoading = ordersLoading || identityPending
   const allOrders = useMemo(() => {
     if (!isApprover) return rawOrders
-    if (!userName) return rawOrders.filter((o) => o.stage === 'Approval' || o.stage === 'Rejected')
+    // Hold until identity is resolved — no partial leaks
+    if (roleLoading || !userName) return []
     return rawOrders.filter((o) => {
       if (o.stage === 'Rejected') return true
       return o.approvals.some(
         (a) => a.approver === userName || (a.others ?? []).includes(userName)
       )
     })
-  }, [isApprover, rawOrders, userName]);
+  }, [isApprover, rawOrders, userName, roleLoading]);
   const kpis = useMemo(() => deriveCoKpis(allOrders), [allOrders]);
   const awaiting = useMemo(
     () => allOrders.filter((o) => o.awaitingMe || o.stage === 'Rejected'),
@@ -129,7 +132,7 @@ function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = ''
       </div>
 
       <div className="grid4" data-test-id="home-kpis">
-        {ordersLoading ? (
+        {isLoading ? (
           <>
             <Skeleton className="h-20 rounded-lg" data-test-id="home-kpi-skeleton-1" />
             <Skeleton className="h-20 rounded-lg" data-test-id="home-kpi-skeleton-2" />
@@ -175,7 +178,7 @@ function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = ''
         <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
             <Card title="By category" data-test-id="home-chart-by-category">
-              {ordersLoading ? <Skeleton className="h-40" data-test-id="home-chart-category-skeleton" /> : <Donut data={byCat} />}
+              {isLoading ? <Skeleton className="h-40" data-test-id="home-chart-category-skeleton" /> : <Donut data={byCat} />}
             </Card>
 
             <Card title="Aging of open changes" style={{ minWidth: 0 }} data-test-id="home-chart-aging">
@@ -209,7 +212,7 @@ function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = ''
             pad={false}
             data-test-id="home-change-orders-card"
           >
-            {ordersLoading ? (
+            {isLoading ? (
               <div style={{ padding: "12px 20px" }} data-test-id="home-orders-table-skeleton">
                 {[1, 2, 3].map((i) => <Skeleton key={i} className="h-10 mb-2" />)}
               </div>

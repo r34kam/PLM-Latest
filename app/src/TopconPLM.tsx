@@ -214,8 +214,8 @@ function TopconPLM({
   const effectivePage = isApprover && !APPROVER_ALLOWED_PAGES.has(currentPage) ? 'home' : currentPage
 
   switch (effectivePage) {
-    case "home": body = <HomePage go={go} renderHeaderActions={renderHeaderActions} userRole={role} userName={userName} aiInsights={userAiInsights} currentUser={currentUser} />; break;
-    case "ecos": body = <EcoList go={go} initialFilter={isApprover ? "Needs me" : (v.filter ?? undefined)} onInspect={handleInspectEco} inspectedId={inspectedEcoId} railOpen={false} renderHeaderActions={renderHeaderActions} role={role} currentUserName={userName} />; break;
+    case "home": body = <HomePage go={go} renderHeaderActions={renderHeaderActions} userRole={role} userName={userName} aiInsights={userAiInsights} currentUser={currentUser} roleLoading={roleLoading} />; break;
+    case "ecos": body = <EcoList go={go} initialFilter={isApprover ? "Approval" : (v.filter ?? undefined)} onInspect={handleInspectEco} inspectedId={inspectedEcoId} railOpen={false} renderHeaderActions={renderHeaderActions} role={role} currentUserName={userName} roleLoading={roleLoading} />; break;
     case "eco": body = <EcoDetail id={v.id} go={go} initialTab={v.tab} renderHeaderActions={renderHeaderActions} role={role} currentUserName={userName} />; break;
     case "items": body = <ItemList go={go} railOpen={false} renderHeaderActions={renderHeaderActions} />; break;
     case "kits": body = <KitList go={go} renderHeaderActions={renderHeaderActions} />; break;

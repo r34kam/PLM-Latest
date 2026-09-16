@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 /* =========================== ECO MASTER ============================= */
 
-function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, renderHeaderActions, role = 'unknown', currentUserName = '' }: { go: any; initialFilter?: any; onInspect?: any; inspectedId?: any; railOpen?: boolean; renderHeaderActions?: () => React.ReactNode; role?: string; currentUserName?: string }) {
+function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, renderHeaderActions, role = 'unknown', currentUserName = '', roleLoading = false }: { go: any; initialFilter?: any; onInspect?: any; inspectedId?: any; railOpen?: boolean; renderHeaderActions?: () => React.ReactNode; role?: string; currentUserName?: string; roleLoading?: boolean }) {
   const isApproverRole = role === 'approver'
   // Approvers default to "Approval"; DC defaults to "Needs me"
   const [f, setF] = useState(initialFilter || (isApproverRole ? "Approval" : "Needs me"));
@@ -28,25 +28,27 @@ function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, 
 
   // Backend data
   const { data: allOrders, loading: ordersLoading } = useAllChangeOrders();
+  // For approvers, gate ALL rendering until identity is fully resolved
+  const identityPending = isApproverRole && (roleLoading || !currentUserName)
+  const isLoading = ordersLoading || identityPending
   const kpis = useMemo(() => deriveCoKpis(allOrders), [allOrders]);
 
   const isNeedsMe = (e: ChangeOrder) => e.awaitingMe || e.stage === "Rejected";
 
-  // For Approvers: show only ECOs where the current user is listed in the approvalsJson
-  // (as primary approver or in the others array), plus Rejected ones they acted on.
-  // Falls back to all Approval-stage ECOs when the username is not yet resolved.
+  // For Approvers: show only ECOs where the current user is listed in the approvalsJson.
+  // Returns empty until both identity (roleLoading=false, currentUserName set) and
+  // data are ready — no partial/fallback leaks.
   const visibleOrders = useMemo(() => {
     if (!isApproverRole) return allOrders
-    if (!currentUserName) {
-      return allOrders.filter((e) => e.stage === 'Approval' || e.stage === 'Rejected')
-    }
+    // Hold until identity is resolved — caller shows skeletons during this window
+    if (roleLoading || !currentUserName) return []
     return allOrders.filter((e) => {
       if (e.stage === 'Rejected') return true
       return e.approvals.some(
         (a) => a.approver === currentUserName || (a.others ?? []).includes(currentUserName)
       )
     })
-  }, [allOrders, isApproverRole, currentUserName])
+  }, [allOrders, isApproverRole, currentUserName, roleLoading])
 
   const stageStats: Record<string, number> = useMemo(() => {
     const map: Record<string, number> = {};
@@ -132,7 +134,7 @@ function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, 
         </div>
       ) : (
         <div className="grid4" data-test-id="eco-kpis">
-          {ordersLoading ? (
+          {isLoading ? (
             <>
               <Skeleton className="h-20 rounded-lg" data-test-id="eco-kpi-skeleton-1" />
               <Skeleton className="h-20 rounded-lg" data-test-id="eco-kpi-skeleton-2" />
@@ -253,7 +255,7 @@ function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, 
           </>} />
 
       <Card pad={false}>
-        {ordersLoading ? (
+        {isLoading ? (
           <div style={{ padding: "20px" }} data-test-id="eco-list-loading">
             {[1,2,3,4,5].map((i) => <Skeleton key={i} className="h-12 mb-2" />)}
           </div>
