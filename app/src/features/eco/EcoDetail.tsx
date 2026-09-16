@@ -151,6 +151,14 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
     try {
       const rejecterName = currentUserName || ME.name
       if (backendCo) {
+        // Mark only the rejecter's own entry as rejected; all others stay as-is
+        const updatedApprovals = backendCo.approvals.map((a) => {
+          const isThisUser = a.approver === rejecterName || (a.others ?? []).includes(rejecterName)
+          if (isThisUser) {
+            return { ...a, status: 'rejected' as const, signedAt: new Date().toLocaleString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit' }), comment: dcRejectReason.trim() }
+          }
+          return a
+        })
         const newHistoryEntry: CoHistoryEntry = {
           id: `h-${Date.now()}`,
           timestamp: new Date().toISOString(),
@@ -159,7 +167,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
         }
         await updateChangeOrder(backendCo.id, {
           stage: 'Rejected',
-          approvals: backendCo?.approvals ?? [],
+          approvals: updatedApprovals,
           rejectionReason: dcRejectReason.trim(),
           rejectionNotes: dcRejectNotes.trim(),
           rejectedBy: rejecterName,
@@ -177,27 +185,35 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
     }
   }
 
-  // DC Approve: mark DC's pending approval as approved, advance to Effective if all required roles done
+  // DC Approve: mark ONLY the entry whose approver/others matches the current user.
+  // Every other entry is preserved exactly as stored — no other row is touched.
   const handleDcApprove = async () => {
     if (!backendCo) { setModal(null); return }
     setIsDcApproving(true)
     try {
       const approverName = currentUserName || ME.name
       const now = new Date().toLocaleString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+      const matchedRole = backendCo.approvals.find(
+        (a) => a.approver === approverName || (a.others ?? []).includes(approverName)
+      )
+      // Touch only the matched entry; all others stay untouched
       const updatedApprovals = backendCo.approvals.map((a) => {
-        if (a.status === 'pending') {
-          return { ...a, status: 'approved' as const, signedAt: now, comment: dcApproveComment.trim() || '' }
+        const isThisUser = a.approver === approverName || (a.others ?? []).includes(approverName)
+        if (isThisUser && a.status === 'pending') {
+          return { ...a, status: 'approved' as const, signedAt: now, comment: dcApproveComment.trim() }
         }
         return a
       })
-      // Check if all required approvals are now done → advance to Effective
-      const allDone = updatedApprovals.filter((a) => a.req !== 'Comments only').every((a) => a.status !== 'pending')
+      // Advance to Effective only when ALL required roles (every stage) have decided
+      const allDone = updatedApprovals
+        .filter((a) => a.req !== 'Comments only')
+        .every((a) => a.status !== 'pending')
       const newStage = allDone ? 'Effective' : 'Approval'
       const newEntry: CoHistoryEntry = {
         id: `h-${Date.now()}`,
         timestamp: new Date().toISOString(),
         who: approverName,
-        action: `Approved \u2014 Stage ${backendCo.currentStageNum ?? 1}, Document Control${dcApproveComment.trim() ? `: "${dcApproveComment.trim()}"` : ''}${allDone ? ' \u2014 all stages complete, advanced to Effective' : ''}`,
+        action: `Approved \u2014 Stage ${matchedRole?.stage ?? backendCo.currentStageNum ?? 1}, ${matchedRole?.role ?? 'Document Control'}${dcApproveComment.trim() ? `: "${dcApproveComment.trim()}"` : ''}${allDone ? ' \u2014 all stages complete, advanced to Effective' : ''}`,
       }
       await updateChangeOrder(backendCo.id, {
         stage: newStage,
@@ -308,15 +324,26 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
     try {
       const rejecterName = currentUserName || ME.name
       if (backendCo) {
+        // Mark only the rejecter's own entry as rejected; all others stay as-is
+        const updatedApprovals = backendCo.approvals.map((a) => {
+          const isThisUser = a.approver === rejecterName || (a.others ?? []).includes(rejecterName)
+          if (isThisUser) {
+            return { ...a, status: 'rejected' as const, signedAt: new Date().toLocaleString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit' }), comment: rejectReason.trim() }
+          }
+          return a
+        })
+        const matchedRole = backendCo.approvals.find(
+          (a) => a.approver === rejecterName || (a.others ?? []).includes(rejecterName)
+        )
         const newHistoryEntry: CoHistoryEntry = {
           id: `h-${Date.now()}`,
           timestamp: new Date().toISOString(),
           who: rejecterName,
-          action: `Rejected — ${rejectReason.trim()}${rejectNotes.trim() ? `: "${rejectNotes.trim()}"` : ''}`,
+          action: `Rejected — Stage ${matchedRole?.stage ?? backendCo.currentStageNum ?? 1}, ${matchedRole?.role ?? 'Reviewer'}: "${rejectReason.trim()}"${rejectNotes.trim() ? ` — ${rejectNotes.trim()}` : ''}`,
         }
         await updateChangeOrder(backendCo.id, {
           stage: 'Rejected',
-          approvals: backendCo?.approvals ?? [],
+          approvals: updatedApprovals,
           rejectionReason: rejectReason.trim(),
           rejectionNotes: rejectNotes.trim(),
           rejectedBy: rejecterName,
