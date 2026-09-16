@@ -44,12 +44,12 @@ function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, 
     if (!isApproverRole) return allOrders
     // Hold until identity is resolved — caller shows skeletons during this window
     if (roleLoading || !currentUserName) return []
-    return allOrders.filter((e) => {
-      if (e.stage === 'Rejected') return true
-      return e.approvals.some(
+    return allOrders.filter((e) =>
+      e.creator === currentUserName ||
+      e.approvals.some(
         (a) => a.approver === currentUserName || (a.others ?? []).includes(currentUserName)
       )
-    })
+    )
   }, [allOrders, isApproverRole, currentUserName, roleLoading])
 
   const kpis = useMemo(() => deriveCoKpis(visibleOrders), [visibleOrders]);

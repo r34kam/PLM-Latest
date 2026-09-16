@@ -46,12 +46,12 @@ function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = ''
     if (!isApprover) return rawOrders
     // Hold until identity is resolved — no partial leaks
     if (roleLoading || !userName) return []
-    return rawOrders.filter((o) => {
-      if (o.stage === 'Rejected') return true
-      return o.approvals.some(
+    return rawOrders.filter((o) =>
+      o.creator === userName ||
+      o.approvals.some(
         (a) => a.approver === userName || (a.others ?? []).includes(userName)
       )
-    })
+    )
   }, [isApprover, rawOrders, userName, roleLoading]);
   const kpis = useMemo(() => deriveCoKpis(allOrders), [allOrders]);
   const awaiting = useMemo(
