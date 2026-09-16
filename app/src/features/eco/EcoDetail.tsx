@@ -14,7 +14,7 @@ import { ECO_010870_ITEMS, LC, ecoById, historyFor } from '@/domain/ecos'
 import { ROUTINGS, deriveApprovalState, notificationRecipientsFor } from '@/domain/routings'
 import { ME } from '@/domain/session'
 import { suppliersFor } from '@/domain/suppliers'
-import { useAllChangeOrders, useUpdateChangeOrder, type CoHistoryEntry } from '@/data/changeOrders'
+import { useAllChangeOrders, useUpdateChangeOrder, type CoHistoryEntry, type ApprovalEntry } from '@/data/changeOrders'
 import { useEcoComments, usePostEcoComment, type EcoCommentRecord } from '@/data/ecoComments'
 import { useUsers } from '@/data/admin'
 import { useExportEcoExcel } from '@/data/export'
@@ -129,6 +129,22 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
 
   /* ---- Approve / Reject for Approver role ---- */
   const updateChangeOrder = useUpdateChangeOrder()
+
+  /**
+   * Find the display name that actually appears in the approval entries for this user.
+   * The platform auth returns a username ("admin") which may differ from the display name
+   * stored in the approval list ("Hannerose Santiago"). We try currentUserName first,
+   * then ME.name, then fall back to currentUserName for the history entry author field.
+   */
+  const resolveApproverName = (approvals: ApprovalEntry[]): { approverName: string; matchedEntry: ApprovalEntry | undefined } => {
+    const candidates = [currentUserName, ME.name].filter(Boolean)
+    for (const name of candidates) {
+      const match = approvals.find((a) => a.approver === name || (a.others ?? []).includes(name))
+      if (match) return { approverName: name, matchedEntry: match }
+    }
+    // No match in approval list — use ME.name as identity for the history record author
+    return { approverName: ME.name || currentUserName, matchedEntry: undefined }
+  }
   const [approvalDone, setApprovalDone] = useState<'approved' | 'rejected' | null>(null)
   const [rejectModal, setRejectModal] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
@@ -149,8 +165,8 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
     if (!dcRejectReason.trim()) return
     setIsDcRejecting(true)
     try {
-      const rejecterName = currentUserName || ME.name
       if (backendCo) {
+        const { approverName: rejecterName } = resolveApproverName(backendCo.approvals)
         // Mark only the rejecter's own entry as rejected; all others stay as-is
         const updatedApprovals = backendCo.approvals.map((a) => {
           const isThisUser = a.approver === rejecterName || (a.others ?? []).includes(rejecterName)
@@ -191,11 +207,8 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
     if (!backendCo) { setModal(null); return }
     setIsDcApproving(true)
     try {
-      const approverName = currentUserName || ME.name
+      const { approverName, matchedEntry: matchedRole } = resolveApproverName(backendCo.approvals)
       const now = new Date().toLocaleString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit' })
-      const matchedRole = backendCo.approvals.find(
-        (a) => a.approver === approverName || (a.others ?? []).includes(approverName)
-      )
       // Touch only the matched entry; all others stay untouched
       const updatedApprovals = backendCo.approvals.map((a) => {
         const isThisUser = a.approver === approverName || (a.others ?? []).includes(approverName)
@@ -235,7 +248,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
     if (!backendCo) { setModal(null); return }
     setIsCompleting(true)
     try {
-      const approverName = currentUserName || ME.name
+      const { approverName } = resolveApproverName(backendCo.approvals)
       const today = new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' })
       const newEntry: CoHistoryEntry = {
         id: `h-${Date.now()}`,
@@ -262,7 +275,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
     if (!backendCo) { setModal(null); return }
     setIsWithdrawing(true)
     try {
-      const approverName = currentUserName || ME.name
+      const { approverName } = resolveApproverName(backendCo.approvals)
       const resetApprovals = backendCo.approvals.map((a) => ({
         ...a, status: 'pending' as const, signedAt: '', comment: '',
       }))
@@ -292,11 +305,13 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
     if (!backendCo) { setApprovalDone('approved'); return }
     setIsApproving(true)
     try {
-      const approverName = currentUserName || ME.name
-      // Mark the first pending approval entry matching this approver as approved
+      const { approverName, matchedEntry } = resolveApproverName(backendCo.approvals)
+      const now = new Date().toLocaleString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit' })
+      // Mark only the matched entry; all others untouched
       const updatedApprovals = backendCo.approvals.map((a) => {
-        if (a.status === 'pending' && (a.approver === approverName || a.others?.includes(approverName))) {
-          return { ...a, status: 'approved' as const, signedAt: new Date().toLocaleString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit' }) }
+        const isThisUser = a.approver === approverName || (a.others ?? []).includes(approverName)
+        if (isThisUser && a.status === 'pending') {
+          return { ...a, status: 'approved' as const, signedAt: now }
         }
         return a
       })
@@ -304,7 +319,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
         id: `h-${Date.now()}`,
         timestamp: new Date().toISOString(),
         who: approverName,
-        action: `Approved — Stage ${backendCo.currentStageNum ?? 1}, ${backendCo.approvals.find((a) => a.approver === approverName || a.others?.includes(approverName))?.role ?? 'Reviewer'}`,
+        action: `Approved — Stage ${matchedEntry?.stage ?? backendCo.currentStageNum ?? 1}, ${matchedEntry?.role ?? 'Reviewer'}`,
       }
       await updateChangeOrder(backendCo.id, {
         approvals: updatedApprovals,
@@ -322,8 +337,8 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
     if (!rejectReason.trim()) return
     setIsRejecting(true)
     try {
-      const rejecterName = currentUserName || ME.name
       if (backendCo) {
+        const { approverName: rejecterName, matchedEntry: matchedRole } = resolveApproverName(backendCo.approvals)
         // Mark only the rejecter's own entry as rejected; all others stay as-is
         const updatedApprovals = backendCo.approvals.map((a) => {
           const isThisUser = a.approver === rejecterName || (a.others ?? []).includes(rejecterName)
@@ -332,9 +347,6 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
           }
           return a
         })
-        const matchedRole = backendCo.approvals.find(
-          (a) => a.approver === rejecterName || (a.others ?? []).includes(rejecterName)
-        )
         const newHistoryEntry: CoHistoryEntry = {
           id: `h-${Date.now()}`,
           timestamp: new Date().toISOString(),
