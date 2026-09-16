@@ -31,6 +31,30 @@ function AdminNavBtn({ btnRef, active, onMouseEnter, onMouseLeave, onClick }: {
   );
 }
 
+function ItemsNavBtn({ btnRef, active, onMouseEnter, onMouseLeave, onClick }: {
+  btnRef: React.RefObject<HTMLButtonElement | null>;
+  active: boolean;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
+  onClick: () => void;
+}) {
+  const ItemsIcon = NAV[2].icon;
+  return (
+    <button
+      ref={btnRef}
+      className={`sideitem ${active ? 'on' : ''}`}
+      title="Items"
+      aria-label="Items"
+      data-test-id="nav-item-items-collapsed"
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      onClick={onClick}
+    >
+      <ItemsIcon size={16} />
+    </button>
+  );
+}
+
 function Nav({
   page,
   adminTab,
@@ -71,12 +95,17 @@ function Nav({
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [adminFlyoutOpen, setAdminFlyoutOpen] = useState(false);
   const [adminFlyoutPos, setAdminFlyoutPos] = useState({ top: 0, left: 0 });
+  const [itemsFlyoutOpen, setItemsFlyoutOpen] = useState(false);
+  const [itemsFlyoutPos, setItemsFlyoutPos] = useState({ top: 0, left: 0 });
   // Use a ref-based hover counter so enter/leave on EITHER the icon OR the fixed flyout
   // both contribute — only close when both are un-hovered.
   const adminHoverCount = useRef(0);
   const adminFlyoutTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const itemsHoverCount = useRef(0);
+  const itemsFlyoutTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const userBtnRef = useRef<HTMLButtonElement>(null);
   const adminBtnRef = useRef<HTMLButtonElement>(null);
+  const itemsBtnRef = useRef<HTMLButtonElement>(null);
   const logout = useLogout();
 
   const ADMIN_SUB_ITEMS = [
@@ -99,6 +128,22 @@ function Nav({
     if (adminFlyoutTimer.current) clearTimeout(adminFlyoutTimer.current);
     adminFlyoutTimer.current = setTimeout(() => {
       if (adminHoverCount.current === 0) setAdminFlyoutOpen(false);
+    }, 80);
+  }, []);
+
+  const handleItemsEnter = useCallback(() => {
+    if (itemsFlyoutTimer.current) clearTimeout(itemsFlyoutTimer.current);
+    itemsHoverCount.current += 1;
+    const rect = itemsBtnRef.current?.getBoundingClientRect();
+    if (rect) setItemsFlyoutPos({ top: rect.top, left: rect.right });
+    setItemsFlyoutOpen(true);
+  }, []);
+
+  const handleItemsLeave = useCallback(() => {
+    itemsHoverCount.current = Math.max(0, itemsHoverCount.current - 1);
+    if (itemsFlyoutTimer.current) clearTimeout(itemsFlyoutTimer.current);
+    itemsFlyoutTimer.current = setTimeout(() => {
+      if (itemsHoverCount.current === 0) setItemsFlyoutOpen(false);
     }, 80);
   }, []);
 
@@ -257,21 +302,33 @@ function Nav({
           count={role === 'approver' ? undefined : 22}
           label={role === 'approver' ? 'My changes' : (NAV[1].label as string)}
         />
-        <Item
-          {...NAV[2]}
-          active={page === "kits" || page === "parts"}
-          hasChevron={true}
-          chevronOpen={itemsMenuOpen || page === "kits" || page === "parts"}
-          onClick={() => {
-            if (mini) {
-              go({ page: "kits" });
-            } else {
+        {mini ? (
+          <div
+            onMouseEnter={handleItemsEnter}
+            onMouseLeave={handleItemsLeave}
+            style={{ position: 'relative' }}
+            data-test-id="items-flyout-group"
+          >
+            <ItemsNavBtn
+              btnRef={itemsBtnRef}
+              active={page === "kits" || page === "parts"}
+              onMouseEnter={handleItemsEnter}
+              onMouseLeave={handleItemsLeave}
+              onClick={() => { go({ page: "kits" }); try { navigate("/kits"); } catch (e) {} }}
+            />
+          </div>
+        ) : (
+          <Item
+            {...NAV[2]}
+            active={page === "kits" || page === "parts"}
+            hasChevron={true}
+            chevronOpen={itemsMenuOpen || page === "kits" || page === "parts"}
+            onClick={() => {
               setItemsMenuOpen((prev: boolean) => !prev);
-              // Always navigate to kits when clicking Items in expanded nav
               go({ page: "kits" });
-            }
-          }}
-        />
+            }}
+          />
+        )}
         {(itemsMenuOpen || page === "kits" || page === "parts") && !mini && (
           <div className="sidesubmenu" data-test-id="items-subnav">
             {[
@@ -343,6 +400,74 @@ function Nav({
           </>
         )}
       </nav>
+
+      {/* Items hover flyout — collapsed sidebar only */}
+      {mini && itemsFlyoutOpen && (
+        <div
+          role="menu"
+          data-test-id="items-flyout"
+          onMouseEnter={handleItemsEnter}
+          onMouseLeave={handleItemsLeave}
+          style={{
+            position: 'fixed',
+            top: itemsFlyoutPos.top,
+            left: itemsFlyoutPos.left,
+            zIndex: 9991,
+            background: '#ffffff',
+            borderRadius: 8,
+            border: '1px solid rgba(0,0,0,.08)',
+            boxShadow: '0 2px 8px rgba(0,0,0,.1), 0 8px 20px -4px rgba(0,0,0,.12)',
+            minWidth: 160,
+            padding: '4px 0',
+          }}
+        >
+          <div style={{
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: '0.07em',
+            color: '#94a3b8',
+            textTransform: 'uppercase',
+            padding: '6px 12px 4px',
+          }}>
+            Items
+          </div>
+          {[
+            { id: 'kits', label: 'Kits' },
+            { id: 'parts', label: 'Parts' },
+          ].map((sub) => {
+            const isSubActive = page === sub.id;
+            return (
+              <button
+                key={sub.id}
+                role="menuitem"
+                data-test-id={`items-flyout-${sub.id}`}
+                onClick={() => {
+                  setItemsFlyoutOpen(false);
+                  go({ page: sub.id });
+                  try { navigate(`/${sub.id}`); } catch (e) {}
+                }}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  padding: '6px 12px',
+                  background: isSubActive ? '#f1f5f9' : 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontSize: 13,
+                  fontWeight: isSubActive ? 600 : 400,
+                  color: isSubActive ? '#0f172a' : '#1e293b',
+                  textAlign: 'left',
+                  transition: 'background .1s',
+                }}
+                onMouseEnter={(e) => { if (!isSubActive) e.currentTarget.style.background = '#f8fafc'; }}
+                onMouseLeave={(e) => { if (!isSubActive) e.currentTarget.style.background = 'none'; }}
+              >
+                {sub.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Admin hover flyout — collapsed sidebar only */}
       {mini && adminFlyoutOpen && (
