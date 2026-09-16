@@ -1539,50 +1539,80 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                   );
                 })}
 
-                <div className="gatebar">
-                  <span className="gateline" />
-                  <span className="gatepill"><Clock size={12} />Stage 2 unlocks when every required role above has decided</span>
-                  <span className="gateline" />
-                </div>
+                {/* Stage 2 is complete when the CO has moved past Approval */}
+                {(() => {
+                  const isStage2Complete = eco.stage === 'Complete' || eco.stage === 'Effective';
+                  const dcGroupName = (ROUTINGS[eco.routing] || []).filter((r: any) => r.stage === 2).map((r: any) => r.g).join(", ") || "Document Control TPS – Livermore";
+                  const dcMembers = (ROUTINGS[eco.routing] || []).filter((r: any) => r.stage === 2)[0]?.members || [ME.name, "Adam Royce"];
+                  const DC_CHECKS: [string, boolean][] = [
+                    ["Redline matches the description on the summary page", true],
+                    ["Compliance tab reviewed for every item", true],
+                    ["Files and sourcing checked, or confirmed not required", true],
+                    ["Supplier access and notifications set", true],
+                    ["Inventory disposition filled for all items", isStage2Complete],
+                  ];
+                  return (
+                    <>
+                      <div className="gatebar">
+                        <span className="gateline" />
+                        <span className="gatepill">
+                          {isStage2Complete
+                            ? <><Check size={12} />Stage 1 complete — Stage 2 signed off</>
+                            : <><Clock size={12} />Stage 2 unlocks when every required role above has decided</>}
+                        </span>
+                        <span className="gateline" />
+                      </div>
 
-                {/* ---- section two: document control ---- */}
-                <div className="sectionhead">
-                  <span className="secnum">2</span>
-                  <div><b>Document control check</b>
-                    <div className="mini" style={{ marginTop: 2 }}>The gatekeeper. Verifies the redline against the description, then
-                      releases the change to the effective stage and the SAP write-back.</div></div>
-                  <Chip k="gray" icon={Clock}>Locked</Chip>
-                </div>
+                      {/* ---- section two: document control ---- */}
+                      <div className="sectionhead">
+                        <span className="secnum">2</span>
+                        <div><b>Document control check</b>
+                          <div className="mini" style={{ marginTop: 2 }}>The gatekeeper. Verifies the redline against the description, then
+                            releases the change to the effective stage and the SAP write-back.</div></div>
+                        {isStage2Complete
+                          ? <Chip k="ok" icon={Check}>Completed</Chip>
+                          : <Chip k="gray" icon={Clock}>Locked</Chip>}
+                      </div>
 
-                <div className="apgroup locked">
-                  <div className="apghead">
-                    <span className="apgdot"><Clock size={10} color={T.g500} /></span>
-                    <b>{(ROUTINGS[eco.routing] || []).filter((r: any) => r.stage === 2).map((r: any) => r.g).join(", ") || "Document Control TPS – Livermore"}</b>
-                    <Chip k="blue">One or more</Chip>
-                    <div className="row" style={{ marginLeft: "auto", gap: 5 }}>
-                      {((ROUTINGS[eco.routing] || []).filter((r: any) => r.stage === 2)[0]?.members || [ME.name, "Adam Royce"])
-                        .map((m: any) => <span key={m} className="ava2 sm" title={m}>{initials(m)}</span>)}
-                    </div>
-                  </div>
-                  <div style={{ padding: 14 }}>
-                    <div className="checklist">
-                      {[["Redline matches the description on the summary page", true],
-                        ["Compliance tab reviewed for every item", true],
-                        ["Files and sourcing checked, or confirmed not required", true],
-                        ["Supplier access and notifications set", true],
-                        ["Inventory disposition filled for all items", false]].map(([l, ok2]: any) => (
-                        <label key={l} className="row" style={{ gap: 9 }}>
-                          <input type="checkbox" defaultChecked={ok2} disabled />
-                          <span style={{ fontSize: 13, color: ok2 ? T.g900 : T.g600 }}>{l}</span>
-                        </label>
-                      ))}
-                    </div>
-                    <div className="bet" style={{ marginTop: 14 }}>
-                      <span className="mini">Four of five checks pass. The last one opens once stage 1 clears.</span>
-                      <button className="btn ok" disabled><Check size={13} />Sign off and release</button>
-                    </div>
-                  </div>
-                </div>
+                      <div className={`apgroup ${isStage2Complete ? "done" : "locked"}`}>
+                        <div className="apghead">
+                          <span className="apgdot">
+                            {isStage2Complete
+                              ? <Check size={11} color="#fff" strokeWidth={3.5} />
+                              : <Clock size={10} color={T.g500} />}
+                          </span>
+                          <b>{dcGroupName}</b>
+                          <Chip k="blue">One or more</Chip>
+                          {isStage2Complete && <Chip k="ok">Signed off</Chip>}
+                          <div className="row" style={{ marginLeft: "auto", gap: 5 }}>
+                            {dcMembers.map((m: any) => (
+                              <span key={m} className={`ava2 sm ${isStage2Complete ? "ok" : ""}`} title={m}>{initials(m)}</span>
+                            ))}
+                          </div>
+                        </div>
+                        <div style={{ padding: 14 }}>
+                          <div className="checklist">
+                            {DC_CHECKS.map(([l, ok2]) => (
+                              <label key={l} className="row" style={{ gap: 9 }}>
+                                <input type="checkbox" checked={ok2} readOnly disabled />
+                                <span style={{ fontSize: 13, color: ok2 ? T.g900 : T.g600 }}>{l}</span>
+                              </label>
+                            ))}
+                          </div>
+                          <div className="bet" style={{ marginTop: 14 }}>
+                            {isStage2Complete
+                              ? <span className="mini" style={{ color: T.ok }}>All checks passed — change released to Effective.</span>
+                              : <span className="mini">Four of five checks pass. The last one opens once stage 1 clears.</span>}
+                            <button className="btn ok" disabled>
+                              <Check size={13} />
+                              {isStage2Complete ? "Signed off and released" : "Sign off and release"}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
 
                 <div className="aibox">
                   <div className="bet">
