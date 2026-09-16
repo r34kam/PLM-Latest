@@ -303,13 +303,15 @@ function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = ''
                     </div>
                   )}
 
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 2 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
                     <button
-                      className="btn sm"
+                      className="btn pri sm"
                       onClick={() => go({ page: "eco", id: insight.ecoId })}
                       data-test-id={`ai-insight-action-${insight.id}`}
+                      style={{ display: "flex", alignItems: "center", gap: 5 }}
                     >
                       Open {insight.ecoId}
+                      <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2 6h8M7 3l3 3-3 3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
                     </button>
                   </div>
                 </div>
