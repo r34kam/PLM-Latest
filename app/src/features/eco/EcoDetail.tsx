@@ -92,6 +92,8 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
   const APPROVALS = approvalState.roles;
   const HISTORY = historyFor(eco);
   const rejected = eco.stage === "Rejected";
+  // Withdrawn-for-rework: stage is Open but rejection context still present
+  const withdrawnForRework = eco.stage === "Open" && !!eco.rejectedBy;
   const TABS = ["Summary", "Items", "Files", "Approvals", "Supplier Access", "Notifications", "History"];
   const [tab, setTab] = useState(
     initialTab && TABS.includes(initialTab)
@@ -610,12 +612,12 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
       <WhereThisStandsBand
         eco={eco}
         rejectedNotice={
-          rejected ? (
+          (rejected || withdrawnForRework) ? (
             <div
               style={{
                 padding: "14px 16px",
-                background: "#FFF5F5",
-                color: T.bad,
+                background: withdrawnForRework ? "#FFFBEB" : "#FFF5F5",
+                color: withdrawnForRework ? "#92400E" : T.bad,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
@@ -624,19 +626,22 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
               data-test-id="rejection-ai-insight-band"
             >
               <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                <AlertTriangle size={18} color={T.bad} style={{ flexShrink: 0, marginTop: 2 }} />
+                <AlertTriangle size={18} color={withdrawnForRework ? "#D97706" : T.bad} style={{ flexShrink: 0, marginTop: 2 }} />
                 <div>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: T.bad }}>
-                    {eco.rejectedBy
-                      ? `Rejected by ${eco.rejectedBy}.`
-                      : 'Rejected by Carol Nosworthy (Quality Assurance) on 09/06/2026.'}
+                  <div style={{ fontWeight: 700, fontSize: 13, color: withdrawnForRework ? "#92400E" : T.bad }}>
+                    {withdrawnForRework
+                      ? `Withdrawn for rework — was rejected by ${eco.rejectedBy || 'a reviewer'}.`
+                      : eco.rejectedBy
+                        ? `Rejected by ${eco.rejectedBy}.`
+                        : 'Rejected by Carol Nosworthy (Quality Assurance) on 09/06/2026.'}
                   </div>
-                  <div style={{ marginTop: 3, fontSize: 13, color: "#486581" }}>
+                  <div style={{ marginTop: 3, fontSize: 13, color: withdrawnForRework ? "#78350F" : "#486581" }}>
                     {(eco.rejectionReason || eco.rejectionNotes) ? (
                       <>
                         {eco.rejectionReason && <strong>{eco.rejectionReason}</strong>}
                         {eco.rejectionReason && eco.rejectionNotes && ' — '}
                         {eco.rejectionNotes && `"${eco.rejectionNotes}"`}
+                        {withdrawnForRework && <em style={{ marginLeft: 8, opacity: 0.75 }}> Address this before resubmitting.</em>}
                       </>
                     ) : (
                       '“Deviation evidence not attached. Reactivation needs the last inspection report before I can sign.”'
