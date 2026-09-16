@@ -510,17 +510,6 @@ function Admin({
                     <Zap size={13} />
                     Save &amp; publish
                   </button>
-                  <button
-                    type="button"
-                    className="btn"
-                    onClick={async () => {
-                      await saveCurrentForm();
-                      setActiveFormId(null);
-                      setActiveFormMeta(null);
-                    }}
-                  >
-                    Done
-                  </button>
                 </div>
               </div>
 
