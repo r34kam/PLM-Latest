@@ -149,7 +149,7 @@ function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, 
       </div>
 
       <Toolbar q={q} setQ={setQ} placeholder="Search change or title"
-          segs={filters} seg={f} setSeg={(newF: any) => { setF(newF); }} count={count}
+          segs={filters} seg={f} setSeg={(newF: any) => { setF(newF); setSelectedStages([]); }} count={count}
           right={<>
             <div style={{ position: "relative" }}>
               <button
