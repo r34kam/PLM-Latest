@@ -168,6 +168,7 @@ function TopconPLM({
 
   // Separate modal open state — keeps the background page unchanged
   const [ecoNewOpen, setEcoNewOpen] = useState(false);
+  const [ecoNewParams, setEcoNewParams] = useState<any>(null);
   const [itemNewOpen, setItemNewOpen] = useState(false);
 
   // Pages Approvers are allowed to navigate to
@@ -176,7 +177,7 @@ function TopconPLM({
     // Approvers can only navigate to their allowed pages
     if (isApprover && next?.page && !APPROVER_ALLOWED_PAGES.has(next.page)) return
     // Creation modals open as overlays — don't change the background page
-    if (next?.page === 'eco-new') { setV(next); setEcoNewOpen(true); return; }
+    if (next?.page === 'eco-new') { setEcoNewParams(next); setEcoNewOpen(true); return; }
     if (next?.page === 'item-new') { setItemNewOpen(true); return; }
     // Close modals when navigating elsewhere (e.g. after successful creation)
     setEcoNewOpen(false);
@@ -264,14 +265,14 @@ function TopconPLM({
         {ecoNewOpen && (
           <EcoNew
             go={go}
-            startStep={v.step !== undefined ? v.step : 0}
+            startStep={ecoNewParams?.step !== undefined ? ecoNewParams.step : 0}
             initialApprovalMode={initialApprovalMode}
-            initialManualItems={v.initialManualItems ?? initialManualItems}
-            initialTitle={v.initialTitle}
-            initialDesc={v.initialDesc}
-            initialCat={v.initialCat}
+            initialManualItems={ecoNewParams?.initialManualItems ?? initialManualItems}
+            initialTitle={ecoNewParams?.initialTitle}
+            initialDesc={ecoNewParams?.initialDesc}
+            initialCat={ecoNewParams?.initialCat}
             isModal
-            onClose={() => setEcoNewOpen(false)}
+            onClose={() => { setEcoNewOpen(false); setEcoNewParams(null); }}
           />
         )}
         {itemNewOpen && !isApprover && (

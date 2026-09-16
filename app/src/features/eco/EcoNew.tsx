@@ -152,10 +152,35 @@ function EcoNew({
   const [pickQ, setPickQ] = useState("");
 
   // Kit-first BOM redline state
-  const [itemMode, setItemMode] = useState<'manual' | 'instructions' | null>(null);
+  // If items were pre-seeded (e.g. from inactivation), skip the "choose method" screen
+  const [itemMode, setItemMode] = useState<'manual' | 'instructions' | null>(
+    initialManualItems && initialManualItems.length > 0 ? 'manual' : null
+  );
   const [instructionsParsing, setInstructionsParsing] = useState(false);
 
-  const [kits, setKits] = useState<KitItem[]>([]);
+  const [kits, setKits] = useState<KitItem[]>(() => {
+    if (!initialManualItems || initialManualItems.length === 0) return [];
+    // Convert each pre-selected item into a KitItem with a DELETE BomEdit
+    return initialManualItems.map((m: any) => ({
+      pn: m.pn,
+      name: m.name,
+      rev: m.rev ?? 'A',
+      cat: m.cat ?? 'HARDWARE',
+      phase: m.phase ?? 'In Production',
+      currentRev: m.rev ?? 'A',
+      newRev: '',
+      editMode: 'inline' as const,
+      bomFile: null,
+      bomEdits: [{
+        id: `be-${m.pn}-inact`,
+        type: 'DELETE' as const,
+        pn: m.pn,
+        name: m.name,
+        qty: '1',
+        newValue: 'Inactivation',
+      }],
+    }));
+  });
   const [kitPickOpen, setKitPickOpen] = useState(false);
   const [kitPickQ, setKitPickQ] = useState("");
   const [expandedKits, setExpandedKits] = useState<Record<string, boolean>>({});
