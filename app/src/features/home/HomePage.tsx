@@ -248,77 +248,100 @@ function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = ''
 
         {/* Right column: AI Insight panel */}
         <div style={{ display: "flex", flexDirection: "column", gap: 16, minWidth: 0 }}>
-          <Card
-            title="AI Insights"
-            right={aiInsights.length > 0 ? <Chip k="vio" icon={Sparkles}>{aiInsights.length} Active</Chip> : null}
-            style={{ minWidth: 0 }}
-          >
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }} data-test-id="ai-insights-list">
+          <section className="card" style={{ minWidth: 0 }} data-test-id="ai-insights-card">
+            {/* Header row */}
+            <div style={{ padding: "14px 18px", display: "flex", alignItems: "center", gap: 10, borderBottom: `1px solid ${T.g200}` }} data-test-id="ai-insights-header">
+              <span style={{ width: 32, height: 32, borderRadius: 8, background: T.vioBg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }} aria-hidden="true">
+                <Sparkles size={15} style={{ color: T.vio }} />
+              </span>
+              <span style={{ fontSize: 15, fontWeight: 600, color: T.g900, flex: 1 }}>AI insights</span>
+              {aiInsights.length > 0 && (
+                <span className="chip c-vio" style={{ fontWeight: 600, fontSize: 11 }} data-test-id="ai-insights-count">
+                  {aiInsights.length} active
+                </span>
+              )}
+            </div>
+
+            {/* Insight rows */}
+            <div data-test-id="ai-insights-list">
               {aiInsights.length === 0 && (
-                <div style={{ padding: "24px 0", textAlign: "center", color: T.g500, fontSize: 13 }} data-test-id="ai-insights-empty">
+                <div style={{ padding: "28px 20px", textAlign: "center", color: T.g500, fontSize: 13 }} data-test-id="ai-insights-empty">
                   No AI insights for your account right now.
                 </div>
               )}
-              {aiInsights.map((insight) => (
-                <div
-                  key={insight.id}
-                  style={{
-                    background: "linear-gradient(to right, rgba(5, 90, 175, 0.05), rgba(5, 90, 175, 0.015)), #ffffff",
-                    borderRadius: 8,
-                    border: "none",
-                    boxShadow: "0 1px 2px rgba(2,42,66,.04), 0 8px 20px -12px rgba(2,42,66,.18)",
-                    padding: "11px 13px",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 6,
-                    minWidth: 0,
-                  }}
-                  data-test-id={`ai-insight-${insight.id}`}
-                >
-                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
-                    <div style={{ fontSize: 13, color: T.g900, lineHeight: 1.45, flex: 1, minWidth: 0 }} data-test-id={`ai-insight-lead-${insight.id}`}>
-                      {insight.lead}
-                    </div>
+              {aiInsights.map((insight, idx) => {
+                const isExpanded = !!expandedInsights[insight.id]
+                const dotColor: Record<string, string> = {
+                  bad: T.bad, warn: T.warn, ok: T.ok, blue: T.brand, vio: T.vio, teal: T.teal,
+                }
+                const dot = dotColor[insight.tone] ?? T.g400
+                const isLast = idx === aiInsights.length - 1
+                return (
+                  <div
+                    key={insight.id}
+                    style={{ borderBottom: isLast ? "none" : `1px solid ${T.g200}` }}
+                    data-test-id={`ai-insight-${insight.id}`}
+                  >
+                    {/* Title row — always visible */}
                     <button
                       type="button"
                       onClick={() => toggleInsight(insight.id)}
-                      style={{ background: "transparent", border: "none", padding: "2px", cursor: "pointer", color: T.g500, borderRadius: 4, flexShrink: 0, display: "flex", alignItems: "center", marginTop: 1 }}
-                      title={expandedInsights[insight.id] ? "Collapse details" : "Expand details"}
-                      aria-label="Toggle details"
+                      aria-expanded={isExpanded}
                       data-test-id={`ai-insight-toggle-${insight.id}`}
+                      style={{
+                        width: "100%", display: "flex", alignItems: "flex-start", gap: 12,
+                        padding: "14px 18px", background: "transparent", border: "none",
+                        cursor: "pointer", textAlign: "left",
+                      }}
                     >
-                      {expandedInsights[insight.id] ? <ChevronUp size={13} strokeWidth={2} /> : <ChevronDown size={13} strokeWidth={2} />}
+                      {/* Status dot */}
+                      <span style={{ width: 10, height: 10, borderRadius: "50%", background: dot, flexShrink: 0, marginTop: 4 }} aria-hidden="true" />
+
+                      {/* Title + sub */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13.5, fontWeight: 600, color: T.g900, lineHeight: 1.45 }} data-test-id={`ai-insight-lead-${insight.id}`}>
+                          {insight.lead}
+                        </div>
+                        {insight.sub && (
+                          <div style={{ marginTop: 4, fontSize: 12, color: T.g600, display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }} data-test-id={`ai-insight-sub-${insight.id}`}>
+                            <span style={{ color: T.brand, fontWeight: 600, cursor: "pointer" }}
+                              onClick={(e) => { e.stopPropagation(); go({ page: "eco", id: insight.ecoId }) }}
+                            >{insight.ecoId}</span>
+                            <span style={{ color: T.g400 }}>·</span>
+                            <span>{insight.sub}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Chevron */}
+                      <span style={{ color: T.g500, flexShrink: 0, marginTop: 2, display: "flex", alignItems: "center" }}>
+                        {isExpanded ? <ChevronUp size={15} strokeWidth={2} /> : <ChevronDown size={15} strokeWidth={2} />}
+                      </span>
                     </button>
+
+                    {/* Expanded body */}
+                    {isExpanded && (
+                      <div style={{ padding: "0 18px 16px 40px" }} data-test-id={`ai-insight-detail-${insight.id}`}>
+                        <p style={{ fontSize: 13, color: T.g700, lineHeight: 1.6, margin: "0 0 14px 0" }}>
+                          {insight.detail}
+                        </p>
+                        <button
+                          type="button"
+                          className="btn pri sm"
+                          onClick={() => go({ page: "eco", id: insight.ecoId })}
+                          data-test-id={`ai-insight-action-${insight.id}`}
+                          style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+                        >
+                          Open {insight.ecoId}
+                          <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2 6h8M7 3l3 3-3 3" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        </button>
+                      </div>
+                    )}
                   </div>
-
-                  {expandedInsights[insight.id] && (
-                    <div style={{ fontSize: 11, color: T.g700, lineHeight: 1.45, background: "rgba(0,95,168,0.04)", borderRadius: 6, padding: "5px 8px" }} data-test-id={`ai-insight-detail-${insight.id}`}>
-                      {insight.detail}
-                    </div>
-                  )}
-
-                  {insight.sub && (
-                    <div style={{ fontSize: 11, color: T.g600, lineHeight: 1.4 }} data-test-id={`ai-insight-sub-${insight.id}`}>
-                      {insight.sub}
-                    </div>
-                  )}
-
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
-                    <button
-                      className="btn pri sm"
-                      onClick={() => go({ page: "eco", id: insight.ecoId })}
-                      data-test-id={`ai-insight-action-${insight.id}`}
-                      style={{ display: "flex", alignItems: "center", gap: 5 }}
-                    >
-                      Open {insight.ecoId}
-                      <svg width="11" height="11" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M2 6h8M7 3l3 3-3 3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                    </button>
-                  </div>
-                </div>
-              ))}
-
+                )
+              })}
             </div>
-          </Card>
+          </section>
         </div>
       </div>
       <style>{`@media(max-width:1100px){.homegrid{grid-template-columns:1fr !important}}`}</style>
