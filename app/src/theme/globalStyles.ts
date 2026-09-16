@@ -8,9 +8,9 @@ html,body,#root{margin:0;padding:0;background:${T.brand};min-height:100vh}
   background:${T.brand};min-height:100vh;-webkit-font-smoothing:antialiased}
 .tp button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
 .tp a{color:${T.brand};text-decoration:none;cursor:pointer}
-.tp h1{font-size:24px;font-weight:600;margin:0;letter-spacing:-.018em;line-height:1.25}
-.tp h2{font-size:15px;font-weight:600;margin:0;letter-spacing:-.008em;line-height:1.35}
-.tp h3{font-size:13px;font-weight:600;margin:0;line-height:1.35}
+.tp h1{font-size:24px;font-weight:600;margin:0;letter-spacing:-.018em;line-height:1.25;text-transform:capitalize}
+.tp h2{font-size:15px;font-weight:600;margin:0;letter-spacing:-.008em;line-height:1.35;text-transform:capitalize}
+.tp h3{font-size:13px;font-weight:600;margin:0;line-height:1.35;text-transform:capitalize}
 .tp :focus-visible{outline:2px solid ${T.b400};outline-offset:2px;border-radius:6px}
 .sub{color:#486581;font-size:11px}
 .mut{color:#7993a8}
@@ -308,7 +308,7 @@ textarea.inp{height:auto;padding:8px 10px;line-height:1.5;resize:vertical}
 .modal-wizard-content{flex:1;min-width:0;overflow-y:auto;padding:32px 36px;background:#f5f7fa}
 .modal-wizard-head{display:flex;align-items:center;justify-content:space-between;padding:18px 24px;
   border-bottom:1px solid #e2e8f0;flex-shrink:0}
-.modal-wizard-head h2{margin:0;font-size:16px;font-weight:700;color:#0a2233}
+.modal-wizard-head h2{margin:0;font-size:16px;font-weight:700;color:#0a2233;text-transform:capitalize}
 .modal-wizard-foot{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;
   background:#f8fafc;border-top:1px solid #e2e8f0;flex-shrink:0;border-radius:0 0 14px 14px}
 
@@ -318,7 +318,7 @@ textarea.inp{height:auto;padding:8px 10px;line-height:1.5;resize:vertical}
   box-shadow:0 20px 60px rgba(2,42,66,.25);border:none}
 .modalhead{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 20px;
   background:#F8FAFC;border-bottom:1px solid #E2E8F0;border-radius:12px 12px 0 0}
-.modalhead h2{margin:0;font-size:15px;font-weight:600;color:#0a2233}
+.modalhead h2{margin:0;font-size:15px;font-weight:600;color:#0a2233;text-transform:capitalize}
 .modalbody{padding:20px;overflow-y:auto;flex:1;background:#ffffff}
 .modalinnercard{background:#F8FAFC;border-radius:10px;padding:14px 16px;border:none;margin-bottom:14px}
 .modalfoot{display:flex;align-items:center;padding:12px 20px;background:#F8FAFC;border-top:1px solid #E2E8F0;border-radius:0 0 12px 12px}
