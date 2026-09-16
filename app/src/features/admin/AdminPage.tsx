@@ -211,8 +211,25 @@ function Admin({
     <div className="stack" data-test-id="admin-page">
       <div className="bet">
         <div>
-          <div className="crumb">Admin / {tab === "Users" ? "Users" : tab === "Roles" ? "Roles" : tab === "Routings" ? "Routings" : "Form Builder"}</div>
-          <h1>{tab === "Users" ? "Users" : tab === "Roles" ? "Roles" : tab === "Routings" ? "Routings" : "Form Builder"}</h1>
+          <div className="crumb">
+            {(tab === "Form Builder" || tab === "Change form builder") && activeFormId ? (
+              <>
+                Admin /&nbsp;
+                <button
+                  type="button"
+                  onClick={async () => { await saveCurrentForm(); setActiveFormId(null); setActiveFormMeta(null); }}
+                  style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit', textDecoration: 'underline', font: 'inherit', fontSize: 'inherit' }}
+                  data-test-id="breadcrumb-form-builder-link"
+                >
+                  Form Builder
+                </button>
+                &nbsp;/ {activeFormMeta?.name || backendForms.find((f: any) => f.id === activeFormId)?.name || 'Form'}
+              </>
+            ) : (
+              <>Admin / {tab === "Users" ? "Users" : tab === "Roles" ? "Roles" : tab === "Routings" ? "Routings" : "Form Builder"}</>
+            )}
+          </div>
+          <h1>{tab === "Users" ? "Users" : tab === "Roles" ? "Roles" : tab === "Routings" ? "Routings" : activeFormId ? (activeFormMeta?.name || backendForms.find((f: any) => f.id === activeFormId)?.name || "Form Customizer") : "Form Builder"}</h1>
           <div className="sub" style={{ marginTop: 4 }}>
             {tab === "Users" && "Manage organization members, partner access, and platform permissions"}
             {tab === "Roles" && "Define cross-functional approval roles and assign responsible reviewers"}
