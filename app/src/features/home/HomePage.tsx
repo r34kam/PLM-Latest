@@ -37,10 +37,11 @@ function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = ''
 
   const isApprover = userRole === 'approver'
 
-  // Backend change orders — approvers see only their engaged COs
+  // Backend change orders — approvers see all Approval-stage ECOs (any may need their sign-off)
+  // plus Rejected ones. awaitingMe is a DC flag, not per-user, so it cannot reliably gate visibility.
   const { data: rawOrders, loading: ordersLoading } = useAllChangeOrders();
   const allOrders = useMemo(
-    () => isApprover ? rawOrders.filter((o) => o.awaitingMe) : rawOrders,
+    () => isApprover ? rawOrders.filter((o) => o.stage === 'Approval' || o.stage === 'Rejected') : rawOrders,
     [isApprover, rawOrders]
   );
   const kpis = useMemo(() => deriveCoKpis(allOrders), [allOrders]);
