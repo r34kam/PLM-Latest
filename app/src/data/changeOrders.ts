@@ -295,6 +295,10 @@ export function useCreateChangeOrder() {
 
     if (newId) {
       try {
+        // Step 2: patch the blob fields the CREATE node won't accept.
+        // Also re-send the core identity fields (coId, title, stage) and approvalsJson
+        // so the record is self-consistent even if the platform's UPDATE semantics
+        // ever differ from a strict merge — a duplicate write of the same value is harmless.
         await mutation.mutateAsync({
           data: {
             id: UPDATE.id,
@@ -304,6 +308,32 @@ export function useCreateChangeOrder() {
               object_type: CO,
               recordId: newId,
               rawPayload: {
+                // Core identity — written again so a replace-semantic update is safe
+                coId: co.coId,
+                title: co.title,
+                type: co.type,
+                cat: co.cat,
+                stage: co.stage,
+                div: co.div,
+                site: co.site,
+                routing: co.routing,
+                creator: co.creator,
+                dc: co.dc,
+                created: co.created,
+                submitted: co.submitted,
+                submitter: co.submitter,
+                priority: co.priority,
+                itemCount: co.itemCount,
+                modCount: co.modCount,
+                desc: co.desc,
+                redline: co.redline,
+                notes: co.notes,
+                pnsJson: co.pnsJson,
+                awaitingMe: co.awaitingMe ?? false,
+                effectiveDate: co.effectiveDate ?? '',
+                completedDate: co.completedDate ?? '',
+                // Blob fields (registered separately)
+                approvalsJson: JSON.stringify({ entries: co.approvals ?? [] }),
                 ecoItemsJson: JSON.stringify(co.ecoItems ?? []),
                 historyJson: JSON.stringify(co.history ?? []),
                 extraNotifyJson: JSON.stringify(co.extraNotifyNames ?? []),
