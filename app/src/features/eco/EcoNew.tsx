@@ -322,14 +322,15 @@ function EcoNew({
   };
 
   /* ---- Kit helpers ---- */
-  const addKit = (it: any) => {
+  const addKit = (it: any, opts: { skipPreseed?: boolean } = {}) => {
     if (kits.some((k) => k.pn === it.pn)) return;
     const nextRevCode = it.rev.length === 1 && it.rev >= "A" && it.rev < "Z"
       ? String.fromCharCode(it.rev.charCodeAt(0) + 1)
       : `${it.rev}+1`;
-    // Pre-seed bomEdits with the kit's current BOM children so they appear immediately
-    const children = bomFor(it.pn);
-    const seededEdits: BomEdit[] = children.map((child: any) => ({
+    // Pre-seed bomEdits with the kit's current BOM children so the user can see
+    // and adjust them — but skip when called from automation extraction so only
+    // the instruction-derived edits appear.
+    const seededEdits: BomEdit[] = opts.skipPreseed ? [] : bomFor(it.pn).map((child: any) => ({
       id: `seed-${child.pn}-${Date.now()}`,
       type: 'ADD' as BomEditType,
       pn: child.pn,
@@ -367,7 +368,7 @@ function EcoNew({
       };
 
       if (result.kitNumber) {
-        addKit(kitRecord);
+        addKit(kitRecord, { skipPreseed: true });
 
         // Add each extracted item as a BOM edit on the kit
         result.items.forEach((item) => {
@@ -1206,7 +1207,7 @@ function EcoNew({
                               <button
                                 type="button"
                                 className={`eco-edit-mode-card${kit.editMode === 'file' ? ' selected' : ''}`}
-                                onClick={() => updateKit(kit.pn, { editMode: 'file' })}
+                                onClick={() => updateKit(kit.pn, { editMode: 'file', bomEdits: [], bomFile: null })}
                                 data-test-id={`eco-kit-mode-file-${kit.pn}`}
                                 style={{
                                   borderWidth: "0.5px",
