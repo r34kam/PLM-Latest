@@ -551,7 +551,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                 </button>
               </>
             )}
-            {isApproverRole && approvalDone === 'approved' && (
+            {isApproverRole && (approvalDone === 'approved' || (approvalDone === null && hasCurrentUserApproved)) && (
               <span className="chip c-ok" style={{ fontSize: 13, padding: "6px 12px" }} data-test-id="approver-approved-badge">
                 <Check size={13} />Your approval recorded
               </span>
