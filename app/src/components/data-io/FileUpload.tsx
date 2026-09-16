@@ -183,12 +183,32 @@ function FileUpload({
                   <FileIcon name={f.name} uploading={isUp} error={isErr} />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-foreground truncate">{f.name}</div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
-                      {isUp ? "Uploading " + (f.progress ?? 0) + "%" : isErr ? (f.error ?? "Upload error") : fmtSize(f.size)}
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className={cn("text-xs", isErr ? "text-destructive" : isUp ? "text-primary font-medium" : "text-muted-foreground")}>
+                        {isUp ? `Uploading ${f.progress ?? 0}%` : isErr ? (f.error ?? "Upload error") : fmtSize(f.size)}
+                      </span>
                     </div>
                     {isUp && (
-                      <div className="h-1 mt-1.5 rounded-full bg-muted overflow-hidden">
-                        <div className="h-full bg-primary rounded-full transition-all" style={{ width: (f.progress ?? 0) + "%" }} data-test-id={"staged-file-progress-" + f.id} />
+                      <div className="mt-2 relative h-1.5 rounded-full overflow-hidden" style={{ background: "color-mix(in srgb, var(--primary), transparent 85%)" }} data-test-id={"staged-file-progress-" + f.id}>
+                        {/* Filled portion */}
+                        <div
+                          className="absolute inset-y-0 left-0 rounded-full transition-all duration-300"
+                          style={{
+                            width: (f.progress ?? 0) + "%",
+                            background: "linear-gradient(90deg, var(--primary) 0%, color-mix(in srgb, var(--primary), #818cf8 60%) 100%)",
+                            boxShadow: "0 0 6px color-mix(in srgb, var(--primary), transparent 40%)",
+                          }}
+                        />
+                        {/* Shimmer sweep */}
+                        <div
+                          className="absolute inset-y-0 left-0 rounded-full pointer-events-none"
+                          style={{
+                            width: (f.progress ?? 0) + "%",
+                            background: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.38) 50%, transparent 100%)",
+                            backgroundSize: "200% 100%",
+                            animation: "shimmer 1.4s ease-in-out infinite",
+                          }}
+                        />
                       </div>
                     )}
                   </div>
