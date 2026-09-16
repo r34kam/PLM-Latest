@@ -12,6 +12,7 @@ import { Tabs } from '@/components/primitives/Tabs'
 import { BOM_1003140 } from '@/domain/boms'
 import { deriveAffectedAssemblies, deriveInventoryDisposition } from '@/domain/ecoDerivations'
 import { ECO_010870_ITEMS, LC, ecoById, historyFor } from '@/domain/ecos'
+import { ASSEMBLIES } from '@/domain/catalog'
 import { ROUTINGS, deriveApprovalState, notificationRecipientsFor } from '@/domain/routings'
 import { ME } from '@/domain/session'
 import { suppliersFor } from '@/domain/suppliers'
@@ -117,6 +118,9 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
 
   const [itemSub, setItemSub] = useState("Modifications");
   const [activeRedlineItem, setActiveRedlineItem] = useState<any>(null);
+  const [addItemOpen, setAddItemOpen] = useState(false);
+  const [addItemQ, setAddItemQ] = useState('');
+  const [addItemQty, setAddItemQty] = useState('1 EA');
   const [modPage, setModPage] = useState(1);
   const [selectedPns, setSelectedPns] = useState<any[]>([]);
 
@@ -138,6 +142,49 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
 
   /* ---- Approve / Reject for Approver role ---- */
   const updateChangeOrder = useUpdateChangeOrder()
+
+  /** Add a BOM kit item to the active redline kit and write back to the backend. */
+  const handleAddBomItem = async (item: any, qty: string) => {
+    if (!backendCo) return
+    const kitPn = activeRedlineItem?.pn ?? eco.ecoItems?.[0]?.pn
+    const updatedItems = eco.ecoItems.map((ki: any) => {
+      if (ki.pn !== kitPn) return ki
+      const already = ki.bomEdits.some((e: any) => e.pn === item.pn && e.type === 'ADD')
+      if (already) return ki
+      return {
+        ...ki,
+        bomEdits: [
+          ...ki.bomEdits,
+          { id: `add-${item.pn}-${Date.now()}`, type: 'ADD', pn: item.pn, name: item.name, qty, newValue: '' },
+        ],
+      }
+    })
+    try {
+      await updateChangeOrder(backendCo.id, { ecoItems: updatedItems } as any, backendCo)
+      toast.success(`${item.pn} added to BOM redline`)
+    } catch {
+      toast.error('Failed to add item')
+    }
+    setAddItemOpen(false)
+    setAddItemQ('')
+    setAddItemQty('1 EA')
+  }
+
+  /** Remove a BOM edit row from the active redline kit and write back to the backend. */
+  const handleDeleteBomEdit = async (editId: string) => {
+    if (!backendCo) return
+    const kitPn = activeRedlineItem?.pn ?? eco.ecoItems?.[0]?.pn
+    const updatedItems = eco.ecoItems.map((ki: any) => {
+      if (ki.pn !== kitPn) return ki
+      return { ...ki, bomEdits: ki.bomEdits.filter((e: any) => e.id !== editId) }
+    })
+    try {
+      await updateChangeOrder(backendCo.id, { ecoItems: updatedItems } as any, backendCo)
+      toast.success('Item removed from BOM redline')
+    } catch {
+      toast.error('Failed to remove item')
+    }
+  }
 
   /**
    * Find the display name that actually appears in the approval entries for this user.
@@ -1038,6 +1085,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                   if (!kit) return null;
                   // Return empty array (not null) when kit exists but has no BOM edits
                   return kit.bomEdits.map((e: any) => ({
+                    id: e.id,
                     pn: e.pn, rev: "—", name: e.name, cat: "—", phase: "—",
                     qty: e.qty || "—",
                     st: e.type === "ADD" ? "add" : e.type === "DELETE" ? "del" : "upd",
@@ -1080,50 +1128,167 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                   return "No BOM edits recorded";
                 })();
 
+                // Kit items already in the redline — used to exclude from the picker
+                const existingPns = new Set(bomRows.map((r: any) => r.pn))
+                // Filtered catalog list for the add-item modal
+                const allKitItems: any[] = ASSEMBLIES as any[]
+                const filteredKitItems = allKitItems.filter((it: any) =>
+                  !existingPns.has(it.pn) &&
+                  (addItemQ === '' ||
+                    it.pn.toLowerCase().includes(addItemQ.toLowerCase()) ||
+                    it.name.toLowerCase().includes(addItemQ.toLowerCase()))
+                )
+
                 return (
-                  <Card title={redlineTitle} sub={redlineSub} pad={false}
-                    right={<Chip k="gray">Editable by requester and document control</Chip>}
-                    data-test-id="bom-redline-card">
-                    <table className="tbl" data-test-id="bom-redline-table">
-                      <thead><tr><th>#</th><th>Item number</th><th>Item name</th><th>Qty</th><th>Change</th></tr></thead>
-                      <tbody>
-                        {bomRows.map((b2: any, k: any) => (
-                          <React.Fragment key={`${b2.pn}-${k}`}>
-                            <tr data-test-id={`bom-redline-row-${b2.pn}`} style={b2.warn ? { background: T.warnBg } : undefined}>
-                              <td>{k + 1}</td>
-                              <td className={b2.st === "del" ? "del" : "pn"}>
-                                {b2.warn && <AlertCircle size={11} style={{ color: T.warn, marginRight: 4, verticalAlign: 'middle' }} />}
-                                {b2.pn}
-                              </td>
-                              <td className={b2.st === "del" ? "del" : b2.st === "add" ? "add" : ""}>
-                                {b2.name}
-                                {b2.op === "UPDATE_DESC" && b2.newValue && (
-                                  <span className="mut" style={{ marginLeft: 8 }}>→ {b2.newValue}</span>
-                                )}
-                              </td>
-                              <td>{b2.qty}</td>
-                              <td>
-                                {b2.st === "add" ? <Chip k="ok">Added</Chip>
-                                  : b2.st === "del" ? <Chip k="bad">Removed</Chip>
-                                  : b2.op === "UPDATE_DESC" ? <Chip k="blue">Desc updated</Chip>
-                                  : b2.op === "UPDATE_QTY" ? <Chip k="warn">Qty updated</Chip>
-                                  : <span className="mut">Unchanged</span>}
-                              </td>
-                            </tr>
-                            {b2.warn && (
-                              <tr data-test-id={`bom-redline-warn-${b2.pn}`}>
-                                <td colSpan={5} style={{ padding: '4px 10px 8px', background: T.warnBg }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: T.warn, fontSize: 11 }}>
-                                    <AlertCircle size={11} />{b2.warn}
-                                  </div>
+                  <>
+                    {/* ── Add Item modal ─────────────────────────────────── */}
+                    {addItemOpen && (
+                      <div
+                        style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,.35)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        onClick={() => setAddItemOpen(false)}
+                        data-test-id="add-bom-item-overlay"
+                      >
+                        <div
+                          className="card"
+                          style={{ width: 560, maxHeight: '80vh', display: 'flex', flexDirection: 'column', padding: 0, borderRadius: 12, overflow: 'hidden' }}
+                          onClick={(e) => e.stopPropagation()}
+                          data-test-id="add-bom-item-modal"
+                        >
+                          {/* Header */}
+                          <div style={{ padding: '16px 20px 12px', borderBottom: `1px solid ${T.g200}`, display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: 700, fontSize: 15 }}>Add item to BOM</div>
+                              <div className="sub" style={{ marginTop: 2 }}>Select a kit or assembly to add as an ADD edit on this redline</div>
+                            </div>
+                            <button
+                              className="btn gh"
+                              style={{ padding: '4px 8px' }}
+                              onClick={() => { setAddItemOpen(false); setAddItemQ('') }}
+                              data-test-id="add-bom-item-close"
+                            >✕</button>
+                          </div>
+                          {/* Search + qty */}
+                          <div style={{ padding: '12px 20px', borderBottom: `1px solid ${T.g200}`, display: 'flex', gap: 8 }}>
+                            <input
+                              className="inp"
+                              style={{ flex: 1 }}
+                              placeholder="Search by PN or name…"
+                              value={addItemQ}
+                              onChange={(e) => setAddItemQ(e.target.value)}
+                              autoFocus
+                              data-test-id="add-bom-item-search"
+                            />
+                            <input
+                              className="inp"
+                              style={{ width: 90 }}
+                              placeholder="Qty"
+                              value={addItemQty}
+                              onChange={(e) => setAddItemQty(e.target.value)}
+                              data-test-id="add-bom-item-qty"
+                            />
+                          </div>
+                          {/* Item list */}
+                          <div style={{ flex: 1, overflowY: 'auto' }} data-test-id="add-bom-item-list">
+                            {filteredKitItems.length === 0 ? (
+                              <div style={{ padding: 24, textAlign: 'center', color: T.g500, fontSize: 13 }}>
+                                {addItemQ ? 'No items match your search' : 'All items are already in the redline'}
+                              </div>
+                            ) : (
+                              <table className="tbl">
+                                <thead><tr><th>Item number</th><th>Name</th><th>Phase</th><th></th></tr></thead>
+                                <tbody>
+                                  {filteredKitItems.slice(0, 80).map((it: any) => (
+                                    <tr key={it.pn} data-test-id={`add-bom-item-row-${it.pn}`}>
+                                      <td className="pn">{it.pn}</td>
+                                      <td>{it.name}</td>
+                                      <td>{it.phase}</td>
+                                      <td style={{ textAlign: 'right' }}>
+                                        <button
+                                          className="btn sm pri"
+                                          onClick={() => handleAddBomItem(it, addItemQty || '1 EA')}
+                                          data-test-id={`add-bom-item-select-${it.pn}`}
+                                        >Add</button>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* ── BOM Redline card ───────────────────────────────── */}
+                    <Card title={redlineTitle} sub={redlineSub} pad={false}
+                      right={
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <Chip k="gray">Editable by requester and document control</Chip>
+                          {backendCo && (
+                            <button
+                              className="btn sm pri"
+                              style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+                              onClick={() => setAddItemOpen(true)}
+                              data-test-id="bom-redline-add-item-btn"
+                            >
+                              <Plus size={13} />Add item
+                            </button>
+                          )}
+                        </div>
+                      }
+                      data-test-id="bom-redline-card">
+                      <table className="tbl" data-test-id="bom-redline-table">
+                        <thead><tr><th>#</th><th>Item number</th><th>Item name</th><th>Qty</th><th>Change</th><th></th></tr></thead>
+                        <tbody>
+                          {bomRows.map((b2: any, k: any) => (
+                            <React.Fragment key={`${b2.pn}-${k}`}>
+                              <tr data-test-id={`bom-redline-row-${b2.pn}`} style={b2.warn ? { background: T.warnBg } : undefined}>
+                                <td>{k + 1}</td>
+                                <td className={b2.st === "del" ? "del" : "pn"}>
+                                  {b2.warn && <AlertCircle size={11} style={{ color: T.warn, marginRight: 4, verticalAlign: 'middle' }} />}
+                                  {b2.pn}
+                                </td>
+                                <td className={b2.st === "del" ? "del" : b2.st === "add" ? "add" : ""}>
+                                  {b2.name}
+                                  {b2.op === "UPDATE_DESC" && b2.newValue && (
+                                    <span className="mut" style={{ marginLeft: 8 }}>→ {b2.newValue}</span>
+                                  )}
+                                </td>
+                                <td>{b2.qty}</td>
+                                <td>
+                                  {b2.st === "add" ? <Chip k="ok">Added</Chip>
+                                    : b2.st === "del" ? <Chip k="bad">Removed</Chip>
+                                    : b2.op === "UPDATE_DESC" ? <Chip k="blue">Desc updated</Chip>
+                                    : b2.op === "UPDATE_QTY" ? <Chip k="warn">Qty updated</Chip>
+                                    : <span className="mut">Unchanged</span>}
+                                </td>
+                                <td style={{ textAlign: 'right', width: 36 }}>
+                                  {backendCo && b2.id && (
+                                    <button
+                                      className="btn gh sm"
+                                      style={{ padding: '2px 6px', color: '#dc2626' }}
+                                      onClick={() => handleDeleteBomEdit(b2.id)}
+                                      title="Remove from redline"
+                                      data-test-id={`bom-redline-delete-${b2.pn}`}
+                                    ><Trash2 size={12} /></button>
+                                  )}
                                 </td>
                               </tr>
-                            )}
-                          </React.Fragment>
-                        ))}
-                      </tbody>
-                    </table>
-                  </Card>
+                              {b2.warn && (
+                                <tr data-test-id={`bom-redline-warn-${b2.pn}`}>
+                                  <td colSpan={6} style={{ padding: '4px 10px 8px', background: T.warnBg }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: T.warn, fontSize: 11 }}>
+                                      <AlertCircle size={11} />{b2.warn}
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
+                          ))}
+                        </tbody>
+                      </table>
+                    </Card>
+                  </>
                 );
               })()}
 

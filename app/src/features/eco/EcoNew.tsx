@@ -613,10 +613,8 @@ function EcoNew({
         <button
           className="btn gh"
           onClick={() => toast.info("Draft saved")}
-          data-test-id="eco-wizard-save-draft-btn"
-          style={{
-            overflow: "hidden"
-          }}>Save draft</button>
+          data-test-id="eco-wizard-save-draft-btn-removed"
+          style={{ display: 'none' }}>Save draft</button>
         {i < 3 && (
           <button className="btn pri" onClick={next}
             disabled={(i === 0 && !isGeneralFilled) || (i === 1 && ecoItems.length === 0) || (i === 2 && !mode)}
@@ -2100,9 +2098,7 @@ function EcoNew({
             </span>
           )}
 
-          <button className="btn gh" onClick={() => toast.info("Draft saved")} data-test-id="eco-wizard-save-draft-btn">
-            Save draft
-          </button>
+          {/* Save draft removed — no draft state persisted */}
 
           {/* Steps 0–2: Continue advances the wizard */}
           {i < 3 && (
