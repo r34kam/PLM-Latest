@@ -52,7 +52,7 @@ function KitRow({ it, go }: { it: any; go: any }) {
           </span>
         </td>
         <td style={{ whiteSpace: 'nowrap' }}>
-          <a className="pn" onClick={(e) => { e.stopPropagation(); go({ page: 'item', id: it.pn }) }}>{it.pn}</a>
+          <a className="pn" onClick={(e) => { e.stopPropagation(); go({ page: 'item', id: it.pn, from: 'kits' }) }}>{it.pn}</a>
         </td>
         <td>{it.rev}</td>
         <td style={{ maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={it.name}>{it.name}</td>

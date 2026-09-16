@@ -66,7 +66,7 @@ function KitRow({ it, go }: { it: any; go: any }) {
         <td style={{ whiteSpace: 'nowrap' }}>
           <a
             className="pn"
-            onClick={(e) => { e.stopPropagation(); go({ page: 'item', id: it.pn }) }}
+            onClick={(e) => { e.stopPropagation(); go({ page: 'item', id: it.pn, from: 'kits' }) }}
             data-test-id={`kit-pn-link-${it.pn}`}
           >
             {it.pn}

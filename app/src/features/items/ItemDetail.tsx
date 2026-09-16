@@ -17,7 +17,7 @@ import { Ban, Bell, CheckCircle2, ChevronRight, FileText, Layers, Link2, Loader2
 import React, { useState } from 'react'
 import { toast } from 'sonner'
 
-function ItemDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: any; initialTab?: string; renderHeaderActions?: () => React.ReactNode }) {
+function ItemDetail({ id, go, initialTab, renderHeaderActions, from }: { id: any; go: any; initialTab?: string; renderHeaderActions?: () => React.ReactNode; from?: string }) {
   // Load item from backend by part number; fall back to the static ITEMS array for
   // walkthrough data that depends on relationships not yet stored in the backend.
   const itemFromBackend = useItemByPn(id);
@@ -171,7 +171,12 @@ function ItemDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: 
   return (
     <div className="stack" data-test-id="item-detail-page">
       <div>
-        <div className="crumb"><a onClick={() => go({ page: "items" })}>Items</a><ChevronRight size={11} />{it.pn}</div>
+        <div className="crumb" data-test-id="item-detail-breadcrumb">
+          <a onClick={() => go({ page: from ?? "kits" })} data-test-id="item-detail-back-link">
+            {from === "parts" ? "Parts" : "Kits"}
+          </a>
+          <ChevronRight size={11} />{it.pn}
+        </div>
         <div className="bet">
           <div className="row" style={{ gap: 10 }}>
             <h1>{it.pn}</h1>{phaseChip(it.phase)}
@@ -262,7 +267,7 @@ function ItemDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: 
                           {backendBomItems.map((b: any, k: any) => (
                             <tr key={b.id} data-test-id={`bom-item-row-${b.id}`}>
                               <td>{k + 1}</td>
-                              <td><a className="pn" onClick={() => go({ page: "item", id: b.pn })}>{b.pn}</a></td>
+                              <td><a className="pn" onClick={() => go({ page: "item", id: b.pn, from: from ?? "kits" })}>{b.pn}</a></td>
                               <td>{b.name}</td>
                               <td className="sub">{b.cat}</td>
                               <td>{b.qty}</td>
@@ -304,7 +309,7 @@ function ItemDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: 
                           {bomChildren.map((b: any, k: number) => (
                             <tr key={b.pn + k}>
                               <td>{k + 1}</td>
-                              <td><a className="pn" onClick={() => go({ page: "item", id: b.pn })}>{b.pn}{b.rev ? ` rev ${b.rev}` : ""}</a></td>
+                              <td><a className="pn" onClick={() => go({ page: "item", id: b.pn, from: from ?? "kits" })}>{b.pn}{b.rev ? ` rev ${b.rev}` : ""}</a></td>
                               <td>{b.name}</td>
                               <td className="sub">{b.cat}</td>
                               <td>{phaseChip(b.phase)}</td>
@@ -327,7 +332,7 @@ function ItemDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: 
                             {bomChildren.map((b: any, k: number) => (
                               <tr key={b.pn + k}>
                                 <td>{k + 1}</td>
-                                <td><a className="pn" onClick={() => go({ page: "item", id: b.pn })}>{b.pn}{b.rev ? ` rev ${b.rev}` : ""}</a></td>
+                                <td><a className="pn" onClick={() => go({ page: "item", id: b.pn, from: from ?? "kits" })}>{b.pn}{b.rev ? ` rev ${b.rev}` : ""}</a></td>
                                 <td>{b.name}</td>
                                 <td className="sub">{b.cat}</td>
                                 <td>{phaseChip(b.phase)}</td>
@@ -357,7 +362,7 @@ function ItemDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: 
                             return (
                               <tr key={b.pn + k}>
                                 <td>{k + 1}</td>
-                                <td><a className="pn" onClick={() => go({ page: "item", id: b.pn })}>{b.pn}</a></td>
+                                <td><a className="pn" onClick={() => go({ page: "item", id: b.pn, from: from ?? "kits" })}>{b.pn}</a></td>
                                 <td>{b.name}</td>
                                 <td>{b.qty || "1 EA"}</td>
                                 <td style={{ textAlign: "right" }}>${unit.toFixed(2)}</td>
@@ -527,7 +532,7 @@ function ItemDetail({ id, go, initialTab, renderHeaderActions }: { id: any; go: 
                       <tbody>
                         {parents.map((pa: any) => (
                           <tr key={pa.pn}>
-                            <td><a className="pn" onClick={() => go({ page: "item", id: pa.pn })}>{pa.pn}</a></td>
+                            <td><a className="pn" onClick={() => go({ page: "item", id: pa.pn, from: from ?? "kits" })}>{pa.pn}</a></td>
                             <td>{pa.name}</td><td className="sub">{pa.cat}</td>
                             <td>{(bomFor(pa.pn).find((x: any) => x.pn === it.pn) || {}).qty || "1 EA"}</td>
                             <td>{phaseChip(pa.phase)}</td><td><Chip k={pa.div === "AG" ? "teal" : "gray"}>{pa.div}</Chip></td>

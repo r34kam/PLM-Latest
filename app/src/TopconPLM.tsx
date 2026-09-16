@@ -219,7 +219,7 @@ function TopconPLM({
     case "items": body = <ItemList go={go} railOpen={false} renderHeaderActions={renderHeaderActions} />; break;
     case "kits": body = <KitList go={go} renderHeaderActions={renderHeaderActions} />; break;
     case "parts": body = <PartsList renderHeaderActions={renderHeaderActions} />; break;
-    case "item": body = <ItemDetail id={v.id} go={go} initialTab={v.tab} renderHeaderActions={renderHeaderActions} />; break;
+    case "item": body = <ItemDetail id={v.id} go={go} initialTab={v.tab} renderHeaderActions={renderHeaderActions} from={v.from} />; break;
     case "inactivate": body = <Inactivate go={go} id={v.id} renderHeaderActions={renderHeaderActions} />; break;
     case "admin": body = !isApprover ? <Admin initialTab={v.tab || "Users"} go={go} renderHeaderActions={renderHeaderActions} /> : <HomePage go={go} renderHeaderActions={renderHeaderActions} />; break;
     case "reports": body = <Reports renderHeaderActions={renderHeaderActions} />; break;
