@@ -33,9 +33,9 @@ function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = ''
   const groupLabel = currentUser?.group ?? ''
   const siteLabel = currentUser?.site ?? ''
   const subLine = [dateStr, timeStr, groupLabel, siteLabel].filter(Boolean).join(' · ')
-  const [selectedHomeStage, setSelectedHomeStage] = useState("Awaiting me");
-
-  const isApprover = userRole === 'approver'
+    const isApprover = userRole === 'approver'
+  // Approvers start on Approval tab; DC starts on Awaiting me
+  const [selectedHomeStage, setSelectedHomeStage] = useState(isApprover ? "Approval" : "Awaiting me");
 
   // Backend change orders — approvers see all Approval-stage ECOs (any may need their sign-off)
   // plus Rejected ones. awaitingMe is a DC flag, not per-user, so it cannot reliably gate visibility.
@@ -81,16 +81,23 @@ function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = ''
     ];
   }, [allOrders]);
 
-  const homeStages = useMemo(() => [
-    { key: "Awaiting me", label: "Awaiting me", count: awaiting.length },
-    { key: "Open", label: "Open", count: kpis.open },
-    { key: "Submit", label: "Submit", count: kpis.submit },
-    { key: "Approval", label: "Approval", count: kpis.approval },
-    { key: "Effective", label: "Effective", count: kpis.effective },
-    { key: "Complete", label: "Complete", count: kpis.complete },
-    { key: "Rejected", label: "Rejected", count: kpis.rejected },
-    { key: "All", label: "All", count: kpis.total },
-  ], [kpis, awaiting]);
+  const homeStages = useMemo(() => isApprover
+    ? [
+        { key: "Approval", label: "Approval", count: kpis.approval },
+        { key: "Rejected", label: "Rejected", count: kpis.rejected },
+        { key: "All", label: "All", count: kpis.total },
+      ]
+    : [
+        { key: "Awaiting me", label: "Awaiting me", count: awaiting.length },
+        { key: "Open", label: "Open", count: kpis.open },
+        { key: "Submit", label: "Submit", count: kpis.submit },
+        { key: "Approval", label: "Approval", count: kpis.approval },
+        { key: "Effective", label: "Effective", count: kpis.effective },
+        { key: "Complete", label: "Complete", count: kpis.complete },
+        { key: "Rejected", label: "Rejected", count: kpis.rejected },
+        { key: "All", label: "All", count: kpis.total },
+      ],
+  [isApprover, kpis, awaiting]);
 
   const currentFilteredList = useMemo(() => {
     if (selectedHomeStage === "Awaiting me") return awaiting;

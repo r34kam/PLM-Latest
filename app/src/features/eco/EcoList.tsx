@@ -14,8 +14,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, renderHeaderActions, role = 'unknown', currentUserName = '' }: { go: any; initialFilter?: any; onInspect?: any; inspectedId?: any; railOpen?: boolean; renderHeaderActions?: () => React.ReactNode; role?: string; currentUserName?: string }) {
   const isApproverRole = role === 'approver'
-  // Approvers always see only "Needs me" — filter tab is locked
-  const [f, setF] = useState(initialFilter || "Needs me");
+  // Approvers default to "Approval"; DC defaults to "Needs me"
+  const [f, setF] = useState(initialFilter || (isApproverRole ? "Approval" : "Needs me"));
   const [q, setQ] = useState("");
   const [view, setView] = useState("table");
   const [filterOpen, setFilterOpen] = useState(false);
@@ -23,8 +23,8 @@ function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, 
     initialFilter && (CO_STAGES as readonly string[]).includes(initialFilter) ? [initialFilter] : []
   );
   const [ecoPage, setEcoPage] = useState(0);
-  // Approvers only see "Needs me"; DC sees all filters
-  const filters = isApproverRole ? ["Needs me"] : ["Needs me", "Open", "All"];
+  // Approvers see Approval first, then All; DC sees the full set
+  const filters = isApproverRole ? ["Approval", "All"] : ["Needs me", "Open", "All"];
 
   // Backend data
   const { data: allOrders, loading: ordersLoading } = useAllChangeOrders();
@@ -54,12 +54,14 @@ function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, 
     if (x === "Needs me") return needsMeCount;
     if (x === "Open") return openCount;
     if (x === "All") return visibleOrders.length;
+    if (x === "Approval") return stageStats["Approval"] ?? 0;
     return stageStats[x] ?? 0;
   };
 
   const rows = useMemo(() => visibleOrders.filter((e) => {
     if (f === "Needs me" && !isNeedsMe(e)) return false;
     if (f === "Open" && e.stage === "Complete") return false;
+    if (f === "Approval" && e.stage !== "Approval") return false;
     if (selectedStages.length > 0 && !selectedStages.includes(e.stage)) return false;
     if (q !== "" && !(e.coId + e.title + e.creator).toLowerCase().includes(q.toLowerCase())) return false;
     return true;
