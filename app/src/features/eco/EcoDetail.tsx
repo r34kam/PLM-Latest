@@ -67,6 +67,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
         // Always null-out the static affectedAssembly so the BOM Redline tab
         // reads only from ecoItems (the real data saved at creation time).
         affectedAssembly: null,
+        affectedAssemblies: backendCo.affectedAssemblies ?? [],
       }
     : { ...staticEco, ecoItems: [] as any[], comments: [] as any[], rejectionReason: '', rejectionNotes: '', rejectedBy: '', history: [] as CoHistoryEntry[], extraNotifyNames: [] as string[] };
   // Use real persisted approvals from backend when available; fall back to derived for static ECOs.
@@ -1125,14 +1126,10 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
               })()}
 
               {itemSub === "Affected Assemblies" && (() => {
-                const isECO010870 = eco.id === "ECO-010870";
-
-                // Derive affected assemblies: whereUsed on the kit being redlined (affectedAssembly.pn),
-                // or fall back to each pn on the ECO.
-                const aa = eco.affectedAssembly;
-                const changedPns: string[] = aa
-                  ? [aa.pn]
-                  : eco.pns && eco.pns.length > 0 ? eco.pns : ["1003140-01"];
+                // For backend COs use the persisted affectedAssemblies (computed at creation).
+                // For static demo ECOs fall back to the live whereUsed derivation.
+                const backendRows = (eco as any).affectedAssemblies as import('@/data/changeOrders').AffectedAssemblyRow[] | undefined;
+                const isBackendCo = !!backendCo;
 
                 type AffectedRow = {
                   parentPn: string;
@@ -1144,55 +1141,35 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                   impact: string;
                 };
 
-                const derivedRows: AffectedRow[] = [];
-                const seen = new Set<string>();
-                for (const changedPn of changedPns) {
-                  const parents = whereUsed(changedPn).filter(Boolean);
-                  for (const parent of parents) {
-                    if (!parent) continue;
-                    const key = `${parent.pn}-${changedPn}`;
-                    if (seen.has(key)) continue;
-                    seen.add(key);
-                    // Annotate with contextual impact text
-                    const impact = parent.phase === "Discontinued" || parent.phase === "Obsolete"
-                      ? "Discontinued — no action needed"
-                      : changedPn === "9060-1319"
-                      ? "Work instruction still references the removed tape"
-                      : `Inherits rev change — verify no open orders`;
-                    derivedRows.push({
-                      parentPn: parent.pn,
-                      parentName: parent.name,
-                      containsPn: changedPn,
-                      level: 1,
-                      phase: parent.phase,
-                      div: (parent as any).div || "CO",
-                      impact,
-                    });
+                // For static ECOs only: derive live from whereUsed
+                const liveRows: AffectedRow[] = [];
+                if (!isBackendCo) {
+                  const aa = eco.affectedAssembly;
+                  const changedPns: string[] = aa
+                    ? [aa.pn]
+                    : eco.pns && eco.pns.length > 0 ? eco.pns : [];
+                  const seen = new Set<string>();
+                  for (const changedPn of changedPns) {
+                    for (const parent of whereUsed(changedPn).filter(Boolean)) {
+                      if (!parent) continue;
+                      const key = `${parent.pn}-${changedPn}`;
+                      if (seen.has(key)) continue;
+                      seen.add(key);
+                      const impact = parent.phase === "Discontinued" || parent.phase === "Obsolete"
+                        ? "Discontinued — no action needed"
+                        : `Inherits rev change — verify no open orders`;
+                      liveRows.push({ parentPn: parent.pn, parentName: parent.name, containsPn: changedPn, level: 1, phase: parent.phase, div: (parent as any).div || "CO", impact });
+                    }
                   }
                 }
 
-                // Fallback to curated rows when derived data has no results (for static ECOs)
-                // Use the affectedAssembly pn when building the containsPn reference
-                const kitPn = aa?.pn ?? "1003140-01";
-                const staticRows: AffectedRow[] = isECO010870
-                  ? [
-                      { parentPn: "1021200-83", parentName: "RECEIVER, RL-H5A 1021200-83", containsPn: kitPn, level: 1, phase: "Discontinued", div: "AG", impact: "Discontinued — no action needed" },
-                      { parentPn: "1007886-02", parentName: "ASSY, GNSS ANTENNA MOUNT", containsPn: kitPn, level: 1, phase: "Discontinued", div: "AG", impact: "Obsolete cascade applied" },
-                      { parentPn: "1029732-01", parentName: "FC-5000/SC5000 BATTERY", containsPn: kitPn, level: 2, phase: "Discontinued", div: "AG", impact: "Discontinued — no action needed" },
-                    ]
-                  : [
-                      { parentPn: "1021200-83", parentName: "RECEIVER, RL-H5A 1021200-83", containsPn: kitPn, level: 1, phase: "In Production", div: "AG", impact: `Inherits rev ${aa?.toRev ?? "C"} — no action needed` },
-                      { parentPn: "1007886-02", parentName: "ASSY, GNSS ANTENNA MOUNT", containsPn: kitPn, level: 1, phase: "In Production", div: "CO", impact: "Work instruction still references the removed component" },
-                      { parentPn: "01-080401-03", parentName: "ASSY, RECEIVER SGR1 (SDF)", containsPn: kitPn, level: 2, phase: "Discontinued", div: "AG", impact: "Discontinued — no action needed" },
-                    ];
-
-                const affRows = derivedRows.length > 0 ? derivedRows : staticRows;
+                const affRows: AffectedRow[] = isBackendCo ? (backendRows ?? []) : liveRows;
                 const hasWorkInstructionWarning = affRows.some((r) => r.impact.includes("still references"));
 
                 return (
                   <>
                     <div className="sub">
-                      Parent assemblies that contain {aa ? <><b>{aa.pn}</b> ({aa.name})</> : "an item on this change"} — derived from the live BOM.
+                      Parent assemblies that contain an item on this change — computed at submission from the live BOM.
                       These assemblies are not being redlined, but they inherit the revision result.
                     </div>
                     {affRows.length === 0 ? (

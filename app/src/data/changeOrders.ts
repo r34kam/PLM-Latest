@@ -59,6 +59,7 @@ export type ChangeOrder = {
   rejectedBy: string          // name of person who rejected
   history: CoHistoryEntry[]         // parsed from historyJson — audit trail
   extraNotifyNames: string[]        // parsed from extraNotifyJson — manually added notification recipients
+  affectedAssemblies: AffectedAssemblyRow[]  // parsed from affectedAssembliesJson — computed at CO creation
 }
 
 /** One kit/assembly added to the ECO during creation, with its BOM edits. */
@@ -94,6 +95,17 @@ export type CoHistoryEntry = {
   timestamp: string  // ISO string
   who: string
   action: string     // e.g. "Change created", "Approved — Stage 1, Construction Engineering", "Rejected"
+}
+
+/** One row in the Affected Assemblies tab — computed at CO creation from whereUsed on each kit. */
+export type AffectedAssemblyRow = {
+  parentPn: string
+  parentName: string
+  containsPn: string
+  level: number
+  phase: string
+  div: string
+  impact: string
 }
 
 export type NewChangeOrder = Omit<ChangeOrder, 'id'>
@@ -188,6 +200,7 @@ function flatten(raw: any): ChangeOrder {
 
     history: parseJsonSafe<CoHistoryEntry[]>(p.historyJson, []),
     extraNotifyNames: parseJsonSafe<string[]>(p.extraNotifyJson, []),
+    affectedAssemblies: parseJsonSafe<AffectedAssemblyRow[]>(p.affectedAssembliesJson, []),
   }
 }
 
@@ -337,6 +350,7 @@ export function useCreateChangeOrder() {
                 ecoItemsJson: JSON.stringify(co.ecoItems ?? []),
                 historyJson: JSON.stringify(co.history ?? []),
                 extraNotifyJson: JSON.stringify(co.extraNotifyNames ?? []),
+                affectedAssembliesJson: JSON.stringify(co.affectedAssemblies ?? []),
                 currentStageNum: co.currentStageNum ?? 1,
               },
             },
@@ -396,6 +410,7 @@ export function useUpdateChangeOrder() {
           ecoItems: current.ecoItems,
           history: current.history,
           extraNotifyNames: current.extraNotifyNames,
+          affectedAssemblies: current.affectedAssemblies,
           rejectionReason: current.rejectionReason,
           rejectionNotes: current.rejectionNotes,
           rejectedBy: current.rejectedBy,
@@ -405,7 +420,7 @@ export function useUpdateChangeOrder() {
 
     // Destructure the array/rejection fields that need special serialization
     const {
-      approvals, ecoItems, comments, history, extraNotifyNames,
+      approvals, ecoItems, comments, history, extraNotifyNames, affectedAssemblies,
       rejectionReason, rejectionNotes, rejectedBy,
       ...rest
     } = co
@@ -422,6 +437,7 @@ export function useUpdateChangeOrder() {
     if (ecoItems !== undefined) payload.ecoItemsJson = JSON.stringify(ecoItems)
     if (history !== undefined) payload.historyJson = JSON.stringify(history)
     if (extraNotifyNames !== undefined) payload.extraNotifyJson = JSON.stringify(extraNotifyNames)
+    if (affectedAssemblies !== undefined) payload.affectedAssembliesJson = JSON.stringify(affectedAssemblies)
     void comments // comments go to the eco_comment object, not here
 
     await mutation.mutateAsync({
