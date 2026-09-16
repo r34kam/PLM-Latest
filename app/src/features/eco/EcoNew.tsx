@@ -602,7 +602,13 @@ function EcoNew({
         {i === 3 && (
           <span className="sub" style={{ marginRight: 6 }}>Created in Open — stays editable until submitted.</span>
         )}
-        <button className="btn gh" onClick={() => toast.info("Draft saved")} data-test-id="eco-wizard-save-draft-btn">Save draft</button>
+        <button
+          className="btn gh"
+          onClick={() => toast.info("Draft saved")}
+          data-test-id="eco-wizard-save-draft-btn"
+          style={{
+            overflow: "hidden"
+          }}>Save draft</button>
         {i < 3 && (
           <button className="btn pri" onClick={next}
             disabled={(i === 0 && !isGeneralFilled) || (i === 1 && ecoItems.length === 0) || (i === 2 && !mode)}
@@ -957,7 +963,7 @@ function EcoNew({
                   ))
                 ) : (
                   // Fallback: no confirmation fields configured — show default hardcoded ones
-                  <>
+                  (<>
                     <div className="kv-row">
                       <div className="kv-key"><span className="kv-label">Validations complete?</span></div>
                       <div className="kv-val">
@@ -972,7 +978,7 @@ function EcoNew({
                           options={["Yes", "No"]} />
                       </div>
                     </div>
-                  </>
+                  </>)
                 )}
               </div>
             )}
