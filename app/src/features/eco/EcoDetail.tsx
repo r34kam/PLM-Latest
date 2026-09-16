@@ -1,4 +1,4 @@
-import { FileUploadModal } from '@/components/data-io/FileUpload'
+import { FileUpload } from '@/components/data-io/FileUpload'
 import { Lifecycle } from '@/components/lifecycle/Lifecycle'
 import { WhereThisStandsBand } from '@/components/lifecycle/WhereThisStandsBand'
 import { SupplierShare } from '@/components/pickers/SupplierShare'
@@ -16,7 +16,7 @@ import { ME } from '@/domain/session'
 import { suppliersFor } from '@/domain/suppliers'
 import { useAllChangeOrders, useUpdateChangeOrder, type CoHistoryEntry, type ApprovalEntry } from '@/data/changeOrders'
 import { useEcoComments, usePostEcoComment, type EcoCommentRecord } from '@/data/ecoComments'
-import { useEcoFilesByCoId } from '@/data/ecoFiles'
+
 import { useUsers } from '@/data/admin'
 import { useExportEcoExcel } from '@/data/export'
 import { useSendReminder } from '@/data/reminder'
@@ -24,7 +24,7 @@ import { downloadFile } from '@/lib/download'
 import { toast } from 'sonner'
 import { initials } from '@/lib/prng'
 import { T } from '@/theme/tokens'
-import { AlertCircle, AlertTriangle, Ban, Bell, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, Clock, CornerUpLeft, Database, Download, FileText, Info, Layers, Link2, Loader2, MessageSquare, Plus, RefreshCw, Send, Sparkles, Trash2, Upload, Users, X } from 'lucide-react'
+import { AlertCircle, AlertTriangle, Ban, Bell, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Circle, Clock, CornerUpLeft, Database, Download, FileText, Info, Layers, Link2, Loader2, MessageSquare, Plus, RefreshCw, Send, Sparkles, Trash2, Users, X } from 'lucide-react'
 import { format } from 'date-fns'
 import React, { useState } from 'react'
 
@@ -105,9 +105,8 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
   const [actions, setActions] = useState(false);
   const [shared, setShared] = useState<any[]>([]);
   const [shareDraft, setShareDraft] = useState<any[]>([]);
-  const [fileModalOpen, setFileModalOpen] = useState(false);
-  // ECO files — live from backend, keyed by coId
-  const { files: ecoFiles, loading: ecoFilesLoading } = useEcoFilesByCoId(eco.id ?? '');
+
+
   const [itemSub, setItemSub] = useState("Modifications");
   const [activeRedlineItem, setActiveRedlineItem] = useState<any>(null);
   const [modPage, setModPage] = useState(1);
@@ -1254,67 +1253,18 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
 
           {tab === "Files" && (
             <div className="stack" data-test-id="eco-files-tab">
-              <div className="bet">
-                <div>
-                  <h3>Files on this change</h3>
-                  <div className="sub" style={{ marginTop: 3 }}>Reference files support the decision. Implementation files are what manufacturing works from once the change goes effective.</div>
-                </div>
-                <button className="btn pri" onClick={() => setFileModalOpen(true)} data-test-id="attach-files-btn">
-                  <Upload size={13} />Attach files
-                </button>
+              <div>
+                <h3>Files on this change</h3>
+                <div className="sub" style={{ marginTop: 3 }}>Reference files support the decision. Implementation files are what manufacturing works from once the change goes effective.</div>
               </div>
-
-              {ecoFilesLoading ? (
-                <div className="card" style={{ padding: 24, textAlign: 'center', color: T.g500 }} data-test-id="eco-files-loading">
-                  <Loader2 size={18} className="animate-spin" style={{ margin: '0 auto 8px' }} />
-                  Loading files&hellip;
-                </div>
-              ) : (
-                <div className="card" style={{ overflow: "hidden" }}>
-                  <table className="tbl">
-                    <thead>
-                      <tr><th>File</th><th>Purpose</th><th>Visibility</th><th>Added by</th><th>Added</th><th></th></tr>
-                    </thead>
-                    <tbody>
-                      {ecoFiles.map((f) => (
-                        <tr key={f.id} data-test-id={`eco-file-row-${f.id}`}>
-                          <td>
-                            <div className="row" style={{ gap: 9 }}>
-                              <span style={{ width: 28, height: 28, borderRadius: 8, background: T.b50, display: "grid", placeItems: "center" }}>
-                                <FileText size={14} color={T.brand} />
-                              </span>
-                              <div>
-                                <div style={{ fontWeight: 600 }}>{f.fileName}</div>
-                                <div className="mini">{f.size}</div>
-                              </div>
-                            </div>
-                          </td>
-                          <td><Chip k="gray">{f.fileType}</Chip></td>
-                          <td><Chip k="gray">{f.visibility}</Chip></td>
-                          <td className="sub">{f.uploadedBy || eco.creator || "—"}</td>
-                          <td className="sub">{f.uploadedAt ? format(new Date(f.uploadedAt), 'MM/dd/yyyy') : (eco.created || "—")}</td>
-                          <td style={{ textAlign: "right" }}>
-                            {f.url && (
-                              <a href={f.url} target="_blank" rel="noreferrer" className="btn gh sm" aria-label={`Open ${f.fileName}`} data-test-id={`eco-file-open-${f.id}`}>
-                                <Download size={13} />
-                              </a>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                      {ecoFiles.length === 0 && (
-                        <tr data-test-id="eco-files-empty">
-                          <td colSpan={6} style={{ textAlign: "center", padding: "24px 12px", color: T.g500 }}>No files attached yet. Click "Attach files" to add the first one.</td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
-              <div className="note" data-test-id="eco-files-note">
-                Files attached here are versioned. Replacing a file keeps the prior version in History.
-              </div>
+              <FileUpload
+                onClose={() => {}}
+                context="this change order"
+                hideCancel
+                coId={eco.id}
+                uploadedBy={ME.name}
+                data-test-id="eco-file-upload"
+              />
             </div>
           )}
 
@@ -1705,13 +1655,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
             value={shareDraft} onChange={setShareDraft} />
         </Modal>
       )}
-      <FileUploadModal
-        open={fileModalOpen}
-        onClose={() => setFileModalOpen(false)}
-        context="this change order"
-        coId={eco.id}
-        uploadedBy={ME.name}
-      />
+
       {modal === "cancelEco" && (
         <Modal title="Cancel this change" onClose={() => setModal(null)}
           foot={<><button className="btn" onClick={() => setModal(null)}>Keep it open</button>
