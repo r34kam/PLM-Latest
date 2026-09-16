@@ -32,13 +32,21 @@ function EcoList({ go, initialFilter, onInspect, inspectedId, railOpen = false, 
 
   const isNeedsMe = (e: ChangeOrder) => e.awaitingMe || e.stage === "Rejected";
 
-  // For Approvers: show every ECO that is in Approval stage (they may need to act on it)
-  // plus Rejected ones (historical context). awaitingMe is a DC-set flag and cannot
-  // reliably identify per-user relevance — showing all Approval-stage ECOs is correct.
+  // For Approvers: show only ECOs where the current user is listed in the approvalsJson
+  // (as primary approver or in the others array), plus Rejected ones they acted on.
+  // Falls back to all Approval-stage ECOs when the username is not yet resolved.
   const visibleOrders = useMemo(() => {
     if (!isApproverRole) return allOrders
-    return allOrders.filter((e) => e.stage === 'Approval' || e.stage === 'Rejected')
-  }, [allOrders, isApproverRole])
+    if (!currentUserName) {
+      return allOrders.filter((e) => e.stage === 'Approval' || e.stage === 'Rejected')
+    }
+    return allOrders.filter((e) => {
+      if (e.stage === 'Rejected') return true
+      return e.approvals.some(
+        (a) => a.approver === currentUserName || (a.others ?? []).includes(currentUserName)
+      )
+    })
+  }, [allOrders, isApproverRole, currentUserName])
 
   const stageStats: Record<string, number> = useMemo(() => {
     const map: Record<string, number> = {};

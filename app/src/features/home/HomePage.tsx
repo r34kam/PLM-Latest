@@ -37,13 +37,19 @@ function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = ''
   // Approvers start on Approval tab; DC starts on Awaiting me
   const [selectedHomeStage, setSelectedHomeStage] = useState(isApprover ? "Approval" : "Awaiting me");
 
-  // Backend change orders — approvers see all Approval-stage ECOs (any may need their sign-off)
-  // plus Rejected ones. awaitingMe is a DC flag, not per-user, so it cannot reliably gate visibility.
+  // Backend change orders — approvers see only ECOs they are listed in (approvalsJson match),
+  // plus Rejected ones. Falls back to all Approval-stage when username not yet resolved.
   const { data: rawOrders, loading: ordersLoading } = useAllChangeOrders();
-  const allOrders = useMemo(
-    () => isApprover ? rawOrders.filter((o) => o.stage === 'Approval' || o.stage === 'Rejected') : rawOrders,
-    [isApprover, rawOrders]
-  );
+  const allOrders = useMemo(() => {
+    if (!isApprover) return rawOrders
+    if (!userName) return rawOrders.filter((o) => o.stage === 'Approval' || o.stage === 'Rejected')
+    return rawOrders.filter((o) => {
+      if (o.stage === 'Rejected') return true
+      return o.approvals.some(
+        (a) => a.approver === userName || (a.others ?? []).includes(userName)
+      )
+    })
+  }, [isApprover, rawOrders, userName]);
   const kpis = useMemo(() => deriveCoKpis(allOrders), [allOrders]);
   const awaiting = useMemo(
     () => allOrders.filter((o) => o.awaitingMe || o.stage === 'Rejected'),
