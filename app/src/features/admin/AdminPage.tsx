@@ -397,7 +397,6 @@ function Admin({
                         return paged.map((f: any) => {
                           const sections = (() => { try { return JSON.parse(f.sectionsJson || "[]"); } catch { return []; } })();
                           const ffields = (() => { try { return JSON.parse(f.fieldsJson || "[]"); } catch { return []; } })();
-                          const inUseCount = backendRoutings.filter((r: any) => r.formId === f.id).length;
                           return (
                             <tr key={f.id} data-test-id={`form-row-${f.id}`}>
                               <td>
@@ -412,20 +411,9 @@ function Admin({
                                 </Chip>
                               </td>
                               <td>
-                                <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
-                                  {f.type.startsWith("ECO") && (
-                                    <Chip k="ok"><Zap size={10} />Live — ECO Wizard</Chip>
-                                  )}
-                                  {backendRoutings
-                                    .filter((r: any) => r.formId === f.id)
-                                    .map((r: any) => (
-                                      <Chip key={r.id} k="blue">{r.name}</Chip>
-                                    ))
-                                  }
-                                  {!f.type.startsWith("ECO") && inUseCount === 0 && (
-                                    <span className="mut">Not assigned</span>
-                                  )}
-                                </div>
+                                {f.type.startsWith("ECO")
+                                  ? <Chip k="ok"><Zap size={10} />Live — ECO Wizard</Chip>
+                                  : <span className="mut">Not assigned</span>}
                               </td>
                               <td><span style={{ fontSize: 13, color: "#0A2233", fontWeight: 500 }}>{sections.length} {sections.length === 1 ? "section" : "sections"}</span></td>
                               <td><span style={{ fontSize: 13, color: "#0A2233", fontWeight: 500 }}>{ffields.length} {ffields.length === 1 ? "field" : "fields"}</span></td>
