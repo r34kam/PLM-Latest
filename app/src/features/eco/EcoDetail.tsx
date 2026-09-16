@@ -64,6 +64,9 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
         rejectedBy: backendCo.rejectedBy ?? '',
         history: backendCo.history ?? [],
         extraNotifyNames: backendCo.extraNotifyNames ?? [],
+        // Always null-out the static affectedAssembly so the BOM Redline tab
+        // reads only from ecoItems (the real data saved at creation time).
+        affectedAssembly: null,
       }
     : { ...staticEco, ecoItems: [] as any[], comments: [] as any[], rejectionReason: '', rejectionNotes: '', rejectedBy: '', history: [] as CoHistoryEntry[], extraNotifyNames: [] as string[] };
   // Use real persisted approvals from backend when available; fall back to derived for static ECOs.
@@ -1032,11 +1035,14 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                 const bomRows = bomRowsFromAA ?? ecoItemEdits ?? staticFallback;
 
                 // Title/sub: prefer the linked affected assembly data, fall back to ecoItems or target
+                const firstEcoItem = eco.ecoItems?.[0];
                 const redlineTitle = aa
                   ? `${aa.pn} — ${aa.name}`
                   : target
                   ? `${target.pn} — ${target.name}`
-                  : "1003140-01 — KIT, TS CG MOUNTING";
+                  : firstEcoItem
+                  ? `${firstEcoItem.pn} — ${firstEcoItem.name}`
+                  : "No BOM redline recorded";
                 const redlineSub = (() => {
                   if (aa) {
                     const adds = aa.bomEdits.filter((e: any) => e.op === "ADD").length;
@@ -1053,7 +1059,8 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                     return [revPart, counts || "No BOM edits"].filter(Boolean).join(" · ");
                   }
                   if (target) return `Rev ${target.rev} → Rev ${target.newRev} · ${target.bom || "Inactivation redline"}`;
-                  return eco.id === "ECO-010870" ? "Rev B → Rev C · 2 additions, 1 removal, 0 edited line items" : "No BOM edits recorded";
+                  if (firstEcoItem) return `Rev ${firstEcoItem.currentRev ?? firstEcoItem.rev} → Rev ${firstEcoItem.newRev ?? firstEcoItem.rev} · No BOM edits recorded`;
+                  return "No BOM edits recorded";
                 })();
 
                 return (
