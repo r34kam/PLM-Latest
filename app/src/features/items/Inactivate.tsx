@@ -31,6 +31,7 @@ function Inactivate({ go, id = "01-080401-03", renderHeaderActions }: { go: any;
 
   const [analyzed, setAnalyzed] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [scanningPn, setScanningPn] = useState<string>("");
   const [q, setQ] = useState("");
   const [seg, setSeg] = useState("All");
   const [sel, setSel] = useState<string[]>([]);
@@ -75,15 +76,29 @@ function Inactivate({ go, id = "01-080401-03", renderHeaderActions }: { go: any;
     })),
   ], [parent, bomChildren, allKitBomItems]);
 
+  const ANALYSIS_MS = 10000;
+
   const handleRunAnalysis = () => {
     setLoading(true);
+    setScanningPn(rawRows[0]?.pn ?? "");
+
+    // Cycle through each part number during the 10s scan window
+    const allPns = rawRows.map((r: any) => r.pn);
+    const intervalMs = allPns.length > 1 ? Math.floor(ANALYSIS_MS / allPns.length) : ANALYSIS_MS;
+    let idx = 0;
+    const ticker = setInterval(() => {
+      idx += 1;
+      if (idx < allPns.length) setScanningPn(allPns[idx]);
+    }, intervalMs);
+
     setTimeout(() => {
+      clearInterval(ticker);
       setLoading(false);
+      setScanningPn("");
       setAnalyzed(true);
-      // Auto-select the parent + any unique children; shared parts are not selectable
       const selectablePns = rawRows.filter((r: any) => r.isParent || r.unique).map((r: any) => r.pn);
       setSel(selectablePns);
-    }, 10000);
+    }, ANALYSIS_MS);
   };
 
   const segs = analyzed
@@ -185,10 +200,15 @@ function Inactivate({ go, id = "01-080401-03", renderHeaderActions }: { go: any;
                   borderColor: "#0B7A4B"
                 }}
                 onClick={() => {
+                  const selectedItems = filteredRows
+                    .filter((r: any) => sel.includes(r.pn))
+                    .map((r: any) => ({ pn: r.pn, name: r.name }));
                   go({
                     page: "eco-new",
-                    step: 0,
-                    initialManualItems: filteredRows.filter((r: any) => sel.includes(r.pn)).map((r: any) => r.pn)
+                    step: 2,
+                    initialManualItems: selectedItems,
+                    initialTitle: `Inactivate ${parent.pn} – ${parent.name}`,
+                    initialCat: "ECO: Engineering Change Order",
                   });
                 }}
               >
@@ -243,41 +263,67 @@ function Inactivate({ go, id = "01-080401-03", renderHeaderActions }: { go: any;
           <div
             data-test-id="unique-parts-analysis-loader"
             style={{
-              padding: "24px 20px",
+              padding: "20px 20px 16px",
               background: "#F8FAFC",
               borderBottom: "1px solid #E2E8F0",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 16
             }}
           >
-            <div className="row" style={{ gap: 14 }}>
-              <div
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 10,
-                  background: T.b50,
-                  display: "grid",
-                  placeItems: "center",
-                  flexShrink: 0
-                }}
-              >
-                <Loader2 size={18} color={T.brand} style={{ animation: "spin 1s linear infinite" }} />
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, marginBottom: 12 }}>
+              <div className="row" style={{ gap: 14 }}>
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 10,
+                    background: T.b50,
+                    display: "grid",
+                    placeItems: "center",
+                    flexShrink: 0
+                  }}
+                >
+                  <Loader2 size={18} color={T.brand} style={{ animation: "spin 1s linear infinite" }} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 13, color: "#0A2233" }}>
+                    Running unique part analysis across live where-used graph…
+                  </div>
+                  <div className="sub" style={{ marginTop: 2, fontSize: 12 }}>
+                    Scanning{" "}
+                    <span
+                      key={scanningPn}
+                      style={{
+                        fontFamily: "monospace",
+                        fontWeight: 700,
+                        color: T.brand,
+                        display: "inline-block",
+                        minWidth: 120,
+                        animation: "fadeSlideUp .22s ease-out",
+                      }}
+                    >
+                      {scanningPn}
+                    </span>
+                    {" "}across all products and active assemblies.
+                  </div>
+                </div>
               </div>
-              <div>
-                <div style={{ fontWeight: 600, fontSize: 13, color: "#0A2233" }}>
-                  Running unique part analysis across live where-used graph…
-                </div>
-                <div className="sub" style={{ marginTop: 2, fontSize: 12 }}>
-                  Recursively walking {parent.bom} BOM lines of {parent.pn} across all products and active assemblies.
-                </div>
+              <div className="row" style={{ gap: 8 }}>
+                <span className="chip c-blue">AI Assisted</span>
+                <span className="mini" style={{ color: T.g600 }}>
+                  {rawRows.findIndex((r: any) => r.pn === scanningPn) + 1} / {rawRows.length}
+                </span>
               </div>
             </div>
-            <div className="row" style={{ gap: 8 }}>
-              <span className="chip c-blue">AI Assisted</span>
-              <span className="mini" style={{ color: T.g600 }}>Step 1 of 1</span>
+            {/* Progress track */}
+            <div style={{ height: 4, borderRadius: 4, background: T.g100, overflow: "hidden" }}>
+              <div
+                style={{
+                  height: "100%",
+                  borderRadius: 4,
+                  background: T.brand,
+                  width: `${((rawRows.findIndex((r: any) => r.pn === scanningPn) + 1) / Math.max(rawRows.length, 1)) * 100}%`,
+                  transition: `width ${Math.floor(ANALYSIS_MS / Math.max(rawRows.length, 1))}ms linear`,
+                }}
+              />
             </div>
           </div>
         )}

@@ -266,7 +266,9 @@ function TopconPLM({
             go={go}
             startStep={v.step !== undefined ? v.step : 0}
             initialApprovalMode={initialApprovalMode}
-            initialManualItems={initialManualItems}
+            initialManualItems={v.initialManualItems ?? initialManualItems}
+            initialTitle={v.initialTitle}
+            initialCat={v.initialCat}
             isModal
             onClose={() => setEcoNewOpen(false)}
           />

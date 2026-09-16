@@ -116,6 +116,8 @@ function EcoNew({
   startStep = 0,
   initialApprovalMode = null,
   initialManualItems = null,
+  initialTitle,
+  initialCat,
   renderHeaderActions,
   isModal = false,
   onClose,
@@ -124,13 +126,17 @@ function EcoNew({
   startStep?: number;
   initialApprovalMode?: "ai" | "routing" | "manual" | null;
   initialManualItems?: any[] | null;
+  initialTitle?: string;
+  initialCat?: string;
   renderHeaderActions?: () => React.ReactNode;
   isModal?: boolean;
   onClose?: () => void;
 }) {
   const STEPS = ["Basic Details", "Add Items", "Approvals", "Summary"];
-  // Map incoming startStep: legacy 4 or 1 -> step 1 (Approvals); legacy 5 or 2 -> step 2 (Summary); 0 -> step 0 (Basic Details)
-  const initialStep = startStep === 4 || startStep === 1 ? 1 : startStep === 5 || startStep === 2 ? 2 : 0;
+  // step 2 (from Inactivate) → Approvals (index 2); legacy mappings kept
+  const initialStep = startStep === 4 || startStep === 1 ? 1
+    : startStep === 5 || startStep === 2 ? 2
+    : 0;
   const initialSubNav = "general";
 
   const [i, setI] = useState(initialStep);
@@ -224,7 +230,8 @@ function EcoNew({
   const { data: allBackendItems } = useAllItems();
   const { extract: extractFromInstructions } = useKitExtractor();
   const [form, setForm] = useState({
-    cat: "ECO: Engineering Change Order", title: "",
+    cat: initialCat ?? "ECO: Engineering Change Order",
+    title: initialTitle ?? "",
     div: "CO \u2013 Construction", site: "1210 \u2013 TPS Livermore", eccn: "N/A \u2014 not used", notes: "", dc: "",
     eff: "Effective once approved", effDate: "", effSerial: "", deadline: "",
     desc: "",
