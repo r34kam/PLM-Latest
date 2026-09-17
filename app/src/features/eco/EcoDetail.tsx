@@ -691,26 +691,13 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
 
             {/* DC-only actions */}
             {!isApproverRole && rejected && (
-              <>
-                <button
-                  className="btn dan"
-                  onClick={() => setModal("withdraw")}
-                  data-test-id="withdraw-to-open-btn"
-                >
-                  <CornerUpLeft size={13} />Withdraw to Open
-                </button>
-                <button
-                  className="btn pri"
-                  onClick={handlePerformTask}
-                  disabled={isAutoTaskRunning}
-                  data-test-id="perform-task-btn"
-                >
-                  {isAutoTaskRunning
-                    ? <><Loader2 size={13} className="animate-spin" />Analysing…</>
-                    : <><Sparkles size={13} />Perform Task</>
-                  }
-                </button>
-              </>
+              <button
+                className="btn dan"
+                onClick={() => setModal("withdraw")}
+                data-test-id="withdraw-to-open-btn"
+              >
+                <CornerUpLeft size={13} />Withdraw to Open
+              </button>
             )}
             {!isApproverRole && eco.stage === "Approval" && !hasCurrentUserApproved && <>
               <button className="btn" onClick={() => setRejectModal(true)}><X size={13} />Reject</button>
@@ -814,6 +801,20 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                   </div>
                 </div>
               </div>
+              {!isApproverRole && rejected && (
+                <button
+                  className="btn pri"
+                  onClick={handlePerformTask}
+                  disabled={isAutoTaskRunning}
+                  style={{ flexShrink: 0 }}
+                  data-test-id="perform-task-btn"
+                >
+                  {isAutoTaskRunning
+                    ? <><Loader2 size={13} className="animate-spin" />Analysing…</>
+                    : <><Sparkles size={13} />Perform Task</>
+                  }
+                </button>
+              )}
             </div>
           ) : null
         }
