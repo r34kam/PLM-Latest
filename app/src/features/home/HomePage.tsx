@@ -90,10 +90,23 @@ function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = ''
     ];
   }, [allOrders]);
 
+  // For approvers the "Approval" count is scoped: only ECOs where they have a pending
+  // action in the currently active stage (not locked future stages).
+  const myApprovalCount = useMemo(() => {
+    if (!isApprover || !userName) return kpis.approval;
+    return allOrders.filter((o) => {
+      if (o.stage !== "Approval") return false;
+      return o.approvals.some((a) => {
+        const isThisUser = a.approver === userName || (a.others ?? []).includes(userName);
+        return isThisUser && a.status === "pending" && a.stage === o.currentStageNum;
+      });
+    }).length;
+  }, [isApprover, userName, allOrders, kpis.approval]);
+
   // Both roles get the full stage filter set; approver counts are scoped to their COs.
   const homeStages = useMemo(() => isApprover
     ? [
-        { key: "Approval", label: "Approval", count: kpis.approval },
+        { key: "Approval", label: "Approval", count: myApprovalCount },
         { key: "Effective", label: "Effective", count: kpis.effective },
         { key: "Submit", label: "Submit", count: kpis.submit },
         { key: "Open", label: "Open", count: kpis.open },
@@ -123,8 +136,20 @@ function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = ''
   const currentFilteredList = useMemo(() => {
     if (resolvedStage === "Awaiting me") return awaiting;
     if (resolvedStage === "All") return allOrders;
+    if (resolvedStage === "Approval" && isApprover && userName) {
+      // Only show ECOs where THIS approver has a pending entry in the CURRENT active stage.
+      // Without this, approvers see every ECO in Approval stage — including ones where their
+      // role is in a future locked stage that hasn't unlocked yet.
+      return allOrders.filter((o) => {
+        if (o.stage !== "Approval") return false;
+        return o.approvals.some((a) => {
+          const isThisUser = a.approver === userName || (a.others ?? []).includes(userName);
+          return isThisUser && a.status === "pending" && a.stage === o.currentStageNum;
+        });
+      });
+    }
     return allOrders.filter((o) => o.stage === resolvedStage);
-  }, [resolvedStage, awaiting, allOrders]);
+  }, [resolvedStage, awaiting, allOrders, isApprover, userName]);
 
   const activeStageObj = homeStages.find((s) => s.key === resolvedStage) ?? homeStages[0];
 
