@@ -2168,30 +2168,41 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
         )
       })()}
 
-      {/* ── Perform Task Confirmation Panel ── */}
+      {/* ── Perform Task Confirmation Modal ── */}
       {autoTaskResult && (
         <>
+          {/* Backdrop */}
           <div
-            style={{ position: 'fixed', inset: 0, zIndex: 49, background: 'rgba(0,0,0,0.35)' }}
+            style={{ position: 'fixed', inset: 0, zIndex: 49, background: 'rgba(0,0,0,0.45)' }}
             onClick={() => setAutoTaskResult(null)}
             aria-hidden="true"
           />
-          <aside
+          {/* Centered modal */}
+          <dialog
+            open
             style={{
-              position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 50,
-              width: 440, background: 'var(--background)',
-              boxShadow: '-4px 0 24px rgba(0,0,0,0.14)',
-              display: 'flex', flexDirection: 'column',
-              borderLeft: '1px solid var(--border)',
+              position: 'fixed', top: '50%', left: '50%',
+              transform: 'translate(-50%, -50%)',
+              zIndex: 50, margin: 0, padding: 0,
+              width: 480, maxWidth: 'calc(100vw - 32px)',
+              background: 'var(--background)',
+              border: '1px solid var(--border)',
+              borderRadius: 12,
+              boxShadow: '0 8px 40px rgba(0,0,0,0.18)',
             }}
             data-test-id="perform-task-panel"
             aria-label="Confirm BOM fix"
           >
             {/* Header */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px 16px', borderBottom: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Sparkles size={16} />
-                <span style={{ fontWeight: 700, fontSize: 15 }}>Confirm BOM Fix</span>
+                <div style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Sparkles size={15} color="white" strokeWidth={2} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--foreground)', lineHeight: 1.2 }}>Confirm BOM Fix</div>
+                  <div style={{ fontSize: 11, color: 'var(--muted-foreground)', lineHeight: 1.2, marginTop: 1 }}>AI-extracted from rejection notes</div>
+                </div>
               </div>
               <button
                 className="btn gh sm"
@@ -2204,35 +2215,50 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
             </div>
 
             {/* Body */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }} data-test-id="perform-task-panel-body">
-              {/* AI label */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16, fontSize: 11, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--primary)' }}>
-                <Sparkles size={12} strokeWidth={2.2} />
-                <span>AI-Extracted Fix</span>
+            <div style={{ padding: '20px' }} data-test-id="perform-task-panel-body">
+
+              {/* Change summary card */}
+              <div style={{ borderRadius: 8, border: '1px solid var(--border)', overflow: 'hidden', marginBottom: 16 }} data-test-id="perform-task-found-item">
+                {/* Op badge row */}
+                <div style={{ padding: '8px 14px', background: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Plus size={12} color="white" strokeWidth={2.5} />
+                  <span style={{ fontSize: 11, fontWeight: 700, color: 'white', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    {autoTaskResult.op} to BOM
+                  </span>
+                </div>
+                {/* Item details */}
+                <div style={{ padding: '14px', background: 'var(--muted)', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--foreground)', lineHeight: 1.2, fontFamily: 'monospace' }}>{autoTaskResult.foundItem.pn}</div>
+                    <div style={{ fontSize: 13, color: 'var(--muted-foreground)', marginTop: 4, lineHeight: 1.4 }}>{autoTaskResult.foundItem.name}</div>
+                  </div>
+                  <div style={{ flexShrink: 0, textAlign: 'right' }}>
+                    <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--muted-foreground)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Qty</div>
+                    <div style={{ fontWeight: 700, fontSize: 15, color: 'var(--foreground)', marginTop: 2 }}>{autoTaskResult.qty}</div>
+                  </div>
+                </div>
+                {/* Parent assembly */}
+                <div style={{ padding: '10px 14px', background: 'var(--background)', borderTop: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }} data-test-id="perform-task-add-to">
+                  <Layers size={12} color="var(--muted-foreground)" style={{ flexShrink: 0 }} />
+                  <span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>
+                    Into assembly{' '}
+                    <strong style={{ color: 'var(--foreground)', fontFamily: 'monospace', fontSize: 11 }}>{autoTaskResult.addTo.pn}</strong>
+                    {autoTaskResult.addTo.name ? <> — <span>{autoTaskResult.addTo.name}</span></> : null}
+                  </span>
+                </div>
               </div>
 
-              {/* What will be added */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
-                <div style={{ padding: '14px 16px', background: 'var(--muted)', borderRadius: 8, border: '1px solid var(--border)' }} data-test-id="perform-task-found-item">
-                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted-foreground)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Item to {autoTaskResult.op}</div>
-                  <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--foreground)', lineHeight: 1.3 }}>{autoTaskResult.foundItem.pn}</div>
-                  <div style={{ fontSize: 13, color: 'var(--muted-foreground)', marginTop: 2 }}>{autoTaskResult.foundItem.name}</div>
-                  <div style={{ fontSize: 12, color: 'var(--muted-foreground)', marginTop: 6 }}>Qty: <strong>{autoTaskResult.qty}</strong></div>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--muted-foreground)', fontSize: 12, paddingLeft: 4 }} data-test-id="perform-task-add-to">
-                  <ChevronDown size={14} style={{ flexShrink: 0 }} />
-                  <span>Into assembly <strong style={{ color: 'var(--foreground)' }}>{autoTaskResult.addTo.pn}</strong> — {autoTaskResult.addTo.name}</span>
-                </div>
+              {/* Info note */}
+              <div style={{ display: 'flex', gap: 8, padding: '10px 12px', background: 'var(--muted)', borderRadius: 6, border: '1px solid var(--border)' }}>
+                <Info size={13} color="var(--muted-foreground)" style={{ flexShrink: 0, marginTop: 1 }} />
+                <p style={{ fontSize: 12, color: 'var(--muted-foreground)', lineHeight: 1.5, margin: 0 }}>
+                  This will be added to the BOM redline. Use <strong style={{ color: 'var(--foreground)' }}>Submit to Routing</strong> when ready to resubmit for approval.
+                </p>
               </div>
-
-              <p style={{ fontSize: 13, color: 'var(--muted-foreground)', lineHeight: 1.55, marginBottom: 0 }}>
-                Confirming will add this item to the BOM redline. The ECO will remain in its current stage — use <strong>Submit for Approval</strong> when ready to resubmit.
-              </p>
             </div>
 
             {/* Footer */}
-            <div style={{ borderTop: '1px solid var(--border)', padding: '16px 20px', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <div style={{ borderTop: '1px solid var(--border)', padding: '12px 20px', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button
                 className="btn"
                 onClick={() => setAutoTaskResult(null)}
@@ -2252,7 +2278,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                 }
               </button>
             </div>
-          </aside>
+          </dialog>
         </>
       )}
 
