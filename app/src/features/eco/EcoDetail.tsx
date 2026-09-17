@@ -2198,7 +2198,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid var(--border)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <div style={{ width: 30, height: 30, borderRadius: 8, background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: 30, height: 30, borderRadius: 8, background: T.brand, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Sparkles size={15} color="white" strokeWidth={2} />
                 </div>
                 <div>
@@ -2222,7 +2222,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
               {/* Change summary card */}
               <div style={{ borderRadius: 8, border: '1px solid var(--border)', overflow: 'hidden', marginBottom: 16 }} data-test-id="perform-task-found-item">
                 {/* Op badge row */}
-                <div style={{ padding: '8px 14px', background: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ padding: '8px 14px', background: T.brand, display: 'flex', alignItems: 'center', gap: 6, borderRadius: '7px 7px 0 0' }}>
                   <Plus size={12} color="white" strokeWidth={2.5} />
                   <span style={{ fontSize: 11, fontWeight: 700, color: 'white', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                     {autoTaskResult.op} to BOM
