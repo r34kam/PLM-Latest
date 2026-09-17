@@ -239,12 +239,12 @@ textarea.inp{height:auto;padding:8px 10px;line-height:1.5;resize:vertical}
    Group sits on a soft-gray "track". Active pill is white + shadow (raised).
    Inactive pills are transparent/borderless — they just live on the track.
    Count badges hidden. */
-.seg{display:inline-flex;align-items:center;gap:2px;background:#e2e8f0;border-radius:10px;padding:3px}
+.seg{display:inline-flex;align-items:center;gap:2px;background:#dde8f4;border-radius:10px;padding:3px}
 .seg button{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 12px;border-radius:8px;
-  font-size:12px;font-weight:600;color:#627d98;background:transparent;border:none;white-space:nowrap;cursor:pointer;
+  font-size:12px;font-weight:600;color:#4a6fa5;background:transparent;border:none;white-space:nowrap;cursor:pointer;
   transition:all .1s ease}
-.seg button:hover{color:#0a2233}
-.seg button.on{background:#ffffff;color:#0a2233;box-shadow:0 1px 3px rgba(2,42,66,.14)}
+.seg button:hover{color:#005fa8;background:rgba(0,95,168,.07)}
+.seg button.on{background:#005fa8;color:#ffffff;box-shadow:0 1px 4px rgba(0,95,168,.30)}
 .seg button .n{display:none}
 /* toolbar: floats above the table card on the page background — no card, no background.
    Left side = filter pills / selects. Right edge = search + actions. */
