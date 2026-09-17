@@ -801,7 +801,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                   </div>
                 </div>
               </div>
-              {!isApproverRole && rejected && (
+              {!isApproverRole && withdrawnForRework && (
                 <button
                   className="btn pri"
                   onClick={handlePerformTask}
