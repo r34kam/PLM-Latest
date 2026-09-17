@@ -1563,7 +1563,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                         {isCommentsOnly ? <Chip k="gray">Comments recorded</Chip> : gdone ? <Chip k="ok">Satisfied</Chip> : opt ? <Chip k="gray">Skipped</Chip> : <Chip k="warn">Waiting</Chip>}
                         <div className="row" style={{ marginLeft: "auto", gap: 5 }}>
                           {members.map((m: any) => (
-                            <span key={m.n} className={`ava2 sm ${m.st === "approved" ? "ok" : ""}`} title={`${m.n} — ${m.st}`}>
+                            <span key={m.n} className={`ava2 sm ${m.st === "approved" ? "ok" : m.st === "rejected" ? "bad" : ""}`} title={`${m.n} — ${m.st}`}>
                               {m.n.split(" ").map((x: any) => x[0]).join("").slice(0, 2)}</span>
                           ))}
                         </div>
@@ -1573,10 +1573,12 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                           {members.map((m: any) => (
                             <tr key={m.n}>
                               <td style={{ width: 34 }}>{m.st === "approved" ? <Check size={14} color={T.ok} strokeWidth={3} />
+                                : m.st === "rejected" ? <X size={14} color={T.bad} strokeWidth={3} />
                                 : m.st === "comments" ? <FileText size={13} color={T.g400} />
                                 : m.st === "skipped" ? <Ban size={13} color={T.g400} /> : <Circle size={13} color={T.g400} />}</td>
                               <td style={{ fontWeight: 600, width: 190 }}>{m.n}</td>
                               <td style={{ width: 130 }}>{m.st === "approved" ? <Chip k="ok">Approved</Chip>
+                                : m.st === "rejected" ? <Chip k="bad">Rejected</Chip>
                                 : m.st === "comments" ? <Chip k="gray">Comments recorded</Chip>
                                 : m.st === "skipped" ? <Chip k="gray">Skipped</Chip> : <Chip k="warn">Waiting</Chip>}</td>
                               <td className="sub" style={{ width: 170 }}>{m.at || "—"}</td>
