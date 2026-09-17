@@ -113,13 +113,20 @@ function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = ''
       ],
   [isApprover, kpis, awaiting]);
 
-  const currentFilteredList = useMemo(() => {
-    if (selectedHomeStage === "Awaiting me") return awaiting;
-    if (selectedHomeStage === "All") return allOrders;
-    return allOrders.filter((o) => o.stage === selectedHomeStage);
-  }, [selectedHomeStage, awaiting, allOrders]);
+  // If the stored selection doesn't exist in the current pill set (e.g. role resolved
+  // after initial render and "Awaiting me" is no longer in the approver list), fall back
+  // to the first pill so a valid tab is always active.
+  const resolvedStage = homeStages.some((s) => s.key === selectedHomeStage)
+    ? selectedHomeStage
+    : homeStages[0]?.key ?? selectedHomeStage
 
-  const activeStageObj = homeStages.find((s) => s.key === selectedHomeStage) ?? homeStages[0];
+  const currentFilteredList = useMemo(() => {
+    if (resolvedStage === "Awaiting me") return awaiting;
+    if (resolvedStage === "All") return allOrders;
+    return allOrders.filter((o) => o.stage === resolvedStage);
+  }, [resolvedStage, awaiting, allOrders]);
+
+  const activeStageObj = homeStages.find((s) => s.key === resolvedStage) ?? homeStages[0];
 
   return (
     <div className="stack" data-test-id="home-page">
@@ -195,7 +202,7 @@ function HomePage({ go, renderHeaderActions, userRole = 'unknown', userName = ''
           <div className="toolbar" data-test-id="home-change-orders-toolbar">
             <div className="seg" data-test-id="home-stage-filter-pills">
               {homeStages.map((st) => {
-                const active = selectedHomeStage === st.key;
+                const active = resolvedStage === st.key;
                 return (
                   <button
                     key={st.key}
