@@ -120,6 +120,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
   const { run: runAutoTask, isPending: isAutoTaskRunning } = useAutomaticTask()
   const [autoTaskResult, setAutoTaskResult] = useState<AutoTaskResult | null>(null)
   const [isConfirmingAutoTask, setIsConfirmingAutoTask] = useState(false)
+  const [autoTaskDone, setAutoTaskDone] = useState(false)
 
   const handlePerformTask = async () => {
     if (!backendCo) { toast.error('Change order not loaded'); return }
@@ -174,6 +175,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
       )
       toast.success(`${foundItem.pn} added to the BOM redline`)
       setAutoTaskResult(null)
+      setAutoTaskDone(true)
     } catch {
       toast.error('Failed to apply the fix — please try again')
     } finally {
@@ -801,7 +803,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                   </div>
                 </div>
               </div>
-              {!isApproverRole && withdrawnForRework && (
+              {!isApproverRole && withdrawnForRework && !autoTaskDone && (
                 <button
                   className="btn pri"
                   onClick={handlePerformTask}
