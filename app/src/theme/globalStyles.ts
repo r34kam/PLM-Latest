@@ -403,9 +403,12 @@ textarea.inp{height:auto;padding:8px 10px;line-height:1.5;resize:vertical}
 .apgroup.locked{background:#ffffff}
 .apghead{display:flex;align-items:center;gap:9px;padding:12px 20px;background:#f8fafc;border-bottom:1px solid #E2E8F0}
 .apgroup.done .apghead{background:${T.okBg};border-bottom-color:${T.okBd}}
+.apgroup.rej .apghead{background:${T.badBg};border-bottom-color:${T.badBd}}
 .apgdot{width:19px;height:19px;border-radius:999px;display:grid;place-items:center;flex:none;background:#fff}
 .apgroup.done .apgdot{background:${T.ok}}
+.apgroup.rej .apgdot{background:${T.bad}}
 .ava2.ok{background:${T.okBg};color:${T.ok}}
+.ava2.bad{background:${T.badBg};color:${T.bad}}
 .gatebar{display:flex;align-items:center;gap:12px;padding:2px 0}
 .gateline{flex:1;height:1px;background:#bcccdc}
 .gatepill{display:inline-flex;align-items:center;gap:7px;font-size:11px;font-weight:600;color:#486581;

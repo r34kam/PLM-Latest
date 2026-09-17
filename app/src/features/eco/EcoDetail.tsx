@@ -1552,15 +1552,17 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                   const members = APPROVALS.filter((x: any) => x.g === g);
                   const isCommentsOnly = members[0].req === "Comments only";
                   const gdone = isCommentsOnly || members.some((m: any) => m.st === "approved");
+                  const grejected = members.some((m: any) => m.st === "rejected");
                   const opt = members[0].req === "Optional";
                   return (
-                    <div key={g} className={`apgroup ${gdone ? "done" : opt ? "opt" : ""}`}>
+                    <div key={g} className={`apgroup ${gdone ? "done" : grejected ? "rej" : opt ? "opt" : ""}`}>
                       <div className="apghead">
                         <span className="apgdot">{gdone ? <Check size={11} color="#fff" strokeWidth={3.5} />
+                          : grejected ? <X size={11} color="#fff" strokeWidth={3.5} />
                           : opt ? <Ban size={10} color={T.g500} /> : <Clock size={10} color={T.warn} />}</span>
                         <b>{g}</b>
                         <Chip k={isCommentsOnly ? "gray" : members[0].req === "Optional" ? "gray" : "blue"}>{members[0].req}</Chip>
-                        {isCommentsOnly ? <Chip k="gray">Comments recorded</Chip> : gdone ? <Chip k="ok">Satisfied</Chip> : opt ? <Chip k="gray">Skipped</Chip> : <Chip k="warn">Waiting</Chip>}
+                        {isCommentsOnly ? <Chip k="gray">Comments recorded</Chip> : gdone ? <Chip k="ok">Satisfied</Chip> : grejected ? <Chip k="bad">Rejected</Chip> : opt ? <Chip k="gray">Skipped</Chip> : <Chip k="warn">Waiting</Chip>}
                         <div className="row" style={{ marginLeft: "auto", gap: 5 }}>
                           {members.map((m: any) => (
                             <span key={m.n} className={`ava2 sm ${m.st === "approved" ? "ok" : m.st === "rejected" ? "bad" : ""}`} title={`${m.n} — ${m.st}`}>
