@@ -17,6 +17,7 @@ import { ROUTINGS, deriveApprovalState, notificationRecipientsFor } from '@/doma
 import { ME } from '@/domain/session'
 import { suppliersFor } from '@/domain/suppliers'
 import { useAllChangeOrders, useUpdateChangeOrder, type CoHistoryEntry, type ApprovalEntry, type AffectedAssemblyEntry, type InventoryDispositionEntry } from '@/data/changeOrders'
+import { useAutomaticTask, type AutoTaskResult } from '@/data/automaticTask'
 import { useEcoComments, usePostEcoComment, type EcoCommentRecord } from '@/data/ecoComments'
 
 import { useUsers } from '@/data/admin'
@@ -114,6 +115,71 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
   const [actions, setActions] = useState(false);
   const [shared, setShared] = useState<any[]>([]);
   const [shareDraft, setShareDraft] = useState<any[]>([]);
+
+  // Automatic Task (AI-assisted BOM fix for rejected ECOs)
+  const { run: runAutoTask, isPending: isAutoTaskRunning } = useAutomaticTask()
+  const [autoTaskResult, setAutoTaskResult] = useState<AutoTaskResult | null>(null)
+  const [isConfirmingAutoTask, setIsConfirmingAutoTask] = useState(false)
+
+  const handlePerformTask = async () => {
+    if (!backendCo) { toast.error('Change order not loaded'); return }
+    const notes = (eco.rejectionNotes || eco.rejectionReason || '').trim()
+    if (!notes) { toast.error('No rejection notes found to analyse'); return }
+    try {
+      const result = await runAutoTask(backendCo.coId, notes)
+      if (!result.foundItem.pn) {
+        toast.error('Could not extract an item from the rejection notes')
+        return
+      }
+      setAutoTaskResult(result)
+    } catch {
+      toast.error('Automation failed — please try again')
+    }
+  }
+
+  const handleConfirmAutoTask = async () => {
+    if (!backendCo || !autoTaskResult) return
+    setIsConfirmingAutoTask(true)
+    try {
+      const { foundItem, addTo, op, qty } = autoTaskResult
+      // Find the kit that matches addTo.pn; fall back to first kit
+      const targetPn = addTo.pn || eco.ecoItems?.[0]?.pn
+      const updatedItems = (eco.ecoItems ?? []).map((ki: any) => {
+        if (ki.pn !== targetPn) return ki
+        const already = ki.bomEdits.some((e: any) => e.pn === foundItem.pn && e.type === op)
+        if (already) return ki
+        return {
+          ...ki,
+          bomEdits: [
+            ...ki.bomEdits,
+            {
+              id: `auto-${foundItem.pn}-${Date.now()}`,
+              type: op as 'ADD' | 'DELETE' | 'UPDATE_DESC' | 'UPDATE_QTY',
+              pn: foundItem.pn,
+              name: foundItem.name,
+              qty,
+              newValue: '',
+            },
+          ],
+        }
+      })
+      // Append the new item to the redline text as well
+      const redlineAddendum = `\n${op} ${foundItem.pn} ${foundItem.name}, Qty. ${qty}`
+      const updatedRedline = (backendCo.redline || '').trimEnd() + redlineAddendum
+
+      await updateChangeOrder(
+        backendCo.id,
+        { ecoItems: updatedItems, redline: updatedRedline } as any,
+        backendCo,
+      )
+      toast.success(`${foundItem.pn} added to the BOM redline`)
+      setAutoTaskResult(null)
+    } catch {
+      toast.error('Failed to apply the fix — please try again')
+    } finally {
+      setIsConfirmingAutoTask(false)
+    }
+  }
 
 
   const [itemSub, setItemSub] = useState("Modifications");
@@ -624,7 +690,28 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
             )}
 
             {/* DC-only actions */}
-            {!isApproverRole && rejected && <button className="btn dan" onClick={() => setModal("withdraw")}><CornerUpLeft size={13} />Withdraw to Open</button>}
+            {!isApproverRole && rejected && (
+              <>
+                <button
+                  className="btn dan"
+                  onClick={() => setModal("withdraw")}
+                  data-test-id="withdraw-to-open-btn"
+                >
+                  <CornerUpLeft size={13} />Withdraw to Open
+                </button>
+                <button
+                  className="btn pri"
+                  onClick={handlePerformTask}
+                  disabled={isAutoTaskRunning}
+                  data-test-id="perform-task-btn"
+                >
+                  {isAutoTaskRunning
+                    ? <><Loader2 size={13} className="animate-spin" />Analysing…</>
+                    : <><Sparkles size={13} />Perform Task</>
+                  }
+                </button>
+              </>
+            )}
             {!isApproverRole && eco.stage === "Approval" && !hasCurrentUserApproved && <>
               <button className="btn" onClick={() => setRejectModal(true)}><X size={13} />Reject</button>
               <button className="btn ok" onClick={() => setModal("approve")}><Check size={13} />Approve</button>
@@ -2078,6 +2165,94 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
           </Modal>
         )
       })()}
+
+      {/* ── Perform Task Confirmation Panel ── */}
+      {autoTaskResult && (
+        <>
+          <div
+            style={{ position: 'fixed', inset: 0, zIndex: 49, background: 'rgba(0,0,0,0.35)' }}
+            onClick={() => setAutoTaskResult(null)}
+            aria-hidden="true"
+          />
+          <aside
+            style={{
+              position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 50,
+              width: 440, background: 'var(--background)',
+              boxShadow: '-4px 0 24px rgba(0,0,0,0.14)',
+              display: 'flex', flexDirection: 'column',
+              borderLeft: '1px solid var(--border)',
+            }}
+            data-test-id="perform-task-panel"
+            aria-label="Confirm BOM fix"
+          >
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '18px 20px 16px', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Sparkles size={16} />
+                <span style={{ fontWeight: 700, fontSize: 15 }}>Confirm BOM Fix</span>
+              </div>
+              <button
+                className="btn gh sm"
+                onClick={() => setAutoTaskResult(null)}
+                aria-label="Close"
+                data-test-id="perform-task-panel-close"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }} data-test-id="perform-task-panel-body">
+              {/* AI label */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 16, fontSize: 11, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--primary)' }}>
+                <Sparkles size={12} strokeWidth={2.2} />
+                <span>AI-Extracted Fix</span>
+              </div>
+
+              {/* What will be added */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 24 }}>
+                <div style={{ padding: '14px 16px', background: 'var(--muted)', borderRadius: 8, border: '1px solid var(--border)' }} data-test-id="perform-task-found-item">
+                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted-foreground)', marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Item to {autoTaskResult.op}</div>
+                  <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--foreground)', lineHeight: 1.3 }}>{autoTaskResult.foundItem.pn}</div>
+                  <div style={{ fontSize: 13, color: 'var(--muted-foreground)', marginTop: 2 }}>{autoTaskResult.foundItem.name}</div>
+                  <div style={{ fontSize: 12, color: 'var(--muted-foreground)', marginTop: 6 }}>Qty: <strong>{autoTaskResult.qty}</strong></div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--muted-foreground)', fontSize: 12, paddingLeft: 4 }} data-test-id="perform-task-add-to">
+                  <ChevronDown size={14} style={{ flexShrink: 0 }} />
+                  <span>Into assembly <strong style={{ color: 'var(--foreground)' }}>{autoTaskResult.addTo.pn}</strong> — {autoTaskResult.addTo.name}</span>
+                </div>
+              </div>
+
+              <p style={{ fontSize: 13, color: 'var(--muted-foreground)', lineHeight: 1.55, marginBottom: 0 }}>
+                Confirming will add this item to the BOM redline. The ECO will remain in its current stage — use <strong>Submit for Approval</strong> when ready to resubmit.
+              </p>
+            </div>
+
+            {/* Footer */}
+            <div style={{ borderTop: '1px solid var(--border)', padding: '16px 20px', display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button
+                className="btn"
+                onClick={() => setAutoTaskResult(null)}
+                data-test-id="perform-task-cancel-btn"
+              >
+                Cancel
+              </button>
+              <button
+                className="btn pri"
+                disabled={isConfirmingAutoTask}
+                onClick={handleConfirmAutoTask}
+                data-test-id="perform-task-confirm-btn"
+              >
+                {isConfirmingAutoTask
+                  ? <><Loader2 size={13} className="animate-spin" />Applying…</>
+                  : <><Check size={13} />Apply Fix</>
+                }
+              </button>
+            </div>
+          </aside>
+        </>
+      )}
 
       {/* ── Comment Drawer ── */}
       {commentDrawerOpen && (
