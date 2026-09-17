@@ -1986,7 +1986,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
               value={dcRejectReason}
               onChange={(e: any) => setDcRejectReason(e.target.value)}
               options={["", "Redline does not match the description", "Drawing or file incorrect", "Missing tolerance or evidence",
-                "Wrong supplier selected", "Item should not be on this change", "Other"]}
+                "Wrong supplier selected", "Item should not be on this change", "One item in the change is missing", "Other"]}
               data-test-id="dc-reject-reason-select"
             />
           </Field>
@@ -2092,6 +2092,7 @@ function EcoDetail({ id, go, initialTab, renderHeaderActions, role = 'unknown', 
                 "Missing tolerance or evidence",
                 "Wrong supplier selected",
                 "Item should not be on this change",
+                "One item in the change is missing",
                 "Impact not fully assessed",
                 "Requires further review",
                 "Other",
